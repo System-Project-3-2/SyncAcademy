@@ -1,16 +1,19 @@
 /**
  * Student Dashboard
  * Overview of student's activities and quick actions
+ * Polished with dark mode support
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Grid, Box, Typography, Button, Paper } from '@mui/material';
+import { Grid, Box, Typography, Button, Paper, useTheme, alpha, Chip } from '@mui/material';
 import {
   Feedback as FeedbackIcon,
   Search as SearchIcon,
   CheckCircle as ResolvedIcon,
   HourglassEmpty as PendingIcon,
   Add as AddIcon,
+  ArrowForward as ArrowForwardIcon,
+  LibraryBooks as LibraryIcon,
 } from '@mui/icons-material';
 import { PageHeader, StatCard, LoadingSpinner, EmptyState } from '../../components';
 import { useAuth } from '../../hooks';
@@ -19,6 +22,8 @@ import { feedbackService } from '../../services';
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [stats, setStats] = useState({
     totalFeedbacks: 0,
     pending: 0,
@@ -56,16 +61,24 @@ const StudentDashboard = () => {
     return <LoadingSpinner message="Loading dashboard..." />;
   }
 
+  const quickActions = [
+    { label: 'Search Materials', icon: <SearchIcon />, path: '/student/search', color: 'primary' },
+    { label: 'Submit Feedback', icon: <AddIcon />, path: '/student/feedback/new', color: 'secondary' },
+    { label: 'My Feedbacks', icon: <FeedbackIcon />, path: '/student/feedbacks', color: 'info' },
+    { label: 'All Materials', icon: <LibraryIcon />, path: '/student/materials', color: 'success' },
+  ];
+
   return (
-    <Box>
+    <Box className="fade-in">
       <PageHeader
-        title={`Welcome, ${user?.name}!`}
+        title={`Welcome back, ${user?.name?.split(' ')[0]}! 👋`}
         subtitle="Here's an overview of your academic activities"
         actions={
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => navigate('/student/feedback/new')}
+            sx={{ borderRadius: 2, px: 3, fontWeight: 600 }}
           >
             Submit Feedback
           </Button>
@@ -89,6 +102,7 @@ const StudentDashboard = () => {
             value={stats.pending}
             icon={<PendingIcon fontSize="large" />}
             color="warning.main"
+            subtitle="Awaiting response"
           />
         </Grid>
         <Grid item xs={12} sm={6} md={4}>
@@ -101,10 +115,11 @@ const StudentDashboard = () => {
         </Grid>
       </Grid>
 
-      {/* Quick Actions */}
+      {/* Quick Actions + Recent Feedbacks */}
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <Paper
+            elevation={0}
             sx={{
               p: 3,
               borderRadius: 3,
@@ -113,43 +128,43 @@ const StudentDashboard = () => {
               height: '100%',
             }}
           >
-            <Typography variant="h6" fontWeight={600} gutterBottom>
+            <Typography variant="h6" fontWeight={700} gutterBottom>
               Quick Actions
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-              <Button
-                variant="outlined"
-                fullWidth
-                startIcon={<SearchIcon />}
-                onClick={() => navigate('/student/search')}
-                sx={{ justifyContent: 'flex-start', py: 1.5 }}
-              >
-                Search Materials
-              </Button>
-              <Button
-                variant="outlined"
-                fullWidth
-                startIcon={<AddIcon />}
-                onClick={() => navigate('/student/feedback/new')}
-                sx={{ justifyContent: 'flex-start', py: 1.5 }}
-              >
-                Submit New Feedback
-              </Button>
-              <Button
-                variant="outlined"
-                fullWidth
-                startIcon={<FeedbackIcon />}
-                onClick={() => navigate('/student/feedbacks')}
-                sx={{ justifyContent: 'flex-start', py: 1.5 }}
-              >
-                View My Feedbacks
-              </Button>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 2 }}>
+              {quickActions.map((action) => (
+                <Button
+                  key={action.label}
+                  variant="outlined"
+                  fullWidth
+                  startIcon={action.icon}
+                  endIcon={<ArrowForwardIcon sx={{ fontSize: '16px !important' }} />}
+                  onClick={() => navigate(action.path)}
+                  sx={{ 
+                    justifyContent: 'flex-start', 
+                    py: 1.5,
+                    borderRadius: 2,
+                    fontWeight: 500,
+                    borderColor: 'divider',
+                    color: 'text.primary',
+                    '& .MuiButton-endIcon': { ml: 'auto' },
+                    '&:hover': { 
+                      borderColor: `${action.color}.main`,
+                      bgcolor: alpha(theme.palette[action.color].main, isDark ? 0.1 : 0.04),
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {action.label}
+                </Button>
+              ))}
             </Box>
           </Paper>
         </Grid>
 
         <Grid item xs={12} md={6}>
           <Paper
+            elevation={0}
             sx={{
               p: 3,
               borderRadius: 3,
@@ -159,10 +174,15 @@ const StudentDashboard = () => {
             }}
           >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" fontWeight={600}>
+              <Typography variant="h6" fontWeight={700}>
                 Recent Feedbacks
               </Typography>
-              <Button size="small" onClick={() => navigate('/student/feedbacks')}>
+              <Button 
+                size="small" 
+                onClick={() => navigate('/student/feedbacks')}
+                endIcon={<ArrowForwardIcon />}
+                sx={{ fontWeight: 600, borderRadius: 2 }}
+              >
                 View All
               </Button>
             </Box>
@@ -174,7 +194,7 @@ const StudentDashboard = () => {
                 onAction={() => navigate('/student/feedback/new')}
               />
             ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                 {recentFeedbacks.map((feedback) => (
                   <Box
                     key={feedback._id}
@@ -183,28 +203,32 @@ const StudentDashboard = () => {
                       borderRadius: 2,
                       border: '1px solid',
                       borderColor: 'divider',
-                      '&:hover': { bgcolor: 'grey.50' },
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': { 
+                        bgcolor: alpha(theme.palette.primary.main, isDark ? 0.08 : 0.04),
+                        borderColor: 'primary.main',
+                      },
                     }}
+                    onClick={() => navigate('/student/feedbacks')}
                   >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="subtitle2" noWrap sx={{ maxWidth: '70%' }}>
+                      <Typography variant="subtitle2" fontWeight={600} noWrap sx={{ maxWidth: '65%' }}>
                         {feedback.title}
                       </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          px: 1,
-                          py: 0.25,
-                          borderRadius: 1,
-                          bgcolor: feedback.status === 'resolved' ? 'success.100' : 'warning.100',
-                          color: feedback.status === 'resolved' ? 'success.dark' : 'warning.dark',
-                          textTransform: 'capitalize',
+                      <Chip
+                        label={feedback.status}
+                        size="small"
+                        color={feedback.status === 'resolved' ? 'success' : 'warning'}
+                        variant={isDark ? 'filled' : 'outlined'}
+                        sx={{ 
+                          textTransform: 'capitalize', 
+                          fontWeight: 600,
+                          fontSize: '0.7rem',
                         }}
-                      >
-                        {feedback.status}
-                      </Typography>
+                      />
                     </Box>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
                       {feedback.category}
                     </Typography>
                   </Box>
