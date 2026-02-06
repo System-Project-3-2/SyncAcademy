@@ -15,7 +15,6 @@ import {
   InputAdornment,
   IconButton,
   Alert,
-  useTheme as useMuiTheme,
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -33,7 +32,6 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const { isDark } = useTheme();
-  const muiTheme = useMuiTheme();
   
   const [formData, setFormData] = useState({
     email: '',

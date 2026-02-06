@@ -15,7 +15,6 @@ import {
   School as StudentIcon,
   Work as TeacherIcon,
   ArrowForward as ArrowForwardIcon,
-  TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import { PageHeader, StatCard, LoadingSpinner, EmptyState } from '../../components';
 import { useAuth } from '../../hooks';

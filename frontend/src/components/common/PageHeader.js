@@ -3,7 +3,7 @@
  * Professional page header with title, breadcrumbs, and optional actions
  */
 import React from 'react';
-import { Box, Typography, Breadcrumbs, Link, useTheme, alpha } from '@mui/material';
+import { Box, Typography, Breadcrumbs, Link } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { NavigateNext as NavigateNextIcon } from '@mui/icons-material';
 
@@ -13,8 +13,6 @@ const PageHeader = ({
   breadcrumbs = [], 
   actions = null 
 }) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === 'dark';
 
   return (
     <Box sx={{ mb: 4 }}>

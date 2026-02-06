@@ -5,13 +5,11 @@
  */
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Box, Toolbar, useTheme as useMuiTheme } from '@mui/material';
+import { Box, Toolbar } from '@mui/material';
 import { Navbar, Sidebar, drawerWidth } from '../components';
 
 const DashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const muiTheme = useMuiTheme();
-  const isDark = muiTheme.palette.mode === 'dark';
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
