@@ -1,6 +1,7 @@
 /**
  * Sidebar Component
- * Role-based sidebar navigation with polished dark mode support
+ * Compact, professional role-based navigation
+ * Responsive: permanent on desktop, temporary drawer on mobile/tablet
  */
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -31,7 +32,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
 
-const drawerWidth = 260;
+const drawerWidth = 230;
 
 // Navigation items based on user role
 const getNavItems = (role) => {
@@ -100,17 +101,16 @@ const Sidebar = ({ open, onClose }) => {
         flexDirection: 'column',
       }}
     >
-      <Toolbar />
-      <Box sx={{ px: 2, pt: 2, pb: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+      <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }} />
+      <Box sx={{ px: 1.75, pt: 1.75, pb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography 
             variant="overline" 
             sx={{ 
               color: 'text.secondary',
-              transition: 'color 0.3s ease',
               fontSize: '0.65rem',
               fontWeight: 700,
-              letterSpacing: '0.1em',
+              letterSpacing: '0.08em',
             }}
           >
             Navigation
@@ -121,19 +121,19 @@ const Sidebar = ({ open, onClose }) => {
               size="small"
               color={getRoleBadgeColor(user.role)}
               sx={{ 
-                height: 20, 
-                fontSize: '0.6rem', 
+                height: 18, 
+                fontSize: '0.55rem', 
                 fontWeight: 700, 
                 textTransform: 'uppercase',
-                '& .MuiChip-label': { px: 1 },
+                '& .MuiChip-label': { px: 0.75 },
               }}
             />
           )}
         </Box>
       </Box>
-      <Divider sx={{ borderColor: 'divider', mx: 2, transition: 'border-color 0.3s ease' }} />
-      <List sx={{ px: 1, pt: 1, flex: 1 }}>
-        {navItems.map((item, index) => {
+      <Divider sx={{ mx: 1.75, borderColor: 'divider' }} />
+      <List sx={{ px: 1.25, pt: 0.75, flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <ListItem key={item.text} disablePadding sx={{ mb: 0.25 }}>
@@ -141,9 +141,9 @@ const Sidebar = ({ open, onClose }) => {
                 onClick={() => handleNavigation(item.path)}
                 selected={isActive}
                 sx={{
-                  mx: 0.5,
-                  borderRadius: 2,
-                  py: 1,
+                  px: 1.5,
+                  py: 0.75,
+                  borderRadius: 1.5,
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   '&.Mui-selected': {
                     backgroundColor: 'primary.main',
@@ -165,9 +165,8 @@ const Sidebar = ({ open, onClose }) => {
               >
                 <ListItemIcon
                   sx={{
-                    minWidth: 38,
+                    minWidth: 34,
                     color: isActive ? 'inherit' : 'primary.main',
-                    transition: 'color 0.2s ease',
                   }}
                 >
                   {item.icon}
@@ -176,8 +175,7 @@ const Sidebar = ({ open, onClose }) => {
                   primary={item.text}
                   primaryTypographyProps={{
                     fontWeight: isActive ? 600 : 500,
-                    fontSize: '0.875rem',
-                    color: isActive ? 'inherit' : 'text.primary',
+                    fontSize: '0.835rem',
                   }}
                 />
               </ListItemButton>
@@ -187,12 +185,8 @@ const Sidebar = ({ open, onClose }) => {
       </List>
       
       {/* Footer */}
-      <Box sx={{ p: 2, textAlign: 'center' }}>
-        <Typography 
-          variant="caption" 
-          color="text.disabled"
-          sx={{ fontSize: '0.65rem' }}
-        >
+      <Box sx={{ px: 1.75, py: 1.25, textAlign: 'center' }}>
+        <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem', opacity: 0.5 }}>
           Student Aid v1.0
         </Typography>
       </Box>
@@ -201,28 +195,28 @@ const Sidebar = ({ open, onClose }) => {
 
   return (
     <>
-      {/* Mobile Drawer */}
+      {/* Mobile / Tablet – temporary overlay drawer */}
       <Drawer
         variant="temporary"
         open={open}
         onClose={onClose}
-        ModalProps={{
-          keepMounted: true,
-        }}
+        ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': {
-            boxSizing: 'border-box',
             width: drawerWidth,
+            boxSizing: 'border-box',
+            borderRight: '1px solid',
+            borderColor: 'divider',
             bgcolor: 'background.paper',
-            transition: 'background-color 0.3s ease',
+            transition: 'background-color 0.3s ease, border-color 0.3s ease',
           },
         }}
       >
         {drawer}
       </Drawer>
 
-      {/* Desktop Drawer */}
+      {/* Desktop – permanent inline drawer */}
       <Drawer
         variant="permanent"
         sx={{

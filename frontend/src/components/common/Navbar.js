@@ -15,7 +15,6 @@ import {
   MenuItem,
   Avatar,
   Tooltip,
-  Container,
   Divider,
   useTheme as useMuiTheme,
   alpha,
@@ -79,15 +78,14 @@ const Navbar = ({ onMenuClick }) => {
         transition: 'all 0.3s ease',
       }}
     >
-      <Container maxWidth={false}>
-        <Toolbar disableGutters sx={{ minHeight: { xs: 56, sm: 64 } }}>
+        <Toolbar sx={{ minHeight: { xs: 56, sm: 64 }, px: { xs: 1.5, sm: 2.5 } }}>
           {/* Mobile Menu Button */}
           <IconButton
             size="large"
             edge="start"
             color="inherit"
             aria-label="menu"
-            sx={{ mr: 2, display: { md: 'none' } }}
+            sx={{ mr: 1.5, display: { md: 'none' } }}
             onClick={onMenuClick}
           >
             <MenuIcon />
@@ -247,7 +245,6 @@ const Navbar = ({ onMenuClick }) => {
             </Box>
           )}
         </Toolbar>
-      </Container>
     </AppBar>
   );
 };

@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Box, Toolbar } from '@mui/material';
-import { Navbar, Sidebar, drawerWidth } from '../components';
+import { Navbar, Sidebar } from '../components';
 
 const DashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -30,22 +30,19 @@ const DashboardLayout = () => {
       {/* Sidebar */}
       <Sidebar open={mobileOpen} onClose={handleDrawerToggle} />
 
-      {/* Main Content */}
+      {/* Main Content – fills remaining space next to sidebar */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, sm: 3 },
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
+          minWidth: 0,
+          p: { xs: 1.5, sm: 2.5, md: 3 },
           transition: 'background-color 0.3s ease',
           minHeight: '100vh',
         }}
       >
-        <Toolbar /> {/* Spacer for fixed navbar */}
-        <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
-          <Outlet />
-        </Box>
+        <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }} />
+        <Outlet />
       </Box>
     </Box>
   );
