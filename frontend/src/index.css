@@ -1,7 +1,13 @@
 /**
  * Global Index CSS
  * Base styles applied before component styles
+ * Includes dark mode support and theme transitions
  */
+
+/* Tailwind Base */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Reset */
 *,
@@ -26,9 +32,248 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #f8fafc;
   color: #0f172a;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode body styles */
+.dark body,
+html.dark body {
+  background-color: #0f172a;
+  color: #f8fafc;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* ===== Theme Transition Classes ===== */
+/* Applied during theme switching for smooth transitions */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease,
+              fill 0.3s ease,
+              stroke 0.3s ease !important;
+}
+
+/* ===== Custom Scrollbar Styles ===== */
+/* Light mode scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track,
+html.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.dark ::-webkit-scrollbar-thumb,
+html.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover,
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* ===== Focus Styles for Accessibility ===== */
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.dark :focus-visible,
+html.dark :focus-visible {
+  outline-color: #60a5fa;
+}
+
+/* ===== Selection Styles ===== */
+::selection {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.dark ::selection,
+html.dark ::selection {
+  background-color: #60a5fa;
+  color: #0f172a;
+}
+
+/* ===== Theme Utility Classes ===== */
+@layer utilities {
+  /* Background utilities */
+  .bg-theme {
+    @apply bg-slate-50 dark:bg-slate-900;
+  }
+  
+  .bg-theme-secondary {
+    @apply bg-white dark:bg-slate-800;
+  }
+  
+  .bg-theme-surface {
+    @apply bg-white dark:bg-slate-800;
+  }
+  
+  /* Text utilities */
+  .text-theme {
+    @apply text-slate-900 dark:text-slate-50;
+  }
+  
+  .text-theme-secondary {
+    @apply text-slate-600 dark:text-slate-400;
+  }
+  
+  .text-theme-muted {
+    @apply text-slate-500 dark:text-slate-500;
+  }
+  
+  /* Border utilities */
+  .border-theme {
+    @apply border-slate-200 dark:border-slate-700;
+  }
+  
+  /* Shadow utilities */
+  .shadow-theme {
+    @apply shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50;
+  }
+  
+  /* Card utilities */
+  .card-theme {
+    @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm;
+  }
+  
+  /* Input utilities */
+  .input-theme {
+    @apply bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 
+           text-slate-900 dark:text-slate-100 
+           placeholder:text-slate-400 dark:placeholder:text-slate-500
+           focus:border-blue-500 dark:focus:border-blue-400
+           focus:ring-blue-500/20 dark:focus:ring-blue-400/20;
+  }
+  
+  /* Button utilities */
+  .btn-theme-primary {
+    @apply bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 
+           text-white font-medium rounded-lg transition-colors;
+  }
+  
+  .btn-theme-secondary {
+    @apply bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 
+           text-slate-900 dark:text-slate-100 font-medium rounded-lg transition-colors;
+  }
+  
+  .btn-theme-outline {
+    @apply border border-slate-300 dark:border-slate-600 
+           hover:bg-slate-100 dark:hover:bg-slate-700 
+           text-slate-700 dark:text-slate-300 font-medium rounded-lg transition-colors;
+  }
+}
+
+/* ===== Material UI Dark Mode Overrides ===== */
+/* These ensure MUI components respect our dark mode */
+html.dark .MuiPaper-root {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+html.dark .MuiCard-root {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+html.dark .MuiTableCell-root {
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark .MuiTableHead-root .MuiTableCell-root {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+html.dark .MuiDrawer-paper {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+html.dark .MuiMenu-paper {
+  background-color: #1e293b !important;
+}
+
+html.dark .MuiMenuItem-root:hover {
+  background-color: #334155 !important;
+}
+
+html.dark .MuiInputBase-root {
+  color: #f8fafc !important;
+}
+
+html.dark .MuiOutlinedInput-notchedOutline {
+  border-color: #475569 !important;
+}
+
+html.dark .MuiInputLabel-root {
+  color: #94a3b8 !important;
+}
+
+html.dark .MuiTypography-root {
+  color: inherit;
+}
+
+html.dark .MuiDivider-root {
+  border-color: #334155 !important;
+}
+
+html.dark .MuiListItemButton-root:hover {
+  background-color: #334155 !important;
+}
+
+html.dark .MuiChip-root {
+  background-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark .MuiTooltip-tooltip {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+/* ===== Custom Component Styles ===== */
+/* These can be extended for specific components */
+.theme-card {
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.theme-card:hover {
+  transform: translateY(-2px);
+}
+
+html:not(.dark) .theme-card:hover {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+html.dark .theme-card:hover {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
 }

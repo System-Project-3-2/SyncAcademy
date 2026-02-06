@@ -1,6 +1,6 @@
 /**
  * Navbar Component
- * Role-based navigation bar with user menu
+ * Role-based navigation bar with user menu and theme toggle
  */
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -16,6 +16,8 @@ import {
   Tooltip,
   Container,
   Button,
+  Divider,
+  useTheme as useMuiTheme,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -24,9 +26,13 @@ import {
   Logout,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
+import { useTheme } from '../../hooks/useTheme';
+import { ThemeToggleButton, ThemeToggleMenu } from './ThemeToggle';
 
 const Navbar = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
+  const { isDark } = useTheme();
+  const muiTheme = useMuiTheme();
   const navigate = useNavigate();
   const [anchorElUser, setAnchorElUser] = useState(null);
 
@@ -63,7 +69,10 @@ const Navbar = ({ onMenuClick }) => {
       position="fixed" 
       sx={{ 
         zIndex: (theme) => theme.zIndex.drawer + 1,
-        background: 'linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%)',
+        background: isDark 
+          ? 'linear-gradient(90deg, #0f172a 0%, #1e3a8a 100%)'
+          : 'linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%)',
+        transition: 'background 0.3s ease',
       }}
     >
       <Container maxWidth={false}>
@@ -117,6 +126,11 @@ const Navbar = ({ onMenuClick }) => {
           </Typography>
 
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }} />
+
+          {/* Theme Toggle - Always visible */}
+          <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+            <ThemeToggleMenu size="medium" />
+          </Box>
 
           {/* User Menu */}
           {user && (

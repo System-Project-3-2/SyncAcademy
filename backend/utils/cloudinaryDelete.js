@@ -12,35 +12,35 @@ const deletefromCloudinary = async (fileUrl) => {
 
     const url = new URL(fileUrl);
     const segments = url.pathname.split("/").filter(Boolean);
-    
-    // Find the upload index in the path
-    const uploadIndex = segments.indexOf("upload");
 
-    if (uploadIndex === -1) {
-      throw new Error("Invalid Cloudinary URL format - 'upload' not found");
+    // Typical Cloudinary URL: /<resource_type>/<delivery_type>/.../v123/<public_id>.<ext>
+    const resourceType = segments[0] || "raw";
+    const deliveryType = segments[1] || "upload";
+
+    const versionIndex = segments.findIndex((s) => /^v\d+$/.test(s));
+    if (versionIndex === -1) {
+      throw new Error("Invalid Cloudinary URL format - version not found");
     }
 
-    // Get parts after 'upload' and version (e.g., v1234567890)
-    // Path structure: /upload/v1234567890/folder/subfolder/filename.ext
-    let publicIdParts = segments.slice(uploadIndex + 1);
-    
-    // Skip version segment if present (starts with 'v' followed by numbers)
-    if (publicIdParts.length > 0 && /^v\d+$/.test(publicIdParts[0])) {
-      publicIdParts = publicIdParts.slice(1);
-    }
-
+    const publicIdParts = segments.slice(versionIndex + 1);
     if (!publicIdParts.length) {
       throw new Error("Unable to derive Cloudinary public id");
     }
 
-    // For raw resource types, keep the full public_id including extension
-    const publicId = publicIdParts.join("/");
+    let publicId = publicIdParts.join("/");
 
-    console.log("Deleting from Cloudinary:", { publicId, resource_type: "raw" });
+    // For image resources, Cloudinary destroy expects public_id without extension.
+    // For raw resources, public_id might include dots; try stripping a trailing extension only for image.
+    if (resourceType === "image") {
+      publicId = publicId.replace(/\.[^/.]+$/i, "");
+    }
+
+    console.log("Deleting from Cloudinary:", { publicId, resource_type: resourceType });
 
     const result = await cloudinary.uploader.destroy(publicId, {
-      resource_type: "raw",
-      invalidate: true, // Invalidate cached copies
+      resource_type: resourceType,
+      type: deliveryType,
+      invalidate: true,
     });
 
     console.log("Cloudinary delete result:", result);

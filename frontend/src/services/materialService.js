@@ -82,6 +82,16 @@ const materialService = {
   },
 
   /**
+   * Get a signed URL for a material file (helps when Cloudinary raw PDFs return 401)
+   * @param {string} materialId - Material ID
+   * @returns {Promise<{url: string, signed?: boolean, expiresAt?: number}>}
+   */
+  getMaterialSignedUrl: async (materialId) => {
+    const response = await api.get(`/materials/${materialId}/signed-url`);
+    return response.data;
+  },
+
+  /**
    * Upload a new material (Teacher/Admin only)
    * @param {FormData} formData - Contains file, title, course, type
    * @returns {Promise} API response with created material

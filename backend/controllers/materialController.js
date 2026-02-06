@@ -9,6 +9,8 @@ import MaterialChunk from "../models/materialChunkModel.js";
 import { chunkText } from "../utils/chunkText.js";
 import { embedText } from "../services/embeddingServices.js";
 
+import cloudinary from "../config/cloudinary.js";
+
 import path from "path";
 
 // Upload material (Teacher/Admin only)
@@ -34,7 +36,10 @@ export const uploadMaterial = async (req, res) => {
       return res.status(400).json({ message: "Unsupported file type" });
     }
 
-    const fileUrl = await uploadToCloudinary(file.path);
+    const fileUrl = await uploadToCloudinary(file.path, {
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+    });
 
     const material = {
       courseTitle,
@@ -165,6 +170,140 @@ export const deleteMaterial = async (req, res) => {
     await MaterialChunk.deleteMany({ materialId: id });
 
     res.status(200).json({ message: "Material deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get a signed URL for a material file (helps when Cloudinary raw PDFs return 401)
+export const getMaterialSignedUrl = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, _id } = req.user;
+
+    const material = await Material.findById(id).populate("uploadedBy", "name email");
+    if (!material) {
+      return res.status(404).json({ message: "Material not found" });
+    }
+
+    // Teachers can only access their own materials
+    if (role === "teacher" && material.uploadedBy?._id?.toString() !== _id.toString()) {
+      return res.status(403).json({ message: "Access denied. You can only view your own materials." });
+    }
+
+    const fileUrl = material.fileUrl;
+    if (!fileUrl) {
+      return res.status(400).json({ message: "File URL not available for this material." });
+    }
+
+    const parseCloudinaryUrl = (urlString) => {
+      const url = new URL(urlString);
+      const segments = url.pathname.split("/").filter(Boolean);
+      // Expected: /<resource_type>/<delivery_type>/<...transforms>/v123/<public_id>.<format>
+      const resourceType = segments[0];
+      const deliveryType = segments[1];
+
+      // Find version segment (v123...)
+      const versionIndex = segments.findIndex((s) => /^v\d+$/.test(s));
+      if (versionIndex === -1) {
+        throw new Error("Invalid Cloudinary URL format (missing version)");
+      }
+
+      const publicIdParts = segments.slice(versionIndex + 1);
+      if (!publicIdParts.length) {
+        throw new Error("Invalid Cloudinary URL format (missing public id)");
+      }
+
+      // Cloudinary raw resources sometimes have public_id that includes dots (e.g. "file.pdf").
+      // We keep BOTH variants: with extension and without extension.
+      const last = publicIdParts[publicIdParts.length - 1];
+      const dotIndex = last.lastIndexOf(".");
+      const format = dotIndex !== -1 ? last.slice(dotIndex + 1) : undefined;
+      const publicIdWithExt = publicIdParts.join("/");
+      const publicIdNoExt =
+        dotIndex !== -1
+          ? [...publicIdParts.slice(0, -1), last.slice(0, dotIndex)].join("/")
+          : publicIdWithExt;
+
+      return {
+        resourceType,
+        deliveryType,
+        version: segments[versionIndex],
+        publicId: publicIdNoExt,
+        publicIdWithExt,
+        format,
+      };
+    };
+
+    const parsed = parseCloudinaryUrl(fileUrl);
+
+    // If the asset is already an image-PDF (/image/upload/...) it's typically public and works.
+    // The common breakage case is PDFs uploaded under /raw/upload/... returning 401.
+    // We use Cloudinary Admin API to discover the actual delivery type, then create a signed URL.
+    const candidateTypes = [parsed.deliveryType, "authenticated", "private", "upload"].filter(
+      (v, i, a) => v && a.indexOf(v) === i
+    );
+
+    const candidatePublicIds = [parsed.publicId, parsed.publicIdWithExt].filter(
+      (v, i, a) => v && a.indexOf(v) === i
+    );
+
+    let resource;
+    let resolvedType;
+    let resolvedPublicId;
+
+    for (const t of candidateTypes) {
+      for (const publicId of candidatePublicIds) {
+        try {
+          // api.resource supports { resource_type, type }
+          // If the type/public_id is wrong, Cloudinary throws a not-found error.
+          resource = await cloudinary.api.resource(publicId, {
+            resource_type: parsed.resourceType,
+            type: t,
+          });
+          resolvedType = t;
+          resolvedPublicId = publicId;
+          break;
+        } catch (e) {
+          // keep trying
+        }
+      }
+      if (resource) break;
+    }
+
+    // If we can't resolve via Admin API, fall back to the stored URL.
+    if (!resource || !resolvedType || !resolvedPublicId) {
+      return res.status(200).json({ url: fileUrl, signed: false });
+    }
+
+    const accessMode = resource.access_mode;
+    const shouldSign = resolvedType !== "upload" || accessMode === "authenticated" || accessMode === "private";
+
+    if (!shouldSign && resource.secure_url) {
+      return res.status(200).json({ url: resource.secure_url, signed: false });
+    }
+
+    const expiresAt = Math.floor(Date.now() / 1000) + 10 * 60; // 10 minutes
+
+    // If Cloudinary marks it as authenticated/private, the delivery type must match.
+    const deliveryTypeForUrl =
+      accessMode === "authenticated" ? "authenticated" : accessMode === "private" ? "private" : resolvedType;
+
+    // Prefer the canonical public_id Cloudinary returns.
+    const publicIdForUrl = resource.public_id || resolvedPublicId;
+
+    const signedUrl = cloudinary.url(publicIdForUrl, {
+      secure: true,
+      sign_url: true,
+      expires_at: expiresAt,
+      resource_type: parsed.resourceType,
+      type: deliveryTypeForUrl,
+      // Only set format if Cloudinary URL parsing inferred one and the public_id doesn't already contain it.
+      format: parsed.format,
+      version: resource.version,
+    });
+
+    return res.status(200).json({ url: signedUrl, signed: true, expiresAt });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -1,18 +1,25 @@
 /**
  * Main App Component
  * Root component that sets up providers and routing
+ * Includes integrated dark/light theme support with MUI and Tailwind
  */
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { ThemeProvider as MuiThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from './context';
+import { AuthProvider, ThemeProvider } from './context';
+import { useTheme } from './hooks/useTheme';
 import { AppRouter } from './router';
 import './App.css';
 
-// Create MUI theme with custom configuration
-const theme = createTheme({
+/**
+ * Create MUI theme with dark/light mode support
+ * @param {boolean} isDark - Whether dark mode is active
+ * @returns {Object} MUI theme object
+ */
+const createAppTheme = (isDark) => createTheme({
   palette: {
+    mode: isDark ? 'dark' : 'light',
     primary: {
       main: '#3b82f6',
       light: '#60a5fa',
@@ -49,21 +56,26 @@ const theme = createTheme({
       dark: '#0284c7',
     },
     background: {
-      default: '#f8fafc',
-      paper: '#ffffff',
+      default: isDark ? '#0f172a' : '#f8fafc',
+      paper: isDark ? '#1e293b' : '#ffffff',
     },
     grey: {
-      50: '#f8fafc',
-      100: '#f1f5f9',
-      200: '#e2e8f0',
-      300: '#cbd5e1',
-      400: '#94a3b8',
-      500: '#64748b',
-      600: '#475569',
-      700: '#334155',
-      800: '#1e293b',
-      900: '#0f172a',
+      50: isDark ? '#1e293b' : '#f8fafc',
+      100: isDark ? '#334155' : '#f1f5f9',
+      200: isDark ? '#475569' : '#e2e8f0',
+      300: isDark ? '#64748b' : '#cbd5e1',
+      400: isDark ? '#94a3b8' : '#94a3b8',
+      500: isDark ? '#cbd5e1' : '#64748b',
+      600: isDark ? '#e2e8f0' : '#475569',
+      700: isDark ? '#f1f5f9' : '#334155',
+      800: isDark ? '#f8fafc' : '#1e293b',
+      900: isDark ? '#ffffff' : '#0f172a',
     },
+    text: {
+      primary: isDark ? '#f8fafc' : '#0f172a',
+      secondary: isDark ? '#94a3b8' : '#475569',
+    },
+    divider: isDark ? '#334155' : '#e2e8f0',
   },
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
@@ -78,6 +90,13 @@ const theme = createTheme({
     borderRadius: 8,
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: {
+          transition: 'background-color 0.3s ease, color 0.3s ease',
+        },
+      },
+    },
     MuiButton: {
       styleOverrides: {
         root: {
@@ -91,6 +110,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 12,
+          transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
         },
       },
     },
@@ -98,6 +118,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: 'none',
+          transition: 'background-color 0.3s ease',
         },
       },
     },
@@ -110,17 +131,41 @@ const theme = createTheme({
         },
       },
     },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          transition: 'background-color 0.3s ease',
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          transition: 'background-color 0.3s ease',
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          transition: 'background-color 0.3s ease, border-color 0.3s ease',
+        },
+      },
+    },
   },
 });
 
-// Toast configuration
-const toastOptions = {
+/**
+ * Toast configuration with theme-aware styling
+ */
+const getToastOptions = (isDark) => ({
   duration: 4000,
   position: 'top-right',
   style: {
     borderRadius: '10px',
-    background: '#333',
+    background: isDark ? '#1e293b' : '#333',
     color: '#fff',
+    border: isDark ? '1px solid #334155' : 'none',
   },
   success: {
     iconTheme: {
@@ -134,11 +179,21 @@ const toastOptions = {
       secondary: '#fff',
     },
   },
-};
+});
 
-function App() {
+/**
+ * Inner App component that uses theme context
+ * Separated to allow access to theme context
+ */
+const AppContent = () => {
+  const { isDark } = useTheme();
+  
+  // Memoize theme to prevent unnecessary re-renders
+  const muiTheme = useMemo(() => createAppTheme(isDark), [isDark]);
+  const toastOptions = useMemo(() => getToastOptions(isDark), [isDark]);
+
   return (
-    <ThemeProvider theme={theme}>
+    <MuiThemeProvider theme={muiTheme}>
       <CssBaseline />
       <BrowserRouter>
         <AuthProvider>
@@ -146,6 +201,18 @@ function App() {
           <Toaster toastOptions={toastOptions} />
         </AuthProvider>
       </BrowserRouter>
+    </MuiThemeProvider>
+  );
+};
+
+/**
+ * Main App component
+ * Wraps everything in ThemeProvider first so theme context is available
+ */
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
     </ThemeProvider>
   );
 }

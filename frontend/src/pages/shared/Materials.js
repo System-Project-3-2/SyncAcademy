@@ -570,6 +570,8 @@ const Materials = () => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, material: null });
   const [editDialog, setEditDialog] = useState({ open: false, material: null });
   const [previewDialog, setPreviewDialog] = useState({ open: false, material: null });
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewUrlLoading, setPreviewUrlLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const userRole = user?.role;
@@ -649,6 +651,27 @@ const Materials = () => {
     return Object.values(groups).sort((a, b) => a.courseNo.localeCompare(b.courseNo));
   }, [filteredMaterials]);
 
+  const isCloudinaryRawPdf = (url) => {
+    if (!url) return false;
+    const lower = url.toLowerCase();
+    return lower.includes('res.cloudinary.com') && lower.includes('/raw/upload/') && lower.endsWith('.pdf');
+  };
+
+  const resolveMaterialFileUrl = async (material) => {
+    const url = material?.fileUrl;
+    if (!url) return null;
+
+    // Only fetch signed URL for the problematic case.
+    if (!isCloudinaryRawPdf(url)) return url;
+
+    try {
+      const data = await materialService.getMaterialSignedUrl(material._id);
+      return data?.url || url;
+    } catch (e) {
+      return url;
+    }
+  };
+
   const handleDownload = async (material) => {
     if (!material.fileUrl) {
       setSnackbar({
@@ -660,15 +683,17 @@ const Materials = () => {
     }
 
     try {
+      const resolvedUrl = await resolveMaterialFileUrl(material);
+
       // Extract filename from URL or use courseTitle
-      const urlParts = material.fileUrl.split('/');
+      const urlParts = (resolvedUrl || material.fileUrl).split('/');
       const cloudinaryFilename = urlParts[urlParts.length - 1];
       const filename = material.courseTitle 
         ? `${material.courseTitle}${cloudinaryFilename.substring(cloudinaryFilename.lastIndexOf('.'))}`
         : cloudinaryFilename;
 
       // Use materialService download function for proper handling
-      await materialService.downloadFile(material.fileUrl, filename);
+      await materialService.downloadFile(resolvedUrl || material.fileUrl, filename);
     } catch (error) {
       console.error('Download error:', error);
       // Fallback: open in new tab
@@ -690,11 +715,39 @@ const Materials = () => {
 
   const handlePreviewClose = () => {
     setPreviewDialog({ open: false, material: null });
+    setPreviewUrl(null);
+    setPreviewUrlLoading(false);
   };
 
   const handleOpenInNewTab = (url) => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
+
+  // When opening preview, resolve a signed URL for raw PDFs (401 fix)
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      if (!previewDialog.open || !previewDialog.material) return;
+
+      const baseUrl = previewDialog.material.fileUrl;
+      setPreviewUrl(baseUrl);
+
+      if (!isCloudinaryRawPdf(baseUrl)) return;
+
+      setPreviewUrlLoading(true);
+      const resolved = await resolveMaterialFileUrl(previewDialog.material);
+      if (!cancelled) {
+        setPreviewUrl(resolved || baseUrl);
+        setPreviewUrlLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [previewDialog.open, previewDialog.material]);
 
   const handleDeleteClick = (material) => {
     setDeleteDialog({ open: true, material });
@@ -1115,7 +1168,7 @@ const Materials = () => {
           </Box>
           <Tooltip title="Open in New Tab">
             <IconButton
-              onClick={() => handleOpenInNewTab(previewDialog.material?.fileUrl)}
+              onClick={() => handleOpenInNewTab(previewUrl || previewDialog.material?.fileUrl)}
               sx={{ mr: 1 }}
             >
               <UploadIcon sx={{ transform: 'rotate(45deg)' }} />
@@ -1134,27 +1187,35 @@ const Materials = () => {
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
-          {previewDialog.material?.fileUrl ? (
+          {previewUrl ? (
             <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-              {/* For PDFs, try direct iframe first, then Google Docs Viewer as fallback */}
-              {previewDialog.material.fileUrl.toLowerCase().includes('.pdf') ? (
+              {/* For PDFs, use multiple viewer options for best compatibility */}
+              {previewUrlLoading ? (
+                <Box
+                  sx={{
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'text.secondary',
+                  }}
+                >
+                  <Typography>Preparing preview…</Typography>
+                </Box>
+              ) : previewUrl.toLowerCase().includes('.pdf') ? (
                 <iframe
-                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewDialog.material.fileUrl)}&embedded=true`}
-                  title="Material Preview"
+                  src={previewUrl}
+                  title="PDF Preview"
                   style={{
                     width: '100%',
                     height: '100%',
                     border: 'none',
                   }}
-                  onError={(e) => {
-                    // Fallback to direct URL if Google Viewer fails
-                    e.target.src = previewDialog.material.fileUrl;
-                  }}
                 />
               ) : (
                 /* For other files (DOCX, PPTX), use Google Docs Viewer */
                 <iframe
-                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewDialog.material.fileUrl)}&embedded=true`}
+                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewUrl)}&embedded=true`}
                   title="Material Preview"
                   style={{
                     width: '100%',
