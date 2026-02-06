@@ -1,19 +1,21 @@
 /**
  * Admin Dashboard
- * System overview with key statistics
+ * System overview with key statistics - polished with dark mode support
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Grid, Box, Typography, Paper, Button } from '@mui/material';
+import { Grid, Box, Typography, Paper, Button, Chip, useTheme, alpha, LinearProgress } from '@mui/material';
 import {
   People as PeopleIcon,
   Feedback as FeedbackIcon,
-  CheckCircle as ResolvedIcon,
+  CheckCircle as CheckCircleIcon,
   HourglassEmpty as PendingIcon,
   CloudUpload as UploadIcon,
   Search as SearchIcon,
   School as StudentIcon,
   Work as TeacherIcon,
+  ArrowForward as ArrowForwardIcon,
+  TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import { PageHeader, StatCard, LoadingSpinner, EmptyState } from '../../components';
 import { useAuth } from '../../hooks';
@@ -22,6 +24,8 @@ import { feedbackService, adminService } from '../../services';
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [stats, setStats] = useState({
     totalFeedbacks: 0,
     pending: 0,
@@ -70,16 +74,28 @@ const AdminDashboard = () => {
     return <LoadingSpinner message="Loading dashboard..." />;
   }
 
+  const resolutionRate = stats.totalFeedbacks > 0
+    ? Math.round((stats.resolved / stats.totalFeedbacks) * 100)
+    : 0;
+
+  const quickActions = [
+    { label: 'User Management', icon: <PeopleIcon />, path: '/admin/users', color: 'primary' },
+    { label: 'All Feedbacks', icon: <FeedbackIcon />, path: '/admin/feedbacks', color: 'secondary' },
+    { label: 'Upload Material', icon: <UploadIcon />, path: '/admin/materials/upload', color: 'success' },
+    { label: 'Search Materials', icon: <SearchIcon />, path: '/admin/search', color: 'info' },
+  ];
+
   return (
-    <Box>
+    <Box className="fade-in">
       <PageHeader
-        title={`Welcome, ${user?.name}!`}
+        title={`Welcome back, ${user?.name?.split(' ')[0]}! 👋`}
         subtitle="System Administration Dashboard"
         actions={
           <Button
             variant="contained"
             startIcon={<PeopleIcon />}
             onClick={() => navigate('/admin/users')}
+            sx={{ borderRadius: 2, px: 3, fontWeight: 600 }}
           >
             Manage Users
           </Button>
@@ -87,9 +103,12 @@ const AdminDashboard = () => {
       />
 
       {/* User Stats Grid */}
-      <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-        User Overview
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        <PeopleIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+        <Typography variant="h6" fontWeight={700}>
+          User Overview
+        </Typography>
+      </Box>
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
@@ -130,9 +149,12 @@ const AdminDashboard = () => {
       </Grid>
 
       {/* Feedback Stats Grid */}
-      <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-        Feedback Overview
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        <FeedbackIcon sx={{ color: 'secondary.main', fontSize: 20 }} />
+        <Typography variant="h6" fontWeight={700}>
+          Feedback Overview
+        </Typography>
+      </Box>
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
@@ -156,21 +178,58 @@ const AdminDashboard = () => {
           <StatCard
             title="Resolved"
             value={stats.resolved}
-            icon={<ResolvedIcon fontSize="large" />}
+            icon={<CheckCircleIcon fontSize="large" />}
             color="success.main"
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Resolution Rate"
-            value={
-              stats.totalFeedbacks > 0
-                ? `${Math.round((stats.resolved / stats.totalFeedbacks) * 100)}%`
-                : '0%'
-            }
-            icon={<CheckCircle fontSize="large" />}
-            color="info.main"
-          />
+          {/* Resolution Rate Card with progress bar */}
+          <Paper
+            elevation={0}
+            className="fade-in"
+            sx={{
+              p: 3,
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '3px',
+                background: `linear-gradient(90deg, ${theme.palette.info.main}, ${alpha(theme.palette.info.main, 0.4)})`,
+              },
+            }}
+          >
+            <Typography 
+              variant="overline" 
+              color="text.secondary" 
+              sx={{ fontSize: '0.7rem', letterSpacing: '0.08em', fontWeight: 600 }}
+            >
+              Resolution Rate
+            </Typography>
+            <Typography variant="h3" fontWeight={800} color="info.main" sx={{ lineHeight: 1.2, mt: 0.5 }}>
+              {resolutionRate}%
+            </Typography>
+            <LinearProgress
+              variant="determinate"
+              value={resolutionRate}
+              sx={{
+                mt: 1.5,
+                height: 6,
+                borderRadius: 3,
+                bgcolor: alpha(theme.palette.info.main, 0.12),
+                '& .MuiLinearProgress-bar': {
+                  borderRadius: 3,
+                  bgcolor: 'info.main',
+                },
+              }}
+            />
+          </Paper>
         </Grid>
       </Grid>
 
@@ -178,6 +237,7 @@ const AdminDashboard = () => {
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
           <Paper
+            elevation={0}
             sx={{
               p: 3,
               borderRadius: 3,
@@ -186,52 +246,43 @@ const AdminDashboard = () => {
               height: '100%',
             }}
           >
-            <Typography variant="h6" fontWeight={600} gutterBottom>
+            <Typography variant="h6" fontWeight={700} gutterBottom>
               Quick Actions
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-              <Button
-                variant="outlined"
-                fullWidth
-                startIcon={<PeopleIcon />}
-                onClick={() => navigate('/admin/users')}
-                sx={{ justifyContent: 'flex-start', py: 1.5 }}
-              >
-                User Management
-              </Button>
-              <Button
-                variant="outlined"
-                fullWidth
-                startIcon={<FeedbackIcon />}
-                onClick={() => navigate('/admin/feedbacks')}
-                sx={{ justifyContent: 'flex-start', py: 1.5 }}
-              >
-                View All Feedbacks
-              </Button>
-              <Button
-                variant="outlined"
-                fullWidth
-                startIcon={<UploadIcon />}
-                onClick={() => navigate('/admin/materials/upload')}
-                sx={{ justifyContent: 'flex-start', py: 1.5 }}
-              >
-                Upload Material
-              </Button>
-              <Button
-                variant="outlined"
-                fullWidth
-                startIcon={<SearchIcon />}
-                onClick={() => navigate('/admin/search')}
-                sx={{ justifyContent: 'flex-start', py: 1.5 }}
-              >
-                Search Materials
-              </Button>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 2 }}>
+              {quickActions.map((action) => (
+                <Button
+                  key={action.label}
+                  variant="outlined"
+                  fullWidth
+                  startIcon={action.icon}
+                  endIcon={<ArrowForwardIcon sx={{ fontSize: '16px !important' }} />}
+                  onClick={() => navigate(action.path)}
+                  sx={{ 
+                    justifyContent: 'flex-start', 
+                    py: 1.5,
+                    borderRadius: 2,
+                    fontWeight: 500,
+                    borderColor: 'divider',
+                    color: 'text.primary',
+                    '& .MuiButton-endIcon': { ml: 'auto' },
+                    '&:hover': { 
+                      borderColor: `${action.color}.main`,
+                      bgcolor: alpha(theme.palette[action.color].main, isDark ? 0.1 : 0.04),
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {action.label}
+                </Button>
+              ))}
             </Box>
           </Paper>
         </Grid>
 
         <Grid item xs={12} md={8}>
           <Paper
+            elevation={0}
             sx={{
               p: 3,
               borderRadius: 3,
@@ -241,10 +292,26 @@ const AdminDashboard = () => {
             }}
           >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" fontWeight={600}>
-                Recent Activity
-              </Typography>
-              <Button size="small" onClick={() => navigate('/admin/feedbacks')}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Typography variant="h6" fontWeight={700}>
+                  Recent Activity
+                </Typography>
+                {recentFeedbacks.length > 0 && (
+                  <Chip 
+                    label={recentFeedbacks.length}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    sx={{ fontWeight: 700 }}
+                  />
+                )}
+              </Box>
+              <Button 
+                size="small" 
+                onClick={() => navigate('/admin/feedbacks')}
+                endIcon={<ArrowForwardIcon />}
+                sx={{ fontWeight: 600, borderRadius: 2 }}
+              >
                 View All
               </Button>
             </Box>
@@ -254,7 +321,7 @@ const AdminDashboard = () => {
                 description="There are no feedbacks in the system yet."
               />
             ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                 {recentFeedbacks.map((feedback) => (
                   <Box
                     key={feedback._id}
@@ -264,32 +331,34 @@ const AdminDashboard = () => {
                       border: '1px solid',
                       borderColor: 'divider',
                       cursor: 'pointer',
-                      '&:hover': { bgcolor: 'grey.50', borderColor: 'primary.main' },
+                      transition: 'all 0.2s ease',
+                      '&:hover': { 
+                        bgcolor: alpha(theme.palette.primary.main, isDark ? 0.08 : 0.04),
+                        borderColor: 'primary.main',
+                      },
                     }}
                     onClick={() => navigate('/admin/feedbacks')}
                   >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="subtitle2" noWrap>
+                      <Box sx={{ flex: 1, mr: 2 }}>
+                        <Typography variant="subtitle2" fontWeight={600} noWrap>
                           {feedback.title}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           From: {feedback.student?.name || 'Unknown'} • {feedback.category}
                         </Typography>
                       </Box>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          px: 1,
-                          py: 0.25,
-                          borderRadius: 1,
-                          bgcolor: feedback.status === 'resolved' ? 'success.100' : 'warning.100',
-                          color: feedback.status === 'resolved' ? 'success.dark' : 'warning.dark',
-                          textTransform: 'capitalize',
+                      <Chip
+                        label={feedback.status}
+                        size="small"
+                        color={feedback.status === 'resolved' ? 'success' : 'warning'}
+                        variant={isDark ? 'filled' : 'outlined'}
+                        sx={{ 
+                          textTransform: 'capitalize', 
+                          fontWeight: 600, 
+                          fontSize: '0.7rem',
                         }}
-                      >
-                        {feedback.status}
-                      </Typography>
+                      />
                     </Box>
                   </Box>
                 ))}
@@ -301,8 +370,5 @@ const AdminDashboard = () => {
     </Box>
   );
 };
-
-// Fix missing import
-const CheckCircle = ResolvedIcon;
 
 export default AdminDashboard;
