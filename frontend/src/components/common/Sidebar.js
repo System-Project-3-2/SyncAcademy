@@ -1,6 +1,6 @@
 /**
  * Sidebar Component
- * Role-based sidebar navigation with dark mode support
+ * Role-based sidebar navigation with polished dark mode support
  */
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -18,6 +18,7 @@ import {
   useTheme,
   useMediaQuery,
   alpha,
+  Chip,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -25,9 +26,7 @@ import {
   CloudUpload as UploadIcon,
   Feedback as FeedbackIcon,
   People as PeopleIcon,
-  Assignment as AssignmentIcon,
   Add as AddIcon,
-  List as ListIcon,
   LibraryBooks as LibraryIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
@@ -64,6 +63,15 @@ const getNavItems = (role) => {
   return items[role] || [];
 };
 
+const getRoleBadgeColor = (role) => {
+  switch (role) {
+    case 'admin': return 'error';
+    case 'teacher': return 'secondary';
+    case 'student': return 'primary';
+    default: return 'default';
+  }
+};
+
 const Sidebar = ({ open, onClose }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -88,71 +96,106 @@ const Sidebar = ({ open, onClose }) => {
         bgcolor: 'background.paper',
         height: '100%',
         transition: 'background-color 0.3s ease',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       <Toolbar />
-      <Box sx={{ p: 2 }}>
-        <Typography 
-          variant="overline" 
-          sx={{ 
-            color: 'text.secondary',
-            transition: 'color 0.3s ease',
-          }}
-        >
-          Navigation
-        </Typography>
+      <Box sx={{ px: 2, pt: 2, pb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+          <Typography 
+            variant="overline" 
+            sx={{ 
+              color: 'text.secondary',
+              transition: 'color 0.3s ease',
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+            }}
+          >
+            Navigation
+          </Typography>
+          {user?.role && (
+            <Chip 
+              label={user.role}
+              size="small"
+              color={getRoleBadgeColor(user.role)}
+              sx={{ 
+                height: 20, 
+                fontSize: '0.6rem', 
+                fontWeight: 700, 
+                textTransform: 'uppercase',
+                '& .MuiChip-label': { px: 1 },
+              }}
+            />
+          )}
+        </Box>
       </Box>
-      <Divider sx={{ borderColor: 'divider', transition: 'border-color 0.3s ease' }} />
-      <List>
-        {navItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton
-              onClick={() => handleNavigation(item.path)}
-              selected={location.pathname === item.path}
-              sx={{
-                mx: 1,
-                borderRadius: 2,
-                mb: 0.5,
-                transition: 'background-color 0.2s ease',
-                '&.Mui-selected': {
-                  backgroundColor: 'primary.main',
-                  color: 'white',
-                  '& .MuiListItemIcon-root': {
+      <Divider sx={{ borderColor: 'divider', mx: 2, transition: 'border-color 0.3s ease' }} />
+      <List sx={{ px: 1, pt: 1, flex: 1 }}>
+        {navItems.map((item, index) => {
+          const isActive = location.pathname === item.path;
+          return (
+            <ListItem key={item.text} disablePadding sx={{ mb: 0.25 }}>
+              <ListItemButton
+                onClick={() => handleNavigation(item.path)}
+                selected={isActive}
+                sx={{
+                  mx: 0.5,
+                  borderRadius: 2,
+                  py: 1,
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  '&.Mui-selected': {
+                    backgroundColor: 'primary.main',
                     color: 'white',
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.35)}`,
+                    '& .MuiListItemIcon-root': {
+                      color: 'white',
+                    },
+                    '&:hover': {
+                      backgroundColor: 'primary.dark',
+                    },
                   },
                   '&:hover': {
-                    backgroundColor: 'primary.dark',
+                    backgroundColor: isDark 
+                      ? alpha(theme.palette.primary.main, 0.12)
+                      : alpha(theme.palette.primary.main, 0.06),
                   },
-                },
-                '&:hover': {
-                  backgroundColor: isDark 
-                    ? alpha(theme.palette.primary.main, 0.15)
-                    : alpha(theme.palette.primary.main, 0.08),
-                },
-              }}
-            >
-              <ListItemIcon
-                sx={{
-                  minWidth: 40,
-                  color: location.pathname === item.path ? 'inherit' : 'primary.main',
-                  transition: 'color 0.2s ease',
                 }}
               >
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText 
-                primary={item.text}
-                sx={{
-                  '& .MuiTypography-root': {
-                    color: location.pathname === item.path ? 'inherit' : 'text.primary',
-                    transition: 'color 0.3s ease',
-                  },
-                }}
-              />
-            </ListItemButton>
-          </ListItem>
-        ))}
+                <ListItemIcon
+                  sx={{
+                    minWidth: 38,
+                    color: isActive ? 'inherit' : 'primary.main',
+                    transition: 'color 0.2s ease',
+                  }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={item.text}
+                  primaryTypographyProps={{
+                    fontWeight: isActive ? 600 : 500,
+                    fontSize: '0.875rem',
+                    color: isActive ? 'inherit' : 'text.primary',
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+          );
+        })}
       </List>
+      
+      {/* Footer */}
+      <Box sx={{ p: 2, textAlign: 'center' }}>
+        <Typography 
+          variant="caption" 
+          color="text.disabled"
+          sx={{ fontSize: '0.65rem' }}
+        >
+          Student Aid v1.0
+        </Typography>
+      </Box>
     </Box>
   );
 
@@ -164,7 +207,7 @@ const Sidebar = ({ open, onClose }) => {
         open={open}
         onClose={onClose}
         ModalProps={{
-          keepMounted: true, // Better open performance on mobile
+          keepMounted: true,
         }}
         sx={{
           display: { xs: 'block', md: 'none' },

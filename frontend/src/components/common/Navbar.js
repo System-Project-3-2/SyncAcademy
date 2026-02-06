@@ -1,6 +1,7 @@
 /**
  * Navbar Component
  * Role-based navigation bar with user menu and theme toggle
+ * Polished with glassmorphism and smooth transitions
  */
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -15,19 +16,18 @@ import {
   Avatar,
   Tooltip,
   Container,
-  Button,
   Divider,
   useTheme as useMuiTheme,
+  alpha,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   School as SchoolIcon,
-  AccountCircle,
   Logout,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
 import { useTheme } from '../../hooks/useTheme';
-import { ThemeToggleButton, ThemeToggleMenu } from './ThemeToggle';
+import { ThemeToggleMenu } from './ThemeToggle';
 
 const Navbar = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
@@ -67,16 +67,20 @@ const Navbar = ({ onMenuClick }) => {
   return (
     <AppBar 
       position="fixed" 
+      elevation={0}
       sx={{ 
         zIndex: (theme) => theme.zIndex.drawer + 1,
         background: isDark 
-          ? 'linear-gradient(90deg, #0f172a 0%, #1e3a8a 100%)'
-          : 'linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%)',
-        transition: 'background 0.3s ease',
+          ? `linear-gradient(135deg, ${alpha('#0f172a', 0.95)} 0%, ${alpha('#1e3a8a', 0.95)} 100%)`
+          : 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid',
+        borderColor: isDark ? alpha('#ffffff', 0.08) : 'transparent',
+        transition: 'all 0.3s ease',
       }}
     >
       <Container maxWidth={false}>
-        <Toolbar disableGutters>
+        <Toolbar disableGutters sx={{ minHeight: { xs: 56, sm: 64 } }}>
           {/* Mobile Menu Button */}
           <IconButton
             size="large"
@@ -90,44 +94,62 @@ const Navbar = ({ onMenuClick }) => {
           </IconButton>
 
           {/* Logo */}
-          <SchoolIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
-          <Typography
-            variant="h6"
-            noWrap
+          <Box
             component={Link}
             to="/"
-            sx={{
-              mr: 2,
-              display: { xs: 'none', md: 'flex' },
-              fontWeight: 700,
-              color: 'inherit',
+            sx={{ 
+              display: { xs: 'none', md: 'flex' }, 
+              alignItems: 'center', 
               textDecoration: 'none',
+              color: 'inherit',
+              mr: 3,
+              gap: 1,
             }}
           >
-            Student Aid
-          </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                borderRadius: 2,
+                bgcolor: alpha('#ffffff', 0.15),
+              }}
+            >
+              <SchoolIcon sx={{ fontSize: 22 }} />
+            </Box>
+            <Typography
+              variant="h6"
+              noWrap
+              sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}
+            >
+              Student Aid
+            </Typography>
+          </Box>
 
           {/* Mobile Logo */}
-          <SchoolIcon sx={{ display: { xs: 'flex', md: 'none' }, mr: 1 }} />
-          <Typography
-            variant="h6"
-            noWrap
+          <Box
             component={Link}
             to="/"
-            sx={{
-              flexGrow: 1,
-              display: { xs: 'flex', md: 'none' },
-              fontWeight: 700,
-              color: 'inherit',
+            sx={{ 
+              display: { xs: 'flex', md: 'none' }, 
+              alignItems: 'center', 
               textDecoration: 'none',
+              color: 'inherit',
+              flexGrow: 1,
+              gap: 1,
             }}
           >
-            Student Aid
-          </Typography>
+            <SchoolIcon sx={{ fontSize: 22 }} />
+            <Typography variant="h6" noWrap sx={{ fontWeight: 800 }}>
+              Student Aid
+            </Typography>
+          </Box>
 
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }} />
 
-          {/* Theme Toggle - Always visible */}
+          {/* Theme Toggle */}
           <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
             <ThemeToggleMenu size="medium" />
           </Box>
@@ -136,11 +158,23 @@ const Navbar = ({ onMenuClick }) => {
           {user && (
             <Box sx={{ flexGrow: 0 }}>
               <Tooltip title="Account settings">
-                <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
+                <IconButton 
+                  onClick={handleOpenUserMenu} 
+                  sx={{ 
+                    p: 0.5,
+                    border: '2px solid',
+                    borderColor: alpha('#ffffff', 0.3),
+                    transition: 'border-color 0.2s ease',
+                    '&:hover': { borderColor: alpha('#ffffff', 0.6) },
+                  }}
+                >
                   <Avatar 
                     sx={{ 
                       bgcolor: getRoleColor(user.role),
-                      fontWeight: 600,
+                      fontWeight: 700,
+                      width: 34,
+                      height: 34,
+                      fontSize: '0.95rem',
                     }}
                   >
                     {user.name?.charAt(0).toUpperCase()}
@@ -148,7 +182,7 @@ const Navbar = ({ onMenuClick }) => {
                 </IconButton>
               </Tooltip>
               <Menu
-                sx={{ mt: '45px' }}
+                sx={{ mt: '50px' }}
                 id="menu-appbar"
                 anchorEl={anchorElUser}
                 anchorOrigin={{
@@ -162,33 +196,51 @@ const Navbar = ({ onMenuClick }) => {
                 }}
                 open={Boolean(anchorElUser)}
                 onClose={handleCloseUserMenu}
+                PaperProps={{
+                  sx: {
+                    borderRadius: 2,
+                    minWidth: 200,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    mt: 0.5,
+                  },
+                }}
               >
-                <MenuItem disabled>
-                  <Box>
-                    <Typography fontWeight={600}>{user.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {user.email}
-                    </Typography>
-                    <Box
-                      sx={{
-                        display: 'inline-block',
-                        ml: 1,
-                        px: 1,
-                        py: 0.25,
-                        borderRadius: 1,
-                        bgcolor: getRoleColor(user.role),
-                        color: 'white',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      {user.role}
-                    </Box>
+                <Box sx={{ px: 2, py: 1.5 }}>
+                  <Typography fontWeight={700} variant="body1">{user.name}</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    {user.email}
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: 'inline-block',
+                      mt: 0.5,
+                      px: 1,
+                      py: 0.25,
+                      borderRadius: 1,
+                      bgcolor: getRoleColor(user.role),
+                      color: 'white',
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    {user.role}
                   </Box>
-                </MenuItem>
-                <MenuItem onClick={handleLogout}>
-                  <Logout sx={{ mr: 1 }} fontSize="small" />
+                </Box>
+                <Divider />
+                <MenuItem 
+                  onClick={handleLogout}
+                  sx={{ 
+                    mt: 0.5, 
+                    mx: 1, 
+                    borderRadius: 1,
+                    color: 'error.main',
+                    '&:hover': { bgcolor: alpha(muiTheme.palette.error.main, 0.08) },
+                  }}
+                >
+                  <Logout sx={{ mr: 1.5 }} fontSize="small" />
                   Logout
                 </MenuItem>
               </Menu>

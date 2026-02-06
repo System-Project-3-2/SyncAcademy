@@ -23,6 +23,7 @@ import {
   InsertDriveFile as FileIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
+import { useTheme as useMuiTheme, alpha } from '@mui/material';
 import toast from 'react-hot-toast';
 import { PageHeader } from '../../components';
 import { materialService } from '../../services';
@@ -36,6 +37,8 @@ const ACCEPTED_FILES = '.pdf,.docx,.pptx';
 const UploadMaterial = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const muiTheme = useMuiTheme();
+  const isDark = muiTheme.palette.mode === 'dark';
   
   const [formData, setFormData] = useState({
     courseTitle: '',
@@ -251,7 +254,7 @@ const UploadMaterial = () => {
                 transition: 'all 0.2s',
                 '&:hover': {
                   borderColor: 'primary.main',
-                  bgcolor: 'primary.50',
+                  bgcolor: alpha(muiTheme.palette.primary.main, isDark ? 0.1 : 0.04),
                 },
               }}
               onClick={() => fileInputRef.current?.click()}
@@ -281,7 +284,7 @@ const UploadMaterial = () => {
                 borderRadius: 2,
                 border: '1px solid',
                 borderColor: 'divider',
-                bgcolor: 'grey.50',
+                bgcolor: alpha(muiTheme.palette.primary.main, isDark ? 0.06 : 0.03),
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

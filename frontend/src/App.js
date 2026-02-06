@@ -103,6 +103,15 @@ const createAppTheme = (isDark) => createTheme({
           textTransform: 'none',
           fontWeight: 600,
           borderRadius: 8,
+          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        },
+        contained: {
+          boxShadow: 'none',
+          '&:hover': {
+            boxShadow: isDark 
+              ? '0 4px 14px rgba(59, 130, 246, 0.25)' 
+              : '0 4px 14px rgba(59, 130, 246, 0.3)',
+          },
         },
       },
     },
@@ -110,7 +119,7 @@ const createAppTheme = (isDark) => createTheme({
       styleOverrides: {
         root: {
           borderRadius: 12,
-          transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
+          transition: 'background-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease',
         },
       },
     },
@@ -118,7 +127,7 @@ const createAppTheme = (isDark) => createTheme({
       styleOverrides: {
         root: {
           backgroundImage: 'none',
-          transition: 'background-color 0.3s ease',
+          transition: 'background-color 0.3s ease, border-color 0.3s ease',
         },
       },
     },
@@ -126,7 +135,13 @@ const createAppTheme = (isDark) => createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: 8,
+            borderRadius: 10,
+            transition: 'box-shadow 0.2s ease',
+            '&.Mui-focused': {
+              boxShadow: isDark 
+                ? '0 0 0 3px rgba(96, 165, 250, 0.15)' 
+                : '0 0 0 3px rgba(59, 130, 246, 0.1)',
+            },
           },
         },
       },
@@ -149,6 +164,29 @@ const createAppTheme = (isDark) => createTheme({
       styleOverrides: {
         root: {
           transition: 'background-color 0.3s ease, border-color 0.3s ease',
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontWeight: 600,
+        },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 16,
+          border: isDark ? '1px solid #334155' : 'none',
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 600,
         },
       },
     },
