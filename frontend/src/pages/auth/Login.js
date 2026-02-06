@@ -1,6 +1,6 @@
 /**
  * Login Page
- * Handles user authentication
+ * Handles user authentication with dark mode support
  */
 import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
@@ -15,6 +15,7 @@ import {
   InputAdornment,
   IconButton,
   Alert,
+  useTheme as useMuiTheme,
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -25,10 +26,14 @@ import {
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks';
+import { useTheme } from '../../hooks/useTheme';
+import { ThemeToggleButton } from '../../components/common/ThemeToggle';
 
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { isDark } = useTheme();
+  const muiTheme = useMuiTheme();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -71,15 +76,41 @@ const Login = () => {
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
-        background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%)',
+        background: isDark 
+          ? 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%)'
+          : 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%)',
+        transition: 'background 0.3s ease',
+        position: 'relative',
       }}
     >
+      {/* Theme Toggle - Fixed position in top right */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 16,
+          right: 16,
+          zIndex: 10,
+        }}
+      >
+        <ThemeToggleButton 
+          sx={{ 
+            color: 'white',
+            bgcolor: 'rgba(255,255,255,0.1)',
+            '&:hover': {
+              bgcolor: 'rgba(255,255,255,0.2)',
+            },
+          }} 
+        />
+      </Box>
+
       <Container maxWidth="sm">
         <Paper
           elevation={10}
           sx={{
             p: 4,
             borderRadius: 3,
+            bgcolor: 'background.paper',
+            transition: 'background-color 0.3s ease',
           }}
         >
           {/* Logo */}

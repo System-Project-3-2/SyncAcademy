@@ -1,6 +1,7 @@
 /**
  * Register Page
  * Handles new user registration with OTP verification
+ * Includes dark mode support
  */
 import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
@@ -30,12 +31,15 @@ import {
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks';
+import { useTheme } from '../../hooks/useTheme';
+import { ThemeToggleButton } from '../../components/common/ThemeToggle';
 
 const steps = ['Account Details', 'Verify Email'];
 
 const Register = () => {
   const navigate = useNavigate();
   const { register, verifyOtp } = useAuth();
+  const { isDark } = useTheme();
   
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({
