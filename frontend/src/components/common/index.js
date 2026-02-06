@@ -11,3 +11,9 @@ export { default as PageHeader } from './PageHeader';
 export { default as EmptyState } from './EmptyState';
 export { default as FeedbackCard } from './FeedbackCard';
 export { default as MaterialCard } from './MaterialCard';
+export { 
+  default as ThemeToggle, 
+  ThemeToggleButton, 
+  ThemeToggleMenu, 
+  ThemeToggleSwitch 
+} from './ThemeToggle';

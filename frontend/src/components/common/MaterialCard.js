@@ -1,6 +1,7 @@
 /**
  * MaterialCard Component
  * Displays a search result material with matched content
+ * Includes dark mode support
  */
 import React from 'react';
 import {
@@ -14,6 +15,8 @@ import {
   List,
   ListItem,
   ListItemText,
+  useTheme,
+  alpha,
 } from '@mui/material';
 import {
   Description as DocumentIcon,
@@ -28,6 +31,9 @@ const MaterialCard = ({
   expanded = false,
   onToggleExpand = null,
 }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
   const handleDownload = () => {
     window.open(material.fileUrl, '_blank');
   };
@@ -41,9 +47,10 @@ const MaterialCard = ({
         borderRadius: 2,
         mb: 2,
         transition: 'all 0.2s',
+        bgcolor: 'background.paper',
         '&:hover': {
           borderColor: 'primary.main',
-          boxShadow: 2,
+          boxShadow: isDark ? `0 4px 20px ${alpha(theme.palette.primary.main, 0.2)}` : 2,
         },
       }}
     >
@@ -55,7 +62,9 @@ const MaterialCard = ({
               sx={{
                 p: 1.5,
                 borderRadius: 2,
-                bgcolor: 'primary.50',
+                bgcolor: isDark 
+                  ? alpha(theme.palette.primary.main, 0.15)
+                  : 'primary.50',
                 color: 'primary.main',
                 display: 'flex',
                 alignItems: 'center',
@@ -65,7 +74,7 @@ const MaterialCard = ({
               <DocumentIcon fontSize="large" />
             </Box>
             <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" gutterBottom color="text.primary">
                 {material.title}
               </Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
@@ -124,10 +133,13 @@ const MaterialCard = ({
                 sx={{
                   mt: 2,
                   p: 2,
-                  bgcolor: 'grey.50',
+                  bgcolor: isDark 
+                    ? alpha(theme.palette.common.black, 0.2)
+                    : 'grey.50',
                   borderRadius: 2,
                   maxHeight: 300,
                   overflow: 'auto',
+                  transition: 'background-color 0.3s ease',
                 }}
               >
                 <List dense disablePadding>
@@ -137,13 +149,15 @@ const MaterialCard = ({
                         primary={
                           <Typography
                             variant="body2"
+                            color="text.primary"
                             sx={{
                               whiteSpace: 'pre-wrap',
-                              bgcolor: 'white',
+                              bgcolor: isDark ? 'grey.800' : 'white',
                               p: 1.5,
                               borderRadius: 1,
                               border: '1px solid',
                               borderColor: 'divider',
+                              transition: 'background-color 0.3s ease',
                             }}
                           >
                             ...{match}...

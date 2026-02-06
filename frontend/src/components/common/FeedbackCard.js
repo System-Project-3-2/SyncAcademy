@@ -1,6 +1,7 @@
 /**
  * FeedbackCard Component
  * Displays a feedback item with status and optional response
+ * Includes dark mode support
  */
 import React from 'react';
 import {
@@ -12,6 +13,8 @@ import {
   IconButton,
   Collapse,
   Divider,
+  useTheme,
+  alpha,
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -27,6 +30,8 @@ const FeedbackCard = ({
   expanded = false,
   onToggleExpand = null,
 }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const isResolved = feedback.status === 'resolved';
 
   const getCategoryColor = (category) => {
@@ -57,8 +62,11 @@ const FeedbackCard = ({
         borderColor: 'divider',
         borderRadius: 2,
         mb: 2,
+        bgcolor: 'background.paper',
+        transition: 'all 0.2s',
         '&:hover': {
           borderColor: 'primary.main',
+          boxShadow: isDark ? `0 4px 20px ${alpha(theme.palette.primary.main, 0.15)}` : 1,
         },
       }}
     >
@@ -126,16 +134,21 @@ const FeedbackCard = ({
                 sx={{
                   mt: 2,
                   p: 2,
-                  bgcolor: 'success.50',
+                  bgcolor: isDark 
+                    ? alpha(theme.palette.success.main, 0.1)
+                    : 'success.50',
                   borderRadius: 2,
                   border: '1px solid',
-                  borderColor: 'success.200',
+                  borderColor: isDark 
+                    ? alpha(theme.palette.success.main, 0.3)
+                    : 'success.200',
+                  transition: 'background-color 0.3s ease, border-color 0.3s ease',
                 }}
               >
-                <Typography variant="subtitle2" color="success.dark" gutterBottom>
+                <Typography variant="subtitle2" color="success.main" gutterBottom>
                   Response:
                 </Typography>
-                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                <Typography variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap' }}>
                   {feedback.response}
                 </Typography>
                 {feedback.respondedBy && (
