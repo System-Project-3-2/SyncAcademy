@@ -100,11 +100,6 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
   const canDelete = userRole === 'admin' || (userRole === 'teacher' && isOwner);
   const isReadOnly = userRole === 'student';
 
-  // Get display title - fallback to courseNo if courseTitle is empty
-  const displayTitle = material.courseTitle || material.courseNo || 'Untitled Material';
-  // Get uploader name - handle both populated and unpopulated cases
-  const uploaderName = material.uploadedBy?.name || material.uploadedBy?.email || 'Unknown';
-
   return (
     <Card
       elevation={0}
@@ -136,7 +131,7 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
       >
         <Chip
           size="small"
-          label={material.type || 'Document'}
+          label={material.type}
           sx={{
             bgcolor: alpha(theme.palette.primary.main, 0.1),
             color: 'primary.main',
@@ -173,7 +168,7 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
           <Typography
             variant="subtitle1"
             fontWeight={600}
-            title={displayTitle}
+            title={material.courseTitle}
             sx={{
               color: 'text.primary',
               lineHeight: 1.3,
@@ -184,17 +179,15 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
               overflow: 'hidden',
             }}
           >
-            {displayTitle}
+            {material.courseTitle}
           </Typography>
-          {material.courseNo && material.courseTitle && (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ fontWeight: 500 }}
-            >
-              {material.courseNo}
-            </Typography>
-          )}
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ fontWeight: 500 }}
+          >
+            {material.courseNo}
+          </Typography>
         </Box>
       </Box>
 
@@ -212,7 +205,7 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
             <PersonIcon sx={{ fontSize: 14 }} />
           </Avatar>
           <Typography variant="caption" color="text.secondary" noWrap>
-            {uploaderName}
+            {material.uploadedBy?.name || 'Unknown'}
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -233,7 +226,9 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
           display: 'flex',
           gap: 1,
           justifyContent: 'space-between',
-          bgcolor: alpha(theme.palette.grey[50], 0.5),
+          bgcolor: theme.palette.mode === 'dark'
+            ? alpha(theme.palette.background.paper, 0.8)
+            : alpha(theme.palette.grey[50], 0.5),
         }}
       >
         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -359,7 +354,9 @@ const CourseGroup = ({ courseNo, courseTitle, materials, expandedCourse, onExpan
               borderRadius: 2,
               bgcolor: isExpanded
                 ? alpha(theme.palette.primary.main, 0.12)
-                : alpha(theme.palette.grey[500], 0.08),
+                : theme.palette.mode === 'dark'
+                ? alpha(theme.palette.background.paper, 0.5)
+                : alpha(theme.palette.grey[200], 0.6),
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -402,7 +399,12 @@ const CourseGroup = ({ courseNo, courseTitle, materials, expandedCourse, onExpan
           />
         </Box>
       </AccordionSummary>
-      <AccordionDetails sx={{ p: 3, bgcolor: alpha(theme.palette.grey[50], 0.5) }}>
+      <AccordionDetails sx={{ 
+        p: 3, 
+        bgcolor: theme.palette.mode === 'dark' 
+          ? alpha(theme.palette.background.paper, 0.6)
+          : alpha(theme.palette.grey[50], 0.5)
+      }}>
         <Grid container spacing={2}>
           {materials.map((material) => (
             <Grid item xs={12} sm={6} md={4} lg={3} key={material._id}>
@@ -569,9 +571,6 @@ const Materials = () => {
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, material: null });
   const [editDialog, setEditDialog] = useState({ open: false, material: null });
-  const [previewDialog, setPreviewDialog] = useState({ open: false, material: null });
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [previewUrlLoading, setPreviewUrlLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const userRole = user?.role;
@@ -585,10 +584,6 @@ const Materials = () => {
     try {
       setIsLoading(true);
       const data = await materialService.getAllMaterials();
-      console.log('Fetched materials:', data); // Debug log
-      if (data.length > 0) {
-        console.log('First material uploadedBy:', data[0].uploadedBy); // Debug log
-      }
       setMaterials(data);
       // Expand first course by default
       if (data.length > 0) {
@@ -651,103 +646,13 @@ const Materials = () => {
     return Object.values(groups).sort((a, b) => a.courseNo.localeCompare(b.courseNo));
   }, [filteredMaterials]);
 
-  const isCloudinaryRawPdf = (url) => {
-    if (!url) return false;
-    const lower = url.toLowerCase();
-    return lower.includes('res.cloudinary.com') && lower.includes('/raw/upload/') && lower.endsWith('.pdf');
-  };
-
-  const resolveMaterialFileUrl = async (material) => {
-    const url = material?.fileUrl;
-    if (!url) return null;
-
-    // Only fetch signed URL for the problematic case.
-    if (!isCloudinaryRawPdf(url)) return url;
-
-    try {
-      const data = await materialService.getMaterialSignedUrl(material._id);
-      return data?.url || url;
-    } catch (e) {
-      return url;
-    }
-  };
-
-  const handleDownload = async (material) => {
-    if (!material.fileUrl) {
-      setSnackbar({
-        open: true,
-        message: 'File URL not available for this material.',
-        severity: 'error',
-      });
-      return;
-    }
-
-    try {
-      const resolvedUrl = await resolveMaterialFileUrl(material);
-
-      // Extract filename from URL or use courseTitle
-      const urlParts = (resolvedUrl || material.fileUrl).split('/');
-      const cloudinaryFilename = urlParts[urlParts.length - 1];
-      const filename = material.courseTitle 
-        ? `${material.courseTitle}${cloudinaryFilename.substring(cloudinaryFilename.lastIndexOf('.'))}`
-        : cloudinaryFilename;
-
-      // Use materialService download function for proper handling
-      await materialService.downloadFile(resolvedUrl || material.fileUrl, filename);
-    } catch (error) {
-      console.error('Download error:', error);
-      // Fallback: open in new tab
-      window.open(material.fileUrl, '_blank', 'noopener,noreferrer');
-    }
+  const handleDownload = (material) => {
+    window.open(material.fileUrl, '_blank');
   };
 
   const handleView = (material) => {
-    if (!material.fileUrl) {
-      setSnackbar({
-        open: true,
-        message: 'File URL not available for this material.',
-        severity: 'error',
-      });
-      return;
-    }
-    setPreviewDialog({ open: true, material });
+    window.open(material.fileUrl, '_blank');
   };
-
-  const handlePreviewClose = () => {
-    setPreviewDialog({ open: false, material: null });
-    setPreviewUrl(null);
-    setPreviewUrlLoading(false);
-  };
-
-  const handleOpenInNewTab = (url) => {
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  // When opening preview, resolve a signed URL for raw PDFs (401 fix)
-  useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      if (!previewDialog.open || !previewDialog.material) return;
-
-      const baseUrl = previewDialog.material.fileUrl;
-      setPreviewUrl(baseUrl);
-
-      if (!isCloudinaryRawPdf(baseUrl)) return;
-
-      setPreviewUrlLoading(true);
-      const resolved = await resolveMaterialFileUrl(previewDialog.material);
-      if (!cancelled) {
-        setPreviewUrl(resolved || baseUrl);
-        setPreviewUrlLoading(false);
-      }
-    };
-
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [previewDialog.open, previewDialog.material]);
 
   const handleDeleteClick = (material) => {
     setDeleteDialog({ open: true, material });
@@ -874,12 +779,14 @@ const Materials = () => {
           borderRadius: 3,
           border: '1px solid',
           borderColor: 'divider',
-          bgcolor: alpha(theme.palette.background.paper, 0.8),
+          bgcolor: theme.palette.mode === 'dark'
+            ? alpha(theme.palette.background.paper, 1)
+            : alpha(theme.palette.background.paper, 0.8),
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'text.primary' }}>
           <FilterIcon color="primary" />
-          <Typography variant="subtitle1" fontWeight={600}>
+          <Typography variant="subtitle1" fontWeight={600} color="text.primary">
             Filter Materials
           </Typography>
           {hasActiveFilters && (
@@ -1070,9 +977,9 @@ const Materials = () => {
         />
       ) : (
         <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'text.primary' }}>
             <CourseIcon color="primary" />
-            <Typography variant="h6" fontWeight={600}>
+            <Typography variant="h6" fontWeight={600} color="text.primary">
               Materials by Course
             </Typography>
           </Box>
@@ -1141,115 +1048,6 @@ const Materials = () => {
         onClose={() => setEditDialog({ open: false, material: null })}
         onSave={handleEditSave}
       />
-
-      {/* Preview Dialog */}
-      <Dialog
-        open={previewDialog.open}
-        onClose={handlePreviewClose}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          sx: { 
-            borderRadius: 3, 
-            height: '85vh',
-            maxHeight: '85vh',
-          },
-        }}
-      >
-        <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <ViewIcon color="info" />
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="h6" noWrap>
-              {previewDialog.material?.courseTitle || previewDialog.material?.courseNo || 'Preview'}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {previewDialog.material?.type} • {previewDialog.material?.courseNo}
-            </Typography>
-          </Box>
-          <Tooltip title="Open in New Tab">
-            <IconButton
-              onClick={() => handleOpenInNewTab(previewUrl || previewDialog.material?.fileUrl)}
-              sx={{ mr: 1 }}
-            >
-              <UploadIcon sx={{ transform: 'rotate(45deg)' }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Download">
-            <IconButton
-              onClick={() => handleDownload(previewDialog.material)}
-              sx={{ mr: 1 }}
-            >
-              <DownloadIcon />
-            </IconButton>
-          </Tooltip>
-          <IconButton onClick={handlePreviewClose}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
-          {previewUrl ? (
-            <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-              {/* For PDFs, use multiple viewer options for best compatibility */}
-              {previewUrlLoading ? (
-                <Box
-                  sx={{
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'text.secondary',
-                  }}
-                >
-                  <Typography>Preparing preview…</Typography>
-                </Box>
-              ) : previewUrl.toLowerCase().includes('.pdf') ? (
-                <iframe
-                  src={previewUrl}
-                  title="PDF Preview"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    border: 'none',
-                  }}
-                />
-              ) : (
-                /* For other files (DOCX, PPTX), use Google Docs Viewer */
-                <iframe
-                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewUrl)}&embedded=true`}
-                  title="Material Preview"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    border: 'none',
-                  }}
-                />
-              )}
-            </Box>
-          ) : (
-            <Box
-              sx={{
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'column',
-                gap: 2,
-                color: 'text.secondary',
-              }}
-            >
-              <DocumentIcon sx={{ fontSize: 64, opacity: 0.5 }} />
-              <Typography>Preview not available</Typography>
-              <Button
-                variant="contained"
-                startIcon={<DownloadIcon />}
-                onClick={() => handleDownload(previewDialog.material)}
-              >
-                Download Instead
-              </Button>
-            </Box>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Snackbar for notifications */}
       <Snackbar

@@ -60,16 +60,7 @@ const materialService = {
    */
   getAllMaterials: async () => {
     const response = await api.get('/materials');
-<<<<<<< HEAD
-    // Validate URLs in response
-    const materials = response.data.map(material => ({
-      ...material,
-      fileUrl: ensureValidUrl(material.fileUrl),
-    }));
-    return materials;
-=======
     return response.data;
->>>>>>> feature/materials-page
   },
 
   /**
@@ -79,22 +70,6 @@ const materialService = {
    */
   getMaterialById: async (materialId) => {
     const response = await api.get(`/materials/${materialId}`);
-<<<<<<< HEAD
-    return {
-      ...response.data,
-      fileUrl: ensureValidUrl(response.data.fileUrl),
-    };
-  },
-
-  /**
-   * Get a signed URL for a material file (helps when Cloudinary raw PDFs return 401)
-   * @param {string} materialId - Material ID
-   * @returns {Promise<{url: string, signed?: boolean, expiresAt?: number}>}
-   */
-  getMaterialSignedUrl: async (materialId) => {
-    const response = await api.get(`/materials/${materialId}/signed-url`);
-=======
->>>>>>> feature/materials-page
     return response.data;
   },
 
