@@ -113,6 +113,7 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
+        bgcolor: 'background.paper',
         '&:hover': {
           borderColor: 'primary.main',
           transform: 'translateY(-4px)',
