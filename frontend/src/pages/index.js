@@ -7,3 +7,4 @@ export * from './student';
 export * from './teacher';
 export * from './admin';
 export * from './shared';
+export { default as LandingPage } from './LandingPage';

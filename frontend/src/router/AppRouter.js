@@ -47,6 +47,9 @@ const SharedSearchMaterials = SearchMaterials;
 const AppRouter = () => {
   return (
     <Routes>
+      {/* Landing Page */}
+      <Route path="/" element={<LandingPage />} />
+
       {/* Public Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
