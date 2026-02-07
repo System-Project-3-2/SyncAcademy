@@ -352,7 +352,9 @@ const CourseGroup = ({ courseNo, courseTitle, materials, expandedCourse, onExpan
               borderRadius: 2,
               bgcolor: isExpanded
                 ? alpha(theme.palette.primary.main, 0.12)
-                : alpha(theme.palette.grey[500], 0.08),
+                : theme.palette.mode === 'dark'
+                ? alpha(theme.palette.background.paper, 0.5)
+                : alpha(theme.palette.grey[200], 0.6),
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -395,7 +397,12 @@ const CourseGroup = ({ courseNo, courseTitle, materials, expandedCourse, onExpan
           />
         </Box>
       </AccordionSummary>
-      <AccordionDetails sx={{ p: 3, bgcolor: alpha(theme.palette.grey[50], 0.5) }}>
+      <AccordionDetails sx={{ 
+        p: 3, 
+        bgcolor: theme.palette.mode === 'dark' 
+          ? alpha(theme.palette.background.paper, 0.6)
+          : alpha(theme.palette.grey[50], 0.5)
+      }}>
         <Grid container spacing={2}>
           {materials.map((material) => (
             <Grid item xs={12} sm={6} md={4} lg={3} key={material._id}>
@@ -770,12 +777,14 @@ const Materials = () => {
           borderRadius: 3,
           border: '1px solid',
           borderColor: 'divider',
-          bgcolor: alpha(theme.palette.background.paper, 0.8),
+          bgcolor: theme.palette.mode === 'dark'
+            ? alpha(theme.palette.background.paper, 1)
+            : alpha(theme.palette.background.paper, 0.8),
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'text.primary' }}>
           <FilterIcon color="primary" />
-          <Typography variant="subtitle1" fontWeight={600}>
+          <Typography variant="subtitle1" fontWeight={600} color="text.primary">
             Filter Materials
           </Typography>
           {hasActiveFilters && (
@@ -966,9 +975,9 @@ const Materials = () => {
         />
       ) : (
         <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'text.primary' }}>
             <CourseIcon color="primary" />
-            <Typography variant="h6" fontWeight={600}>
+            <Typography variant="h6" fontWeight={600} color="text.primary">
               Materials by Course
             </Typography>
           </Box>
