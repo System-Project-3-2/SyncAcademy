@@ -539,7 +539,7 @@ const EditMaterialDialog = ({ open, material, onClose, onSave }) => {
 const MaterialsSkeleton = () => (
   <Box>
     {[1, 2].map((i) => (
-      <Paper key={i} sx={{ mb: 2, p: 2, borderRadius: 3 }}>
+      <Paper key={i} sx={{ mb: 2, p: 2, borderRadius: 3, bgcolor: 'background.paper' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
           <Skeleton variant="rounded" width={56} height={56} />
           <Box sx={{ flex: 1 }}>
