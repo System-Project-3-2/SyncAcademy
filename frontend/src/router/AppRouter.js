@@ -35,6 +35,9 @@ import {
 // Shared Pages
 import Materials from '../pages/shared/Materials';
 
+// Landing Page
+import LandingPage from '../pages/LandingPage';
+
 // Other Pages
 import NotFound from '../pages/NotFound';
 
