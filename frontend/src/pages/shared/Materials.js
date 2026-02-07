@@ -226,7 +226,9 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
           display: 'flex',
           gap: 1,
           justifyContent: 'space-between',
-          bgcolor: alpha(theme.palette.grey[50], 0.5),
+          bgcolor: theme.palette.mode === 'dark'
+            ? alpha(theme.palette.background.paper, 0.8)
+            : alpha(theme.palette.grey[50], 0.5),
         }}
       >
         <Box sx={{ display: 'flex', gap: 1 }}>
