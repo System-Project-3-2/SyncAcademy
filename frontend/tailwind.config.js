@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-export default {
+const config = {
   // Enable dark mode with class strategy for manual toggle
   darkMode: 'class',
   content: [
@@ -82,4 +82,6 @@ export default {
     },
   },
   plugins: [],
-}
+};
+
+export default config;

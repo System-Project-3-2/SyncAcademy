@@ -35,6 +35,9 @@ import {
 // Shared Pages
 import Materials from '../pages/shared/Materials';
 
+// Landing Page
+import LandingPage from '../pages/LandingPage';
+
 // Other Pages
 import NotFound from '../pages/NotFound';
 
@@ -44,6 +47,9 @@ const SharedSearchMaterials = SearchMaterials;
 const AppRouter = () => {
   return (
     <Routes>
+      {/* Landing Page */}
+      <Route path="/" element={<LandingPage />} />
+
       {/* Public Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
