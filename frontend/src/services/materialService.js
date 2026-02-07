@@ -60,12 +60,16 @@ const materialService = {
    */
   getAllMaterials: async () => {
     const response = await api.get('/materials');
+<<<<<<< HEAD
     // Validate URLs in response
     const materials = response.data.map(material => ({
       ...material,
       fileUrl: ensureValidUrl(material.fileUrl),
     }));
     return materials;
+=======
+    return response.data;
+>>>>>>> feature/materials-page
   },
 
   /**
@@ -75,6 +79,7 @@ const materialService = {
    */
   getMaterialById: async (materialId) => {
     const response = await api.get(`/materials/${materialId}`);
+<<<<<<< HEAD
     return {
       ...response.data,
       fileUrl: ensureValidUrl(response.data.fileUrl),
@@ -88,6 +93,8 @@ const materialService = {
    */
   getMaterialSignedUrl: async (materialId) => {
     const response = await api.get(`/materials/${materialId}/signed-url`);
+=======
+>>>>>>> feature/materials-page
     return response.data;
   },
 

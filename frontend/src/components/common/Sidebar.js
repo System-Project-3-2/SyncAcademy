@@ -28,6 +28,10 @@ import {
   Feedback as FeedbackIcon,
   People as PeopleIcon,
   Add as AddIcon,
+<<<<<<< HEAD
+=======
+  List as ListIcon,
+>>>>>>> feature/materials-page
   LibraryBooks as LibraryIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
