@@ -4,7 +4,7 @@
  * Polished with glassmorphism and smooth transitions
  */
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Box,
@@ -47,6 +47,15 @@ const Navbar = ({ onMenuClick }) => {
     logout();
     navigate('/login');
     handleCloseUserMenu();
+  };
+
+  const handleLogoClick = () => {
+    // If user is authenticated, send them to their role-based dashboard
+    if (user && user.role) {
+      navigate(`/${user.role}/dashboard`);
+    } else {
+      navigate('/');
+    }
   };
 
   // Get role color
@@ -93,8 +102,10 @@ const Navbar = ({ onMenuClick }) => {
 
           {/* Logo */}
           <Box
-            component={Link}
-            to="/"
+            onClick={handleLogoClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleLogoClick(); }}
             sx={{ 
               display: { xs: 'none', md: 'flex' }, 
               alignItems: 'center', 
@@ -102,6 +113,7 @@ const Navbar = ({ onMenuClick }) => {
               color: 'inherit',
               mr: 3,
               gap: 1,
+              cursor: 'pointer',
             }}
           >
             <Box
@@ -128,8 +140,10 @@ const Navbar = ({ onMenuClick }) => {
 
           {/* Mobile Logo */}
           <Box
-            component={Link}
-            to="/"
+            onClick={handleLogoClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleLogoClick(); }}
             sx={{ 
               display: { xs: 'flex', md: 'none' }, 
               alignItems: 'center', 
@@ -137,6 +151,7 @@ const Navbar = ({ onMenuClick }) => {
               color: 'inherit',
               flexGrow: 1,
               gap: 1,
+              cursor: 'pointer',
             }}
           >
             <SchoolIcon sx={{ fontSize: 22 }} />
