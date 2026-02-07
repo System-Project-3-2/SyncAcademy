@@ -28,12 +28,10 @@ import {
   Menu as MenuIcon,
   Close as CloseIcon,
   Search as SearchIcon,
-  CloudUpload as UploadIcon,
   Feedback as FeedbackIcon,
   People as PeopleIcon,
   Security as SecurityIcon,
   Speed as SpeedIcon,
-  TipsAndUpdates as TipsIcon,
   ArrowForward as ArrowForwardIcon,
   CheckCircle as CheckIcon,
   PersonAdd as PersonAddIcon,
@@ -583,7 +581,6 @@ const HeroSection = () => {
 // ══════════════════════════════════════════════════════════════════════
 const FeaturesSection = () => {
   const { isDark } = useAppTheme();
-  const theme = useTheme();
 
   const features = [
     {
@@ -724,7 +721,6 @@ const FeaturesSection = () => {
 // ══════════════════════════════════════════════════════════════════════
 const HowItWorksSection = () => {
   const { isDark } = useAppTheme();
-  const theme = useTheme();
 
   const roles = [
     {
