@@ -53,7 +53,6 @@ import {
   Folder as FolderIcon,
   FolderOpen as FolderOpenIcon,
   School as CourseIcon,
-  Category as TypeIcon,
   CalendarToday as DateIcon,
   CloudUpload as UploadIcon,
   Clear as ClearIcon,
@@ -63,7 +62,7 @@ import {
   Close as CloseIcon,
   Save as SaveIcon,
 } from '@mui/icons-material';
-import { PageHeader, LoadingSpinner, EmptyState } from '../../components';
+import { PageHeader, EmptyState } from '../../components';
 import { materialService } from '../../services';
 import { useAuth } from '../../hooks';
 import { useNavigate } from 'react-router-dom';

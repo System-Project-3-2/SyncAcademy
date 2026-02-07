@@ -30,7 +30,6 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f8fafc;
   color: #0f172a;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
@@ -38,7 +37,7 @@ body {
 /* Dark mode body styles */
 .dark body,
 html.dark body {
-  background-color: #0f172a;
+  background-color: #0f172a !important;
   color: #f8fafc;
 }
 

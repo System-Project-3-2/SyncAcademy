@@ -152,7 +152,9 @@ const MaterialCard = ({
                             color="text.primary"
                             sx={{
                               whiteSpace: 'pre-wrap',
-                              bgcolor: isDark ? 'grey.800' : 'white',
+                              bgcolor: isDark 
+                                ? alpha(theme.palette.background.paper, 0.8)
+                                : alpha(theme.palette.grey[100], 0.5),
                               p: 1.5,
                               borderRadius: 1,
                               border: '1px solid',
