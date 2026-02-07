@@ -88,7 +88,7 @@ const Header = () => {
         transition: 'all 0.3s ease',
       }}
     >
-      <Container maxWidth="lg">
+      <Container maxWidth={false} sx={{ maxWidth: 1900, mx: 'auto' }}>
         <Box
           sx={{
             display: 'flex',
@@ -305,7 +305,7 @@ const HeroSection = () => {
         }}
       />
 
-      <Container maxWidth="lg">
+      <Container maxWidth={false} sx={{ maxWidth: 1920, mx: 'auto' }}>
         <Grid container spacing={4} alignItems="center">
           <Grid item xs={12} md={6}>
             <Box sx={{ color: 'white' }}>
@@ -629,7 +629,7 @@ const FeaturesSection = () => {
         bgcolor: 'background.default',
       }}
     >
-      <Container maxWidth="lg">
+      <Container maxWidth={false} sx={{ maxWidth: 1920, mx: 'auto' }}>
         <Box sx={{ textAlign: 'center', mb: 8 }}>
           <Typography
             variant="overline"
@@ -766,7 +766,7 @@ const HowItWorksSection = () => {
         bgcolor: isDark ? alpha('#1e293b', 0.5) : alpha('#f1f5f9', 0.5),
       }}
     >
-      <Container maxWidth="lg">
+      <Container maxWidth={false} sx={{ maxWidth: 1920, mx: 'auto' }}>
         <Box sx={{ textAlign: 'center', mb: 8 }}>
           <Typography
             variant="overline"
@@ -918,7 +918,7 @@ const BenefitsSection = () => {
         bgcolor: 'background.default',
       }}
     >
-      <Container maxWidth="lg">
+      <Container maxWidth={false} sx={{ maxWidth: 1920, mx: 'auto' }}>
         <Grid container spacing={6} alignItems="center">
           <Grid item xs={12} md={5}>
             <Typography
@@ -1048,7 +1048,7 @@ const CTASection = () => {
         }}
       />
 
-      <Container maxWidth="md">
+      <Container maxWidth={false} sx={{ maxWidth: 1920, mx: 'auto' }}>
         <Box sx={{ textAlign: 'center', color: 'white', position: 'relative' }}>
           <Typography
             variant="h3"
@@ -1132,7 +1132,7 @@ const Footer = () => {
         color: 'white',
       }}
     >
-      <Container maxWidth="lg">
+      <Container maxWidth={false} sx={{ maxWidth: 1920, mx: 'auto' }}>
         <Grid container spacing={4} alignItems="center">
           <Grid item xs={12} md={4}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
