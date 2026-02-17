@@ -146,7 +146,7 @@ const ResetPassword = () => {
                       onClick={() => setShowPassword(!showPassword)}
                       edge="end"
                     >
-                      {showPassword ? <VisibilityOffIcon /> : <EyeIcon />}
+                      {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                     </IconButton>
                   </InputAdornment>
                 ),
@@ -171,7 +171,7 @@ const ResetPassword = () => {
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       edge="end"
                     >
-                      {showConfirmPassword ? <VisibilityOffIcon /> : <EyeIcon />}
+                      {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
                     </IconButton>
                   </InputAdornment>
                 ),
