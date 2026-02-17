@@ -53,13 +53,29 @@ const downloadFile = async (url, filename) => {
   }
 };
 
+/**
+ * Build Cloudinary download URL by injecting fl_attachment flag
+ * Forces the browser to download instead of displaying the file
+ */
+const getCloudinaryDownloadUrl = (url) => {
+  if (!url) return url;
+  if (url.includes('res.cloudinary.com')) {
+    return url.replace(
+      /\/(image|raw|video)\/(upload|authenticated|private)\//,
+      '/$1/$2/fl_attachment/'
+    );
+  }
+  return url;
+};
+
 const materialService = {
   /**
-   * Get all materials (role-based: teacher sees own, admin/student sees all)
-   * @returns {Promise} API response with materials array
+   * Get all materials with optional pagination
+   * @param {Object} params - Optional { page, limit, sort, search, type, courseNo }
+   * @returns {Promise} API response with materials array or paginated response
    */
-  getAllMaterials: async () => {
-    const response = await api.get('/materials');
+  getAllMaterials: async (params = {}) => {
+    const response = await api.get('/materials', { params });
     return response.data;
   },
 
@@ -119,11 +135,28 @@ const materialService = {
   },
 
   /**
-   * Download a material file
+   * Get signed URL for a material (for viewing/downloading restricted files)
+   * @param {string} materialId - Material ID
+   * @returns {Promise} API response with { url, signed }
+   */
+  getSignedUrl: async (materialId) => {
+    const response = await api.get(`/materials/${materialId}/signed-url`);
+    return response.data;
+  },
+
+  /**
+   * Download a material file using fetch blob (handles CORS)
    * @param {string} url - File URL
    * @param {string} filename - Filename to save as
    */
   downloadFile,
+
+  /**
+   * Get Cloudinary download URL (with fl_attachment flag)
+   * @param {string} url - Cloudinary file URL
+   * @returns {string} URL that triggers browser download
+   */
+  getDownloadUrl: getCloudinaryDownloadUrl,
 
   /**
    * Validate a URL

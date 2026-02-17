@@ -24,10 +24,9 @@ import {
   CloudUpload as UploadIcon,
   Feedback as FeedbackIcon,
   People as PeopleIcon,
-  // Assignment as AssignmentIcon,
   Add as AddIcon,
-  // List as ListIcon,
   LibraryBooks as LibraryIcon,
+  School as CourseIconNav,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
 
@@ -47,12 +46,14 @@ const getNavItems = (role) => {
       { text: 'Dashboard', icon: <DashboardIcon />, path: '/teacher/dashboard' },
       { text: 'My Materials', icon: <LibraryIcon />, path: '/teacher/materials' },
       { text: 'Upload Material', icon: <UploadIcon />, path: '/teacher/materials/upload' },
+      { text: 'Courses', icon: <CourseIconNav />, path: '/teacher/courses' },
       { text: 'All Feedbacks', icon: <FeedbackIcon />, path: '/teacher/feedbacks' },
       { text: 'Search Materials', icon: <SearchIcon />, path: '/teacher/search' },
     ],
     admin: [
       { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
       { text: 'All Materials', icon: <LibraryIcon />, path: '/admin/materials' },
+      { text: 'Courses', icon: <CourseIconNav />, path: '/admin/courses' },
       { text: 'User Management', icon: <PeopleIcon />, path: '/admin/users' },
       { text: 'All Feedbacks', icon: <FeedbackIcon />, path: '/admin/feedbacks' },
       { text: 'Upload Material', icon: <UploadIcon />, path: '/admin/materials/upload' },

@@ -67,27 +67,58 @@ export const uploadMaterial = async (req, res) => {
   }
 };
 
-// Get all materials (Admin/Student - all materials, Teacher - own materials only)
+// Get all materials with pagination (Admin/Student - all, Teacher - own only)
 export const getAllMaterials = async (req, res) => {
   try {
     const { role, _id } = req.user;
-    let materials;
+    const { page, limit, sort = "-createdAt", search, type, courseNo } = req.query;
 
+    // Build filter
+    const filter = {};
     if (role === "teacher") {
-      // Teachers can only see their own materials
-      materials = await Material.find({ uploadedBy: _id })
+      filter.uploadedBy = _id;
+    }
+    if (search) {
+      filter.$or = [
+        { courseTitle: { $regex: search, $options: "i" } },
+        { courseNo: { $regex: search, $options: "i" } },
+        { type: { $regex: search, $options: "i" } },
+      ];
+    }
+    if (type) filter.type = type;
+    if (courseNo) filter.courseNo = courseNo;
+
+    // If no pagination params, return all (backward compatible)
+    if (!page && !limit) {
+      const materials = await Material.find(filter)
         .populate("uploadedBy", "name email")
         .select("-textContent")
-        .sort({ createdAt: -1 });
-    } else {
-      // Admin and Student can see all materials
-      materials = await Material.find()
-        .populate("uploadedBy", "name email")
-        .select("-textContent")
-        .sort({ createdAt: -1 });
+        .sort(sort);
+      return res.status(200).json(materials);
     }
 
-    res.status(200).json(materials);
+    // Paginated response
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 20;
+    const skip = (pageNum - 1) * limitNum;
+    const total = await Material.countDocuments(filter);
+
+    const materials = await Material.find(filter)
+      .populate("uploadedBy", "name email")
+      .select("-textContent")
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum);
+
+    res.status(200).json({
+      data: materials,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

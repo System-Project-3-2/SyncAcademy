@@ -32,6 +32,7 @@ import {
   AdminDashboard,
   UserManagement,
   AdminFeedbacks,
+  CourseManagement,
 } from '../pages/admin';
 
 // Other Pages
@@ -81,6 +82,7 @@ const AppRouter = () => {
         <Route path="materials" element={<Materials />} />
         <Route path="profile" element={<Profile />} />
         <Route path="materials/upload" element={<UploadMaterial />} />
+        <Route path="courses" element={<CourseManagement />} />
         <Route path="feedbacks" element={<TeacherFeedbacks />} />
         <Route path="search" element={<SharedSearchMaterials />} />
       </Route>
@@ -99,6 +101,7 @@ const AppRouter = () => {
         <Route path="materials" element={<Materials />} />
         <Route path="users" element={<UserManagement />} />
         <Route path="feedbacks" element={<AdminFeedbacks />} />
+        <Route path="courses" element={<CourseManagement />} />
         <Route path="materials/upload" element={<UploadMaterial />} />
         <Route path="search" element={<SharedSearchMaterials />} />
         <Route path="profile" element={<Profile />} />
