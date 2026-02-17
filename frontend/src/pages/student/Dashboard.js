@@ -17,7 +17,7 @@ import {
 } from '@mui/icons-material';
 import { PageHeader, StatCard, LoadingSpinner, EmptyState } from '../../components';
 import { useAuth } from '../../hooks';
-import { feedbackService } from '../../services';
+import { feedbackService, statsService } from '../../services';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -25,9 +25,8 @@ const StudentDashboard = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const [stats, setStats] = useState({
-    totalFeedbacks: 0,
-    pending: 0,
-    resolved: 0,
+    materials: { total: 0, byType: [], recentlyAdded: 0 },
+    feedbacks: { total: 0, pending: 0, resolved: 0, byCategory: [] },
   });
   const [recentFeedbacks, setRecentFeedbacks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,17 +37,12 @@ const StudentDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
+      // Fetch stats from the new endpoint
+      const statsData = await statsService.getStudentStats();
+      setStats(statsData);
+      
+      // Fetch recent feedbacks
       const feedbacks = await feedbackService.getMyFeedbacks();
-      
-      const pending = feedbacks.filter((f) => f.status === 'pending').length;
-      const resolved = feedbacks.filter((f) => f.status === 'resolved').length;
-      
-      setStats({
-        totalFeedbacks: feedbacks.length,
-        pending,
-        resolved,
-      });
-      
       setRecentFeedbacks(feedbacks.slice(0, 3));
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -87,28 +81,38 @@ const StudentDashboard = () => {
 
       {/* Stats Grid */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid item xs={12} sm={6} md={3}>
           <StatCard
-            title="Total Feedbacks"
-            value={stats.totalFeedbacks}
-            icon={<FeedbackIcon fontSize="large" />}
+            title="Total Materials"
+            value={stats.materials?.total || 0}
+            icon={<LibraryIcon fontSize="large" />}
             color="primary.main"
+            onClick={() => navigate('/student/materials')}
+            subtitle={`${stats.materials?.recentlyAdded || 0} added this week`}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="My Feedbacks"
+            value={stats.feedbacks?.total || 0}
+            icon={<FeedbackIcon fontSize="large" />}
+            color="info.main"
             onClick={() => navigate('/student/feedbacks')}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Pending"
-            value={stats.pending}
+            value={stats.feedbacks?.pending || 0}
             icon={<PendingIcon fontSize="large" />}
             color="warning.main"
             subtitle="Awaiting response"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Resolved"
-            value={stats.resolved}
+            value={stats.feedbacks?.resolved || 0}
             icon={<ResolvedIcon fontSize="large" />}
             color="success.main"
           />

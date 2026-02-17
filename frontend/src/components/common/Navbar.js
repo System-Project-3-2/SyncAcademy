@@ -23,6 +23,7 @@ import {
   Menu as MenuIcon,
   School as SchoolIcon,
   Logout,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
 import { useTheme } from '../../hooks/useTheme';
@@ -46,6 +47,11 @@ const Navbar = ({ onMenuClick }) => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+    handleCloseUserMenu();
+  };
+
+  const handleProfile = () => {
+    navigate(`/${user.role}/profile`);
     handleCloseUserMenu();
   };
 
@@ -229,10 +235,22 @@ const Navbar = ({ onMenuClick }) => {
                 </Box>
                 <Divider />
                 <MenuItem 
-                  onClick={handleLogout}
+                  onClick={handleProfile}
                   sx={{ 
                     mt: 0.5, 
                     mx: 1, 
+                    borderRadius: 1,
+                    '&:hover': { bgcolor: alpha(muiTheme.palette.primary.main, 0.08) },
+                  }}
+                >
+                  <PersonIcon sx={{ mr: 1.5 }} fontSize="small" />
+                  My Profile
+                </MenuItem>
+                <MenuItem 
+                  onClick={handleLogout}
+                  sx={{ 
+                    mx: 1, 
+                    mb: 0.5,
                     borderRadius: 1,
                     color: 'error.main',
                     '&:hover': { bgcolor: alpha(muiTheme.palette.error.main, 0.08) },

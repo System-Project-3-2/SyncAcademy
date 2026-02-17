@@ -8,9 +8,11 @@ import { ProtectedRoute } from '../components';
 import { DashboardLayout } from '../layouts';
 
 // Auth Pages
-import { Login, Register } from '../pages/auth';
+import { Login, Register, ForgotPassword, ResetPassword } from '../pages/auth';
 
-// Student Pages
+//Shared Pages
+import Materials from '../pages/shared/Materials';
+import Profile from '../pages/shared/Profile';
 import {
   StudentDashboard,
   SearchMaterials,
@@ -32,9 +34,6 @@ import {
   AdminFeedbacks,
 } from '../pages/admin';
 
-// Shared Pages
-import Materials from '../pages/shared/Materials';
-
 // Other Pages
 import NotFound from '../pages/NotFound';
 
@@ -47,6 +46,8 @@ const AppRouter = () => {
       {/* Public Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Student Routes */}
       <Route
@@ -61,6 +62,7 @@ const AppRouter = () => {
         <Route path="dashboard" element={<StudentDashboard />} />
         <Route path="materials" element={<Materials />} />
         <Route path="search" element={<SharedSearchMaterials />} />
+        <Route path="profile" element={<Profile />} />
         <Route path="feedback/new" element={<SubmitFeedback />} />
         <Route path="feedbacks" element={<MyFeedbacks />} />
       </Route>
@@ -77,6 +79,7 @@ const AppRouter = () => {
         <Route index element={<Navigate to="/teacher/dashboard" replace />} />
         <Route path="dashboard" element={<TeacherDashboard />} />
         <Route path="materials" element={<Materials />} />
+        <Route path="profile" element={<Profile />} />
         <Route path="materials/upload" element={<UploadMaterial />} />
         <Route path="feedbacks" element={<TeacherFeedbacks />} />
         <Route path="search" element={<SharedSearchMaterials />} />
@@ -98,6 +101,7 @@ const AppRouter = () => {
         <Route path="feedbacks" element={<AdminFeedbacks />} />
         <Route path="materials/upload" element={<UploadMaterial />} />
         <Route path="search" element={<SharedSearchMaterials />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
 
       {/* Root redirect - redirect to login or appropriate dashboard */}
