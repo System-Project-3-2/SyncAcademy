@@ -65,7 +65,7 @@ const StudentDashboard = () => {
   return (
     <Box className="fade-in">
       <PageHeader
-        title={`Welcome back, ${user?.name?.split(' ')[0]}! 👋`}
+        title={`Welcome back, ${user?.name?.split(' ')[0]}! `}
         subtitle="Here's an overview of your academic activities"
         actions={
           <Button
