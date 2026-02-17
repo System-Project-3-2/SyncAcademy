@@ -62,7 +62,7 @@ import {
   Close as CloseIcon,
   Save as SaveIcon,
 } from '@mui/icons-material';
-import { PageHeader, EmptyState } from '../../components';
+import { PageHeader, EmptyState, FilePreviewDialog } from '../../components';
 import { materialService } from '../../services';
 import { useAuth } from '../../hooks';
 import { useNavigate } from 'react-router-dom';
@@ -571,6 +571,7 @@ const Materials = () => {
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, material: null });
   const [editDialog, setEditDialog] = useState({ open: false, material: null });
+  const [previewDialog, setPreviewDialog] = useState({ open: false, material: null });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const userRole = user?.role;
@@ -646,12 +647,28 @@ const Materials = () => {
     return Object.values(groups).sort((a, b) => a.courseNo.localeCompare(b.courseNo));
   }, [filteredMaterials]);
 
-  const handleDownload = (material) => {
-    window.open(material.fileUrl, '_blank');
+  const handleDownload = async (material) => {
+    const url = material.fileUrl;
+    if (!url) return;
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = material.courseTitle || material.courseNo || url.split('/').pop() || 'download';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, '_blank');
+    }
   };
 
   const handleView = (material) => {
-    window.open(material.fileUrl, '_blank');
+    setPreviewDialog({ open: true, material });
   };
 
   const handleDeleteClick = (material) => {
@@ -1047,6 +1064,13 @@ const Materials = () => {
         material={editDialog.material}
         onClose={() => setEditDialog({ open: false, material: null })}
         onSave={handleEditSave}
+      />
+
+      {/* File Preview Dialog */}
+      <FilePreviewDialog
+        open={previewDialog.open}
+        material={previewDialog.material}
+        onClose={() => setPreviewDialog({ open: false, material: null })}
       />
 
       {/* Snackbar for notifications */}
