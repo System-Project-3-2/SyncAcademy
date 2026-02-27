@@ -18,7 +18,7 @@ import {
 } from '@mui/icons-material';
 import { PageHeader, StatCard, LoadingSpinner, EmptyState } from '../../components';
 import { useAuth } from '../../hooks';
-import { feedbackService, adminService } from '../../services';
+import { feedbackService, statsService } from '../../services';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -26,15 +26,9 @@ const AdminDashboard = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const [stats, setStats] = useState({
-    totalFeedbacks: 0,
-    pending: 0,
-    resolved: 0,
-  });
-  const [userStats, setUserStats] = useState({
-    totalUsers: 0,
-    students: 0,
-    teachers: 0,
-    admins: 0,
+    users: { total: 0, students: 0, teachers: 0, admins: 0, verified: 0, recentlyAdded: 0 },
+    materials: { total: 0, byType: [], recentlyAdded: 0 },
+    feedbacks: { total: 0, pending: 0, resolved: 0, byCategory: [], recentlyAdded: 0 },
   });
   const [recentFeedbacks, setRecentFeedbacks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,23 +39,13 @@ const AdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch feedbacks
+      // Fetch stats from the new endpoint
+      const statsData = await statsService.getAdminStats();
+      setStats(statsData);
+      
+      // Fetch recent feedbacks
       const feedbacks = await feedbackService.getAllFeedbacks();
-      
-      const pending = feedbacks.filter((f) => f.status === 'pending').length;
-      const resolved = feedbacks.filter((f) => f.status === 'resolved').length;
-      
-      setStats({
-        totalFeedbacks: feedbacks.length,
-        pending,
-        resolved,
-      });
-      
       setRecentFeedbacks(feedbacks.slice(0, 5));
-
-      // Fetch user stats
-      const userStatsData = await adminService.getUserStats();
-      setUserStats(userStatsData);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -73,8 +57,8 @@ const AdminDashboard = () => {
     return <LoadingSpinner message="Loading dashboard..." />;
   }
 
-  const resolutionRate = stats.totalFeedbacks > 0
-    ? Math.round((stats.resolved / stats.totalFeedbacks) * 100)
+  const resolutionRate = stats.feedbacks?.total > 0
+    ? Math.round((stats.feedbacks.resolved / stats.feedbacks.total) * 100)
     : 0;
 
   const quickActions = [
@@ -112,7 +96,7 @@ const AdminDashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Total Users"
-            value={userStats.totalUsers}
+            value={stats.users?.total || 0}
             icon={<PeopleIcon fontSize="large" />}
             color="primary.main"
             onClick={() => navigate('/admin/users')}
@@ -121,7 +105,7 @@ const AdminDashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Students"
-            value={userStats.students}
+            value={stats.users?.students || 0}
             icon={<StudentIcon fontSize="large" />}
             color="info.main"
             onClick={() => navigate('/admin/users')}
@@ -130,7 +114,7 @@ const AdminDashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Teachers"
-            value={userStats.teachers}
+            value={stats.users?.teachers || 0}
             icon={<TeacherIcon fontSize="large" />}
             color="secondary.main"
             onClick={() => navigate('/admin/users')}
@@ -138,10 +122,10 @@ const AdminDashboard = () => {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
-            title="Admins"
-            value={userStats.admins}
-            icon={<PeopleIcon fontSize="large" />}
-            color="error.main"
+            title="Verified Users"
+            value={stats.users?.verified || 0}
+            icon={<CheckCircleIcon fontSize="large" />}
+            color="success.main"
             onClick={() => navigate('/admin/users')}
           />
         </Grid>
@@ -158,7 +142,7 @@ const AdminDashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Total Feedbacks"
-            value={stats.totalFeedbacks}
+            value={stats.feedbacks?.total || 0}
             icon={<FeedbackIcon fontSize="large" />}
             color="primary.main"
             onClick={() => navigate('/admin/feedbacks')}
@@ -167,7 +151,7 @@ const AdminDashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Pending"
-            value={stats.pending}
+            value={stats.feedbacks?.pending || 0}
             icon={<PendingIcon fontSize="large" />}
             color="warning.main"
             onClick={() => navigate('/admin/feedbacks')}
@@ -176,7 +160,7 @@ const AdminDashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Resolved"
-            value={stats.resolved}
+            value={stats.feedbacks?.resolved || 0}
             icon={<CheckCircleIcon fontSize="large" />}
             color="success.main"
           />

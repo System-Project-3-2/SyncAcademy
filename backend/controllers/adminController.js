@@ -35,11 +35,31 @@ export const getAllUsers = async (req, res) => {
       ];
     }
 
+    const { page, limit, sort: sortParam = "-createdAt" } = req.query;
+
+    // If no pagination params, return all (backward compatible)
+    if (!page && !limit) {
+      const users = await User.find(filter)
+        .select("-password -otp -otpExpiry")
+        .sort(sortParam);
+      return res.status(200).json(users);
+    }
+
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 20;
+    const skip = (pageNum - 1) * limitNum;
+    const total = await User.countDocuments(filter);
+
     const users = await User.find(filter)
       .select("-password -otp -otpExpiry")
-      .sort({ createdAt: -1 });
+      .sort(sortParam)
+      .skip(skip)
+      .limit(limitNum);
 
-    res.status(200).json(users);
+    res.status(200).json({
+      data: users,
+      pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

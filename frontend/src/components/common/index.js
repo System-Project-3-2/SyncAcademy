@@ -17,3 +17,5 @@ export {
   ThemeToggleMenu, 
   ThemeToggleSwitch 
 } from './ThemeToggle';
+export { default as FilePreviewDialog } from './FilePreviewDialog';
+export { default as PaginationControl } from './PaginationControl';

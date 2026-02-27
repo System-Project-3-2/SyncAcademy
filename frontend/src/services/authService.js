@@ -40,6 +40,26 @@ const authService = {
   },
 
   /**
+   * Request password reset OTP
+   * @param {Object} data - { email }
+   * @returns {Promise} API response
+   */
+  forgotPassword: async (data) => {
+    const response = await api.post('/auth/forgot-password', data);
+    return response.data;
+  },
+
+  /**
+   * Reset password with OTP
+   * @param {Object} data - { email, otp, newPassword }
+   * @returns {Promise} API response
+   */
+  resetPassword: async (data) => {
+    const response = await api.post('/auth/reset-password', data);
+    return response.data;
+  },
+
+  /**
    * Logout user - clears local storage
    */
   logout: () => {

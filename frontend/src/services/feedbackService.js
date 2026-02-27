@@ -16,20 +16,22 @@ const feedbackService = {
   },
 
   /**
-   * Get student's own feedbacks
+   * Get student's own feedbacks with optional pagination
+   * @param {Object} params - Optional { page, limit, status }
    * @returns {Promise} API response with feedbacks array
    */
-  getMyFeedbacks: async () => {
-    const response = await api.get('/feedbacks/my-feedbacks');
+  getMyFeedbacks: async (params = {}) => {
+    const response = await api.get('/feedbacks/my-feedbacks', { params });
     return response.data;
   },
 
   /**
-   * Get all feedbacks (Teacher/Admin only)
+   * Get all feedbacks with optional pagination (Teacher/Admin only)
+   * @param {Object} params - Optional { page, limit, status, category }
    * @returns {Promise} API response with all feedbacks
    */
-  getAllFeedbacks: async () => {
-    const response = await api.get('/feedbacks');
+  getAllFeedbacks: async (params = {}) => {
+    const response = await api.get('/feedbacks', { params });
     return response.data;
   },
 

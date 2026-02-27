@@ -571,6 +571,7 @@ const Materials = () => {
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, material: null });
   const [editDialog, setEditDialog] = useState({ open: false, material: null });
+
   const [previewDialog, setPreviewDialog] = useState({ open: false, material: null });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
@@ -652,18 +653,7 @@ const Materials = () => {
   };
 
   const handleView = (material) => {
-    setPreviewDialog({ open: true, material });
-  };
-
-  const getPreviewUrl = (fileUrl) => {
-    if (!fileUrl) return '';
-    const url = fileUrl.toLowerCase();
-    // PDFs can be rendered directly in an iframe
-    if (url.includes('.pdf')) {
-      return fileUrl;
-    }
-    // For DOCX, PPTX, DOC, PPT — use Google Docs Viewer
-    return `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+    window.open(material.fileUrl, '_blank');
   };
 
   const handleDeleteClick = (material) => {
@@ -1060,36 +1050,6 @@ const Materials = () => {
         onClose={() => setEditDialog({ open: false, material: null })}
         onSave={handleEditSave}
       />
-
-      {/* Preview Dialog */}
-      <Dialog
-        open={previewDialog.open}
-        onClose={() => setPreviewDialog({ open: false, material: null })}
-        fullScreen
-        PaperProps={{ sx: { bgcolor: 'background.default' } }}
-      >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1.5, px: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-            <ViewIcon color="info" />
-            <Typography variant="h6" noWrap fontWeight={600}>
-              {previewDialog.material?.courseTitle || 'Preview'}
-            </Typography>
-          </Box>
-          <IconButton onClick={() => setPreviewDialog({ open: false, material: null })}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column' }}>
-          {previewDialog.material && (
-            <iframe
-              src={getPreviewUrl(previewDialog.material.fileUrl)}
-              title="Material Preview"
-              style={{ width: '100%', flex: 1, border: 'none', minHeight: '80vh' }}
-              allow="autoplay"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Snackbar for notifications */}
       <Snackbar

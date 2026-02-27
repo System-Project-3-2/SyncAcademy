@@ -34,8 +34,24 @@ const MaterialCard = ({
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
 
-  const handleDownload = () => {
-    window.open(material.fileUrl, '_blank');
+  const handleDownload = async () => {
+    const url = material.fileUrl;
+    if (!url) return;
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = material.courseTitle || material.courseNo || url.split('/').pop() || 'download';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, '_blank');
+    }
   };
 
   return (

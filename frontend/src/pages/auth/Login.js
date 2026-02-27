@@ -196,6 +196,12 @@ const Login = () => {
               }}
             />
 
+            <Box sx={{ textAlign: 'right', mt: 1 }}>
+              <Link component={RouterLink} to="/forgot-password" variant="body2" fontWeight={600}>
+                Forgot Password?
+              </Link>
+            </Box>
+
             <Button
               type="submit"
               fullWidth
