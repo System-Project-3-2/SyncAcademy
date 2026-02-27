@@ -439,21 +439,33 @@ const AITutor = () => {
     scrollToBottom();
   }, [messages, isLoading, scrollToBottom]);
 
-  // Load sessions + health check on mount
+  // Load sessions on mount
   useEffect(() => {
-    const init = async () => {
+    const loadSessions = async () => {
       try {
-        const [sessionsData, health] = await Promise.all([
-          chatService.getSessions(),
-          chatService.checkHealth(),
-        ]);
+        const sessionsData = await chatService.getSessions();
         setSessions(sessionsData);
+      } catch {
+        // silently ignore – user just has no sessions yet
+      }
+    };
+    loadSessions();
+  }, []);
+
+  // Health check with retry every 15 seconds while offline
+  useEffect(() => {
+    let timer;
+    const check = async () => {
+      try {
+        const health = await chatService.checkHealth();
         setAiHealthy(health.healthy && health.modelLoaded);
       } catch {
         setAiHealthy(false);
       }
     };
-    init();
+    check();
+    timer = setInterval(check, 15000);
+    return () => clearInterval(timer);
   }, []);
 
   // Load a specific session
@@ -645,7 +657,7 @@ const AITutor = () => {
   );
 
   return (
-    <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+    <Box sx={{ display: 'flex', height: { xs: 'calc(100vh - 88px)', sm: 'calc(100vh - 104px)', md: 'calc(100vh - 112px)' }, overflow: 'hidden' }}>
       {/* Sidebar */}
       {isMobile ? (
         <Drawer open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
@@ -698,6 +710,11 @@ const AITutor = () => {
 
         {/* Messages Area */}
         <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+          {aiHealthy === false && (
+            <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+              AI model is offline. Make sure Ollama is running locally (<code>ollama serve</code>). Retrying automatically...
+            </Alert>
+          )}
           {error && (
             <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2, borderRadius: 2 }}>
               {error}
@@ -732,11 +749,11 @@ const AITutor = () => {
               fullWidth
               multiline
               maxRows={4}
-              placeholder={aiHealthy === false ? 'AI model is offline...' : 'Ask me anything about your course materials...'}
+              placeholder="Ask me anything about your course materials..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={isLoading || aiHealthy === false}
+              disabled={isLoading}
               variant="outlined"
               size="small"
               sx={{
@@ -749,7 +766,7 @@ const AITutor = () => {
             <IconButton
               color="primary"
               onClick={() => handleSend()}
-              disabled={!input.trim() || isLoading || aiHealthy === false}
+              disabled={!input.trim() || isLoading}
               sx={{
                 bgcolor: 'primary.main',
                 color: 'white',

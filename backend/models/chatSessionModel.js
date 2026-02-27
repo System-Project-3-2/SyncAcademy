@@ -14,7 +14,7 @@ const messageSchema = new mongoose.Schema({
     {
       courseTitle: String,
       courseNo: String,
-      type: String,
+      type: { type: String },
       fileUrl: String,
       relevance: Number,
     },
@@ -46,14 +46,13 @@ const chatSessionSchema = new mongoose.Schema(
 );
 
 // Auto-generate title from first user message
-chatSessionSchema.pre("save", function (next) {
+chatSessionSchema.pre("save", async function () {
   if (this.isNew && this.messages.length > 0) {
     const firstMsg = this.messages.find((m) => m.role === "user");
-    if (firstMsg) {
+    if (firstMsg && this.title === "New Chat") {
       this.title = firstMsg.content.substring(0, 60) + (firstMsg.content.length > 60 ? "..." : "");
     }
   }
-  next();
 });
 
 const ChatSession = mongoose.model("ChatSession", chatSessionSchema);

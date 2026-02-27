@@ -14,26 +14,13 @@ import { cosineSimilarity } from "../utils/cosineSimilarity.js";
 import { generateResponse } from "./ollamaService.js";
 
 // ── Configuration ────────────────────────────────────────
-const TOP_K = 6;                // number of chunks to feed the LLM
+const TOP_K = 3;                // reduced for small models: fewer chunks = faster + fits in context
 const SIMILARITY_THRESHOLD = 0.25; // minimum score to consider a chunk relevant
 
-// ── System Prompt ────────────────────────────────────────
-const SYSTEM_PROMPT = `You are **Student Aid Tutor**, an intelligent AI assistant embedded in the Student-Aid Semantic Search platform.
-
-Your capabilities:
-• Answer questions about uploaded course materials (lecture notes, slides, documents).
-• Explain concepts clearly and concisely for students.
-• Help students understand topics from their uploaded materials.
-• Guide users on how the Student-Aid platform works (uploading, searching, viewing materials).
-
-Rules you MUST follow:
-1. Base your answers on the CONTEXT provided below. If the context is relevant, use it.
-2. If the context does not contain enough information, you may use your general knowledge but clearly state: "Based on my general knowledge..."  
-3. Always be helpful, accurate, and student-friendly.
-4. Use markdown formatting (bold, bullet points, code blocks) for readability.
-5. If asked about the platform itself, explain features like semantic search, material upload, feedback system, etc.
-6. Keep answers focused and appropriately detailed — not too short, not excessively long.
-7. When referencing specific materials, mention the course title and course number if available.`;
+// ── System Prompt (kept short for small models like tinyllama) ────────────────
+const SYSTEM_PROMPT = `You are Student Aid Tutor, an AI assistant for students.
+Answer questions using the CONTEXT below. If context is not enough, use general knowledge and say so.
+Be concise and helpful. Use bullet points when listing items.`;
 
 /**
  * Build a full prompt with context for the LLM.
@@ -41,25 +28,27 @@ Rules you MUST follow:
 const buildPrompt = (question, contextChunks, chatHistory = []) => {
   let prompt = `${SYSTEM_PROMPT}\n\n`;
 
-  // Include recent chat history for conversational context
+  // Include recent chat history — keep only last 2 exchanges for small models
   if (chatHistory.length > 0) {
-    prompt += "=== CONVERSATION HISTORY ===\n";
-    for (const msg of chatHistory.slice(-6)) { // last 3 exchanges
+    prompt += "=== RECENT HISTORY ===\n";
+    for (const msg of chatHistory.slice(-4)) {
       const role = msg.role === "user" ? "Student" : "Tutor";
-      prompt += `${role}: ${msg.content}\n`;
+      // Truncate long messages to keep prompt short
+      const content = msg.content.length > 200 ? msg.content.substring(0, 200) + "..." : msg.content;
+      prompt += `${role}: ${content}\n`;
     }
     prompt += "\n";
   }
 
   // Include retrieved context
   if (contextChunks.length > 0) {
-    prompt += "=== RELEVANT CONTEXT FROM COURSE MATERIALS ===\n";
+    prompt += "=== CONTEXT ===\n";
     contextChunks.forEach((chunk, i) => {
-      prompt += `\n[Source ${i + 1}: ${chunk.courseTitle} (${chunk.courseNo})]:\n${chunk.text}\n`;
+      // Truncate each chunk to 400 chars to keep prompt manageable
+      const text = chunk.text.length > 400 ? chunk.text.substring(0, 400) + "..." : chunk.text;
+      prompt += `[${chunk.courseNo}]: ${text}\n`;
     });
-    prompt += "\n=== END OF CONTEXT ===\n\n";
-  } else {
-    prompt += "(No directly relevant materials found in the database for this question.)\n\n";
+    prompt += "\n";
   }
 
   prompt += `Student's Question: ${question}\n\nTutor's Answer:`;

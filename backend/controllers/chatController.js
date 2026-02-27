@@ -33,8 +33,8 @@ export const sendMessage = async (req, res) => {
     // Add user message
     session.messages.push({ role: "user", content: message.trim() });
 
-    // Build chat history for context (last few exchanges)
-    const chatHistory = session.messages.slice(-10).map((m) => ({
+    // Build chat history for context (last 4 messages = 2 exchanges, keeps prompt small for local LLMs)
+    const chatHistory = session.messages.slice(-4).map((m) => ({
       role: m.role,
       content: m.content,
     }));
@@ -73,13 +73,15 @@ export const sendMessage = async (req, res) => {
     console.error("Chat error:", error.message);
 
     // Provide a user-friendly error if Ollama is down
-    if (
-      error.message.includes("ECONNREFUSED") ||
-      error.message.includes("Ollama")
-    ) {
+    if (error.message.includes("ECONNREFUSED")) {
       return res.status(503).json({
-        message:
-          "AI model is currently unavailable. Please ensure Ollama is running locally.",
+        message: "AI model is offline. Run 'ollama serve' in a terminal and try again.",
+        details: error.message,
+      });
+    }
+    if (error.message.includes("timed out")) {
+      return res.status(504).json({
+        message: "AI took too long to respond. Try asking a shorter or simpler question.",
         details: error.message,
       });
     }

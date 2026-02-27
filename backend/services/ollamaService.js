@@ -21,11 +21,17 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "mistral";
  * @param {object} [options] - Optional generation parameters
  * @returns {string} The model's response text
  */
+const OLLAMA_TIMEOUT_MS = 120_000; // 2 minutes max per request
+
 export const generateResponse = async (prompt, options = {}) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+
   try {
     const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
       body: JSON.stringify({
         model: options.model || OLLAMA_MODEL,
         prompt,
@@ -33,7 +39,8 @@ export const generateResponse = async (prompt, options = {}) => {
         options: {
           temperature: options.temperature ?? 0.7,
           top_p: options.top_p ?? 0.9,
-          num_predict: options.max_tokens ?? 1024,
+          num_predict: options.max_tokens ?? 384, // reduced: 1024 is too slow for small models
+          num_ctx: 2048,                          // cap context window for small models
         },
       }),
     });
@@ -46,8 +53,13 @@ export const generateResponse = async (prompt, options = {}) => {
     const data = await response.json();
     return data.response;
   } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Ollama request timed out after 2 minutes. Try a shorter question.");
+    }
     console.error("Ollama generateResponse error:", error.message);
     throw error;
+  } finally {
+    clearTimeout(timer);
   }
 };
 
