@@ -37,10 +37,12 @@ export const generateResponse = async (prompt, options = {}) => {
         prompt,
         stream: false,
         options: {
-          temperature: options.temperature ?? 0.7,
+          temperature: options.temperature ?? 0.1,   // low = factual, less creative/hallucinatory
           top_p: options.top_p ?? 0.9,
-          num_predict: options.max_tokens ?? 384, // reduced: 1024 is too slow for small models
-          num_ctx: 2048,                          // cap context window for small models
+          num_predict: options.max_tokens ?? 384,
+          num_ctx: 2048,
+          repeat_penalty: 1.3,                       // penalise repeated phrases/looping
+          stop: ["\n\nQuestion:", "\n\nStudent:"],     // only stop on clear prompt-echo patterns
         },
       }),
     });

@@ -42,10 +42,13 @@ export const sendMessage = async (req, res) => {
     // Run RAG pipeline
     const { answer, sources } = await ragChat(message.trim(), chatHistory, filters);
 
+    // Guard: ensure content is never empty (Mongoose requires it)
+    const safeAnswer = (answer || "").trim() || "I was unable to generate a response. Please try again.";
+
     // Add assistant message
     session.messages.push({
       role: "assistant",
-      content: answer,
+      content: safeAnswer,
       sources,
     });
 

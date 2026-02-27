@@ -14,44 +14,32 @@ import { cosineSimilarity } from "../utils/cosineSimilarity.js";
 import { generateResponse } from "./ollamaService.js";
 
 // ── Configuration ────────────────────────────────────────
-const TOP_K = 3;                // reduced for small models: fewer chunks = faster + fits in context
-const SIMILARITY_THRESHOLD = 0.25; // minimum score to consider a chunk relevant
+const TOP_K = 3;
+const SIMILARITY_THRESHOLD = 0.42; // raised: only use chunks that are genuinely relevant
+const NO_CONTEXT_THRESHOLD = 0.38; // if best score is below this, skip LLM entirely
 
-// ── System Prompt (kept short for small models like tinyllama) ────────────────
-const SYSTEM_PROMPT = `You are Student Aid Tutor, an AI assistant for students.
-Answer questions using the CONTEXT below. If context is not enough, use general knowledge and say so.
-Be concise and helpful. Use bullet points when listing items.`;
+// ── System Prompt ────────────────────────────────────────
+// Firm, direct instructions work better than polite ones for small models
+const SYSTEM_PROMPT = `You are a study assistant. STRICT RULES:
+1. ONLY use the CONTEXT provided below to answer. Do NOT use outside knowledge.
+2. If the answer is not in the CONTEXT, say exactly: "I don't have enough information in the uploaded materials to answer this."
+3. Do NOT make up facts, names, formulas, or definitions.
+4. Answer in 2-4 sentences maximum. Be direct.`;
 
 /**
  * Build a full prompt with context for the LLM.
  */
-const buildPrompt = (question, contextChunks, chatHistory = []) => {
+const buildPrompt = (question, contextChunks) => {
   let prompt = `${SYSTEM_PROMPT}\n\n`;
 
-  // Include recent chat history — keep only last 2 exchanges for small models
-  if (chatHistory.length > 0) {
-    prompt += "=== RECENT HISTORY ===\n";
-    for (const msg of chatHistory.slice(-4)) {
-      const role = msg.role === "user" ? "Student" : "Tutor";
-      // Truncate long messages to keep prompt short
-      const content = msg.content.length > 200 ? msg.content.substring(0, 200) + "..." : msg.content;
-      prompt += `${role}: ${content}\n`;
-    }
-    prompt += "\n";
-  }
+  prompt += "=== CONTEXT (from uploaded course materials) ===\n";
+  contextChunks.forEach((chunk) => {
+    const text = chunk.text.length > 400 ? chunk.text.substring(0, 400) + "..." : chunk.text;
+    prompt += `[${chunk.courseNo} - ${chunk.courseTitle}]: ${text}\n\n`;
+  });
+  prompt += "=== END CONTEXT ===\n\n";
 
-  // Include retrieved context
-  if (contextChunks.length > 0) {
-    prompt += "=== CONTEXT ===\n";
-    contextChunks.forEach((chunk, i) => {
-      // Truncate each chunk to 400 chars to keep prompt manageable
-      const text = chunk.text.length > 400 ? chunk.text.substring(0, 400) + "..." : chunk.text;
-      prompt += `[${chunk.courseNo}]: ${text}\n`;
-    });
-    prompt += "\n";
-  }
-
-  prompt += `Student's Question: ${question}\n\nTutor's Answer:`;
+  prompt += `Question: ${question}\nAnswer (use ONLY the context above):`;
   return prompt;
 };
 
@@ -95,11 +83,28 @@ export const ragChat = async (question, chatHistory = [], filters = {}) => {
     .filter((c) => c.score >= SIMILARITY_THRESHOLD)
     .slice(0, TOP_K);
 
-  // 3. Build prompt
-  const prompt = buildPrompt(question, topChunks, chatHistory);
+  // If no chunks are relevant enough, skip the LLM entirely — prevents hallucination
+  const bestScore = scored.length > 0 ? scored[0].score : 0;
+  if (bestScore < NO_CONTEXT_THRESHOLD || topChunks.length === 0) {
+    return {
+      answer:
+        "I don't have enough information in the uploaded course materials to answer this question. " +
+        "Try uploading relevant materials first, or ask something related to the available courses.",
+      sources: [],
+    };
+  }
 
-  // 4. Generate answer
-  const answer = await generateResponse(prompt);
+  // 3. Build prompt (no chat history passed — keeps prompt small and focused)
+  const prompt = buildPrompt(question, topChunks);
+
+  // 4. Generate answer with low temperature to reduce hallucination
+  let answer = await generateResponse(prompt, { temperature: 0.1, max_tokens: 300 });
+
+  // Sanitize: trim whitespace and provide fallback if model returned empty
+  answer = (answer || "").trim();
+  if (!answer) {
+    answer = "I was unable to generate a response. Please try rephrasing your question.";
+  }
 
   // 5. Collect unique sources
   const sourcesMap = {};
