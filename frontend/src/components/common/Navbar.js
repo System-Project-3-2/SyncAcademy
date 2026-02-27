@@ -50,6 +50,7 @@ const Navbar = ({ onMenuClick }) => {
     handleCloseUserMenu();
   };
 
+
   const handleLogoClick = () => {
     // If user is authenticated, send them to their role-based dashboard
     if (user && user.role) {
