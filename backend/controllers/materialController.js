@@ -196,9 +196,16 @@ export const deleteMaterial = async (req, res) => {
       return res.status(403).json({ message: "Access denied. You can only delete your own materials." });
     }
 
-    await deletefromCloudinary(material.fileUrl);
+    // Delete from database first, then attempt Cloudinary cleanup
     await Material.findByIdAndDelete(id);
     await MaterialChunk.deleteMany({ materialId: id });
+
+    // Attempt Cloudinary deletion but don't fail the request if it errors
+    try {
+      await deletefromCloudinary(material.fileUrl);
+    } catch (cloudErr) {
+      console.error("Cloudinary delete failed (non-blocking):", cloudErr.message);
+    }
 
     res.status(200).json({ message: "Material deleted successfully" });
   } catch (error) {
