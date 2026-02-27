@@ -11,6 +11,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import statsRoutes from "./routes/statsRoutes.js";
 import courseRoutes from "./routes/courseRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
 import deleteResolvedFeedbacks from './utils/cleanupResolvedFeedbacks.js';
 
 deleteResolvedFeedbacks();
@@ -41,6 +42,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/stats", statsRoutes);
 
 app.use("/api/courses", courseRoutes);
+
+app.use("/api/chat", chatRoutes);
 
 // Global error handler for multer and other errors
 app.use((err, req, res, next) => {
