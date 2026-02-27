@@ -414,7 +414,7 @@ const WelcomeScreen = ({ theme, onSuggestion }) => {
 const AITutor = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { user } = useAuth();
+  useAuth(); // ensure user is authenticated
 
   // State
   const [messages, setMessages] = useState([]);
