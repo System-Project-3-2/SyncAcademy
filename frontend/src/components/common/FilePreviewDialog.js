@@ -71,14 +71,13 @@ const getFileTypeIcon = (type) => {
 
 /**
  * Return an embeddable URL.
- * - PDF  → direct URL (browser's built-in PDF viewer)
  * - Image → direct URL
- * - DOC/PPT → Google Docs Viewer
+ * - PDF/DOC/PPT → Google Docs Viewer (most reliable for Cloudinary-hosted files)
  */
 const getPreviewUrl = (url, fileType) => {
   if (!url) return null;
-  if (fileType === 'pdf' || fileType === 'image') return url;
-  if (fileType === 'doc' || fileType === 'ppt') {
+  if (fileType === 'image') return url;
+  if (fileType === 'pdf' || fileType === 'doc' || fileType === 'ppt') {
     return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
   }
   return null;
