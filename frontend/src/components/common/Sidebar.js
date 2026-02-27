@@ -27,6 +27,7 @@ import {
   Add as AddIcon,
   LibraryBooks as LibraryIcon,
   School as CourseIconNav,
+  SmartToy as AITutorIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
 
@@ -37,6 +38,7 @@ const getNavItems = (role) => {
   const items = {
     student: [
       { text: 'Dashboard', icon: <DashboardIcon />, path: '/student/dashboard' },
+      { text: 'AI Tutor', icon: <AITutorIcon />, path: '/student/ai-tutor' },
       { text: 'All Materials', icon: <LibraryIcon />, path: '/student/materials' },
       { text: 'Search Materials', icon: <SearchIcon />, path: '/student/search' },
       { text: 'Submit Feedback', icon: <AddIcon />, path: '/student/feedback/new' },
@@ -44,6 +46,7 @@ const getNavItems = (role) => {
     ],
     teacher: [
       { text: 'Dashboard', icon: <DashboardIcon />, path: '/teacher/dashboard' },
+      { text: 'AI Tutor', icon: <AITutorIcon />, path: '/teacher/ai-tutor' },
       { text: 'My Materials', icon: <LibraryIcon />, path: '/teacher/materials' },
       { text: 'Upload Material', icon: <UploadIcon />, path: '/teacher/materials/upload' },
       { text: 'Courses', icon: <CourseIconNav />, path: '/teacher/courses' },
@@ -52,6 +55,7 @@ const getNavItems = (role) => {
     ],
     admin: [
       { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
+      { text: 'AI Tutor', icon: <AITutorIcon />, path: '/admin/ai-tutor' },
       { text: 'All Materials', icon: <LibraryIcon />, path: '/admin/materials' },
       { text: 'Courses', icon: <CourseIconNav />, path: '/admin/courses' },
       { text: 'User Management', icon: <PeopleIcon />, path: '/admin/users' },
