@@ -18,22 +18,37 @@ import { runSelfEvaluation } from './selfEvaluator.js';
 const MAX_RETRIES = 2; // max re-retrieve + regenerate cycles before accepting best effort
 
 // ── System Prompt ─────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are a study assistant. STRICT RULES:
-1. ONLY use the CONTEXT provided below to answer. Do NOT use outside knowledge.
-2. If the answer is not in the CONTEXT, say exactly: "I don't have enough information in the uploaded materials to answer this."
-3. Do NOT make up facts, names, formulas, or definitions.
-4. Answer in 2-4 sentences maximum. Be direct.`;
+// CRITICAL: Mistral 7B will answer from its training data if the instruction
+// is too weak. The prompt must explicitly forbid every escape route:
+//   - forbid outside knowledge by name
+//   - require exact phrasing for the no-info case so isGracefulFallback() fires
+//   - reject partial knowledge ("if ANY part is missing, say the phrase")
+//   - hard sentence limit to prevent knowledge-dump padding
+const SYSTEM_PROMPT = `You are a study assistant that ONLY reads the CONTEXT below.
+
+RULES — violating any rule means your answer is wrong:
+1. Every sentence you write MUST be directly supported by text in the CONTEXT.
+2. Do NOT use any knowledge from your training. The CONTEXT is your only source.
+3. If the question cannot be fully answered from the CONTEXT alone, say EXACTLY:
+   "I don't have enough information in the uploaded materials to answer this."
+4. If ANY part of the answer is missing from the CONTEXT, use rule 3 instead.
+5. Maximum 3 sentences. No bullet points. No headers. No elaboration.`;
 
 // ── Prompt Builder ─────────────────────────────────────────────────────────────
+// NOTE: Do NOT use a trailing label like "Answer (use ONLY...):" — Mistral
+// treats it as a sentence to complete and echoes the instruction back into the
+// output ("In this context, it's being asked... The answer would be:").
+// Ending with a clean [CONTEXT END] boundary gives the model a clear stop point.
 const buildPrompt = (question, contextChunks) => {
   let prompt = `${SYSTEM_PROMPT}\n\n`;
-  prompt += '=== CONTEXT (from uploaded course materials) ===\n';
+  prompt += '[CONTEXT START]\n';
   contextChunks.forEach((chunk) => {
     const text = chunk.text.length > 400 ? chunk.text.substring(0, 400) + '...' : chunk.text;
     prompt += `[${chunk.courseNo} - ${chunk.courseTitle}]: ${text}\n\n`;
   });
-  prompt += '=== END CONTEXT ===\n\n';
-  prompt += `Question: ${question}\nAnswer (use ONLY the context above):`;
+  prompt += '[CONTEXT END]\n\n';
+  prompt += `Student question: ${question}\n`;
+  prompt += 'Answer based only on the context above (3 sentences max):';
   return prompt;
 };
 
@@ -132,6 +147,7 @@ export const ragChat = async (question, chatHistory = [], filters = {}) => {
       question,
       answer,
       retrievedDocs: topChunks,
+      threshold: 0.60,
     });
 
     console.log(
@@ -161,8 +177,32 @@ export const ragChat = async (question, chatHistory = [], filters = {}) => {
         ]),
       ];
     } else {
-      console.log('[RAG] ⚠️ Max retries reached — returning best-effort answer');
+      console.log('[RAG] ⚠️ Max retries reached — all evaluations failed');
     }
+  }
+
+  // If every attempt was rejected by self-evaluation or lexical check,
+  // do NOT return the hallucinated answer. The model answered from parametric
+  // knowledge, not from the uploaded materials — return the no-info message.
+  if (evaluation && !evaluation.pass) {
+    console.log('[RAG] ❌ All attempts failed evaluation — returning no-info response');
+    return {
+      answer:
+        "I don't have enough information in the uploaded course materials to answer this question. " +
+        'The retrieved documents do not contain sufficient grounding for this topic. ' +
+        'Try uploading relevant materials first.',
+      sources: [],
+      metadata: {
+        queryType, complexity, attempt,
+        bestScore:    finalChunks[0]?.score   ?? 0,
+        confidence:   evaluation.confidence   ?? 0,
+        faithfulness: evaluation.faithfulness ?? 0,
+        coverage:     evaluation.coverage     ?? 0,
+        supported:    evaluation.supported    ?? 'NO',
+        evalReasoning: 'All attempts rejected — likely parametric knowledge answer',
+        parseFailed:  evaluation.parse_failed ?? false,
+      },
+    };
   }
 
   return {
