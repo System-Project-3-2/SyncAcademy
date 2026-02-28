@@ -39,31 +39,56 @@ const SAFE_DEFAULT = Object.freeze({
 });
 
 // ── Prompts ───────────────────────────────────────────────────────────────────
-// DESIGN:
-//  - System prompt is SHORT and laser-focused on the JSON schema only.
-//    Small models (Mistral 7B, Phi-3) lose track of long system instructions.
-//  - User prompt puts QUESTION + ANSWER first (what to evaluate), then DOCS.
-//    This ordering prevents the model from echoing the docs as its response.
-//  - /api/chat with format:"json" enforces JSON at the Ollama API level,
-//    making the prompt instructions a secondary safety layer.
+// ROOT CAUSE FIX:
+//  The previous system prompt showed a JSON example with hardcoded zeros:
+//    {"faithfulness":0.0,"coverage":0.0,"confidence":0.0,"supported":"YES"}
+//  Small models (Mistral 7B, Phi-3) under format:"json" anchor to those values
+//  and copy them verbatim because format:"json" forces token sampling to begin
+//  emitting { immediately — the model never gets a chance to reason.
+//
+// FIX STRATEGY:
+//  1. System prompt: describe each field with SCORING RANGES in plain text —
+//     no example JSON with concrete values the model can copy.
+//  2. User prompt: explicitly instructs the model to identify supported/unsupported
+//     claims BEFORE scoring (forced chain-of-thought within the JSON output).
+//  3. confidence: computed by us (0.6×f + 0.4×c) — not trusted from model output
+//     since 7B models reliably score faithfulness/coverage but conflate confidence.
 
-const SYSTEM_PROMPT = `You are a factual evaluation engine. You MUST respond with ONLY a JSON object in this exact schema, nothing else:
-{"faithfulness":0.0,"coverage":0.0,"confidence":0.0,"supported":"YES"}
+const SYSTEM_PROMPT = `You are an answer quality evaluator for an academic study assistant.
 
-Rules:
-- faithfulness: 0.0-1.0. How many claims in the ANSWER are directly supported by the DOCUMENTS?
-- coverage: 0.0-1.0. How completely does the ANSWER address the QUESTION using the DOCUMENTS?
-- confidence: 0.0-1.0. Your overall quality confidence (can differ from the formula).
-- supported: "YES" (all claims grounded) | "PARTIAL" (some claims lack support) | "NO" (answer ignores or contradicts documents).
-Do NOT add any text outside the JSON object.`;
+Carefully read the QUESTION, ANSWER, and DOCUMENTS in the user message, then respond with ONLY a JSON object.
+
+Scoring guide — read this carefully before assigning scores:
+- faithfulness: decimal 0.0-1.0
+    1.0 = every claim in the answer is directly stated or clearly implied in the documents
+    0.7 = most claims are supported, minor details may be inferred
+    0.4 = some claims supported but key claims are missing from documents
+    0.0 = answer invents facts not present in documents at all
+
+- coverage: decimal 0.0-1.0
+    1.0 = answer fully addresses what the question asks using the documents
+    0.7 = answer addresses the main point but misses supporting details
+    0.4 = answer is vague or only partially addresses the question
+    0.0 = answer does not address the question at all
+
+- supported: string "YES" | "PARTIAL" | "NO"
+    "YES"     = the answer is well-grounded in the documents
+    "PARTIAL" = the answer is partly grounded but has unsupported claims
+    "NO"      = the answer contradicts or ignores the documents entirely
+
+Respond with ONLY this JSON — no other text:
+{"faithfulness": <your score>, "coverage": <your score>, "supported": "<your verdict>"}`;
 
 const buildUserPrompt = (question, answer, contextText) =>
 `QUESTION: ${question}
 
-ANSWER TO EVALUATE: ${answer}
+GENERATED ANSWER (evaluate this):
+${answer}
 
-SOURCE DOCUMENTS:
-${contextText}`;
+SOURCE DOCUMENTS (ground truth):
+${contextText}
+
+Identify which claims in the ANSWER are supported vs. missing from the SOURCE DOCUMENTS, then output your JSON scores.`;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const clamp       = (v) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5);
@@ -72,11 +97,13 @@ const SUPPORTED_V = new Set(['YES', 'PARTIAL', 'NO']);
 const normalizeEval = (parsed) => {
   const faithfulness = clamp(parseFloat(parsed.faithfulness));
   const coverage     = clamp(parseFloat(parsed.coverage));
-  const rawConf      = parseFloat(parsed.confidence);
-  const confidence   = Number.isFinite(rawConf)
-    ? clamp(rawConf)
-    : clamp(0.6 * faithfulness + 0.4 * coverage);
-  const rawS     = (typeof parsed.supported === 'string' ? parsed.supported : '').toUpperCase().trim();
+
+  // Always compute confidence from our formula — never trust the model's value.
+  // 7B models reliably judge faithfulness/coverage but their "confidence" field
+  // is meaningless (they just copy whatever number was in the example schema).
+  const confidence = clamp(0.6 * faithfulness + 0.4 * coverage);
+
+  const rawS      = (typeof parsed.supported === 'string' ? parsed.supported : '').toUpperCase().trim();
   const supported = SUPPORTED_V.has(rawS) ? rawS : 'PARTIAL';
   const reasoning = typeof parsed.reasoning === 'string'
     ? parsed.reasoning.substring(0, 200) : '';
@@ -202,8 +229,9 @@ export const runSelfEvaluation = async ({ question, answer, retrievedDocs }) => 
   let raw;
   try {
     raw = await generateChatJSON(SYSTEM_PROMPT, userPrompt, {
-      temperature: 0.0,  // fully deterministic
-      max_tokens:  150,  // JSON schema fits in ~80 tokens; 150 gives headroom
+      temperature: 0.0,  // fully deterministic — evaluation must be reproducible
+      max_tokens:  250,  // prompt asks model to identify claims first; 250 tokens
+      num_ctx:     3072, // larger context window to fit docs + answer + question
     });
   } catch (err) {
     console.warn('[SelfEval] ❌ Judge LLM call failed:', err.message);
