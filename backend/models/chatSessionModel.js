@@ -28,7 +28,9 @@ const messageSchema = new mongoose.Schema({
     confidence:    Number,   // self-eval combined confidence (0–1)
     faithfulness:  Number,   // faithfulness score (0–1)
     coverage:      Number,   // coverage score (0–1)
+    supported:     String,   // 'YES' | 'PARTIAL' | 'NO' — categorical groundedness verdict
     evalReasoning: String,   // one-sentence justification from evaluator
+    parseFailed:   Boolean,  // true if judge JSON extraction fell back to safe defaults
   },
   timestamp: {
     type: Date,

@@ -12,7 +12,7 @@
 import { generateResponse }  from './ollamaService.js';
 import { analyzeQuery }      from './queryAnalyzer.js';
 import { adaptiveRetrieve }  from './adaptiveRetriever.js';
-import { evaluateAnswer }    from './selfEvaluator.js';
+import { runSelfEvaluation } from './selfEvaluator.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const MAX_RETRIES = 2; // max re-retrieve + regenerate cycles before accepting best effort
@@ -128,12 +128,17 @@ export const ragChat = async (question, chatHistory = [], filters = {}) => {
     }
 
     // ── STAGE 4: Self-Evaluation ─────────────────────────────────────────────────
-    evaluation = await evaluateAnswer(question, topChunks, answer);
+    evaluation = await runSelfEvaluation({
+      question,
+      answer,
+      retrievedDocs: topChunks,
+    });
 
     console.log(
       `[RAG] Self-Eval → faithfulness=${evaluation.faithfulness.toFixed(2)}, ` +
       `coverage=${evaluation.coverage.toFixed(2)}, ` +
-      `confidence=${evaluation.confidence.toFixed(2)}, pass=${evaluation.pass}`
+      `confidence=${evaluation.confidence.toFixed(2)}, ` +
+      `supported=${evaluation.supported}, pass=${evaluation.pass}`
     );
 
     finalAnswer = answer;
@@ -171,7 +176,9 @@ export const ragChat = async (question, chatHistory = [], filters = {}) => {
       confidence:    evaluation?.confidence        ?? 0,
       faithfulness:  evaluation?.faithfulness      ?? 0,
       coverage:      evaluation?.coverage          ?? 0,
+      supported:     evaluation?.supported         ?? 'PARTIAL',
       evalReasoning: evaluation?.reasoning         ?? '',
+      parseFailed:   evaluation?.parse_failed      ?? false,
     },
   };
 };
