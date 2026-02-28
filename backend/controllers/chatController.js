@@ -40,16 +40,17 @@ export const sendMessage = async (req, res) => {
     }));
 
     // Run RAG pipeline
-    const { answer, sources } = await ragChat(message.trim(), chatHistory, filters);
+    const { answer, sources, metadata } = await ragChat(message.trim(), chatHistory, filters);
 
     // Guard: ensure content is never empty (Mongoose requires it)
     const safeAnswer = (answer || "").trim() || "I was unable to generate a response. Please try again.";
 
-    // Add assistant message
+    // Add assistant message (with evaluation metadata for research logging)
     session.messages.push({
       role: "assistant",
       content: safeAnswer,
       sources,
+      ragMetadata: metadata || {},
     });
 
     // Auto-generate title from first user message
@@ -69,6 +70,7 @@ export const sendMessage = async (req, res) => {
         role: "assistant",
         content: assistantMsg.content,
         sources: assistantMsg.sources,
+        ragMetadata: assistantMsg.ragMetadata,
         timestamp: assistantMsg.timestamp,
       },
     });

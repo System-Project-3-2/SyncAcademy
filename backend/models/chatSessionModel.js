@@ -19,6 +19,17 @@ const messageSchema = new mongoose.Schema({
       relevance: Number,
     },
   ],
+  // Hybrid RAG evaluation metadata — stored per assistant message
+  ragMetadata: {
+    queryType:     String,   // 'factual' | 'conceptual' | 'procedural' | 'comparative' | ...
+    complexity:    String,   // 'simple' | 'moderate' | 'complex'
+    attempt:       Number,   // how many retrieval attempts were needed
+    bestScore:     Number,   // top cosine similarity score from retrieval
+    confidence:    Number,   // self-eval combined confidence (0–1)
+    faithfulness:  Number,   // faithfulness score (0–1)
+    coverage:      Number,   // coverage score (0–1)
+    evalReasoning: String,   // one-sentence justification from evaluator
+  },
   timestamp: {
     type: Date,
     default: Date.now,
