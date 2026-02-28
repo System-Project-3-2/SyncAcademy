@@ -24,7 +24,7 @@ import { generateChatJSON } from './ollamaService.js';
 
 // ── Thresholds ────────────────────────────────────────────────────────────────
 const ACCEPT_THRESHOLD = 0.60;
-const MAX_CONTEXT_CHARS_PER_CHUNK = 250; // keep the eval prompt compact
+const MAX_CONTEXT_CHARS_PER_CHUNK = 400; // enough context for meaningful evaluation
 
 // ── Safe Default ──────────────────────────────────────────────────────────────
 // confidence 0.5 < 0.6 threshold → deliberately triggers a retry rather than
@@ -39,56 +39,76 @@ const SAFE_DEFAULT = Object.freeze({
 });
 
 // ── Prompts ───────────────────────────────────────────────────────────────────
-// ROOT CAUSE FIX:
-//  The previous system prompt showed a JSON example with hardcoded zeros:
-//    {"faithfulness":0.0,"coverage":0.0,"confidence":0.0,"supported":"YES"}
-//  Small models (Mistral 7B, Phi-3) under format:"json" anchor to those values
-//  and copy them verbatim because format:"json" forces token sampling to begin
-//  emitting { immediately — the model never gets a chance to reason.
+// BUGS FIXED (chronological):
 //
-// FIX STRATEGY:
-//  1. System prompt: describe each field with SCORING RANGES in plain text —
-//     no example JSON with concrete values the model can copy.
-//  2. User prompt: explicitly instructs the model to identify supported/unsupported
-//     claims BEFORE scoring (forced chain-of-thought within the JSON output).
-//  3. confidence: computed by us (0.6×f + 0.4×c) — not trusted from model output
-//     since 7B models reliably score faithfulness/coverage but conflate confidence.
+// Bug 1 — Model echoing context (commit c339c8a):
+//   /api/generate is text completion — model continued the prompt instead of
+//   evaluating. Fixed by switching to /api/chat with system/user role split.
+//
+// Bug 2 — All-zero scores (commit bc5ae5b):
+//   System prompt contained {"faithfulness":0.0,...} as an example. With
+//   format:"json" the token sampler emits { immediately, so model copied the
+//   literal 0.0 values. Fixed by removing all concrete numbers from the schema.
+//
+// Bug 3 — Always-1.0 scores (this commit):
+//   temperature:0.0 + format:"json" → model picks maximum-likelihood tokens.
+//   For an academic assistant, "everything is perfect" is the safest guess,
+//   so it outputs 1.0 without actually reasoning.
+//   Fix: put `reasoning` as the FIRST JSON field. With format:"json", fields
+//   are emitted in declaration order — the model must write its claim-by-claim
+//   analysis BEFORE reaching the numeric fields, anchoring scores to real eval.
 
-const SYSTEM_PROMPT = `You are an answer quality evaluator for an academic study assistant.
+// ROOT CAUSE OF ALWAYS-1.0 BUG:
+//   temperature:0.0 + format:"json" → model picks maximum-likelihood tokens,
+//   and for an academic assistant, "everything is correct" is the safest guess.
+//   Fix: put `reasoning` as the FIRST JSON field. With format:"json", fields are
+//   emitted in schema order — the model must write its claim-by-claim analysis
+//   BEFORE it reaches the numeric fields, anchoring the scores to actual reasoning.
 
-Carefully read the QUESTION, ANSWER, and DOCUMENTS in the user message, then respond with ONLY a JSON object.
+const SYSTEM_PROMPT = `You are a strict answer quality evaluator for an academic study assistant.
 
-Scoring guide — read this carefully before assigning scores:
-- faithfulness: decimal 0.0-1.0
-    1.0 = every claim in the answer is directly stated or clearly implied in the documents
-    0.7 = most claims are supported, minor details may be inferred
-    0.4 = some claims supported but key claims are missing from documents
-    0.0 = answer invents facts not present in documents at all
+Your job: check whether the GENERATED ANSWER is actually grounded in the SOURCE DOCUMENTS.
+Be critical — most answers have at least some unsupported claims.
 
-- coverage: decimal 0.0-1.0
-    1.0 = answer fully addresses what the question asks using the documents
-    0.7 = answer addresses the main point but misses supporting details
-    0.4 = answer is vague or only partially addresses the question
-    0.0 = answer does not address the question at all
+You MUST respond with exactly this JSON structure (no extra text):
+{
+  "reasoning": "<list 2-3 specific claims from the answer and whether each is found in the source documents>",
+  "faithfulness": <decimal 0.0-1.0>,
+  "coverage": <decimal 0.0-1.0>,
+  "supported": "<YES | PARTIAL | NO>"
+}
 
-- supported: string "YES" | "PARTIAL" | "NO"
-    "YES"     = the answer is well-grounded in the documents
-    "PARTIAL" = the answer is partly grounded but has unsupported claims
-    "NO"      = the answer contradicts or ignores the documents entirely
+Scoring rules:
+faithfulness (how grounded are the claims?):
+  0.9-1.0 = every claim directly stated in the documents
+  0.6-0.8 = most claims supported, minor inferences only
+  0.3-0.5 = key claims are absent from or only implied in documents
+  0.0-0.2 = answer invents facts not in documents
 
-Respond with ONLY this JSON — no other text:
-{"faithfulness": <your score>, "coverage": <your score>, "supported": "<your verdict>"}`;
+coverage (how fully does the answer address the question?):
+  0.9-1.0 = fully addresses the question using the documents
+  0.6-0.8 = addresses the main point, misses some details
+  0.3-0.5 = vague or only partially on-topic
+  0.0-0.2 = does not address the question
+
+supported:
+  "YES"     = well-grounded, most claims verified in documents
+  "PARTIAL" = partly grounded, some claims unsupported
+  "NO"      = contradicts or ignores the documents
+
+IMPORTANT: Write the reasoning field FIRST. Your scores must reflect what you wrote.`;
 
 const buildUserPrompt = (question, answer, contextText) =>
 `QUESTION: ${question}
 
-GENERATED ANSWER (evaluate this):
+GENERATED ANSWER (evaluate this critically):
 ${answer}
 
-SOURCE DOCUMENTS (ground truth):
+SOURCE DOCUMENTS (the only allowed knowledge base):
 ${contextText}
 
-Identify which claims in the ANSWER are supported vs. missing from the SOURCE DOCUMENTS, then output your JSON scores.`;
+For each major claim in the ANSWER, check: is it explicitly stated in the SOURCE DOCUMENTS above?
+Write your claim-by-claim analysis in the reasoning field, then assign faithfulness, coverage, and supported.`;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const clamp       = (v) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5);
@@ -99,14 +119,22 @@ const normalizeEval = (parsed) => {
   const coverage     = clamp(parseFloat(parsed.coverage));
 
   // Always compute confidence from our formula — never trust the model's value.
-  // 7B models reliably judge faithfulness/coverage but their "confidence" field
-  // is meaningless (they just copy whatever number was in the example schema).
   const confidence = clamp(0.6 * faithfulness + 0.4 * coverage);
 
   const rawS      = (typeof parsed.supported === 'string' ? parsed.supported : '').toUpperCase().trim();
   const supported = SUPPORTED_V.has(rawS) ? rawS : 'PARTIAL';
   const reasoning = typeof parsed.reasoning === 'string'
-    ? parsed.reasoning.substring(0, 200) : '';
+    ? parsed.reasoning.substring(0, 300) : '';
+
+  // Suspicious-score guard: perfect scores with no reasoning is almost certainly
+  // default-token behavior (model shortcuts), not genuine evaluation.
+  if (faithfulness >= 0.98 && coverage >= 0.98 && reasoning.trim().length < 20) {
+    console.warn(
+      '[SelfEval] ⚠️ Suspicious: perfect scores with empty reasoning — ' +
+      'model may not have evaluated. Consider checking the prompt.'
+    );
+  }
+
   return { faithfulness, coverage, confidence, supported, reasoning, parse_failed: false };
 };
 
@@ -229,8 +257,8 @@ export const runSelfEvaluation = async ({ question, answer, retrievedDocs }) => 
   let raw;
   try {
     raw = await generateChatJSON(SYSTEM_PROMPT, userPrompt, {
-      temperature: 0.0,  // fully deterministic — evaluation must be reproducible
-      max_tokens:  250,  // prompt asks model to identify claims first; 250 tokens
+      temperature: 0.1,  // slight randomness avoids max-likelihood score anchoring to 1.0
+      max_tokens:  400,  // reasoning field needs space; scores follow after reasoning text
       num_ctx:     3072, // larger context window to fit docs + answer + question
     });
   } catch (err) {
