@@ -97,6 +97,65 @@ export const generateResponseStream = async (prompt, options = {}) => {
 };
 
 /**
+ * Send a chat-style request to Ollama with enforced JSON output mode.
+ *
+ * Uses /api/chat (system + user message roles) instead of /api/generate,
+ * which is critical for instruction-following tasks like evaluation/scoring.
+ * The `format: "json"` parameter forces Ollama to emit ONLY valid JSON —
+ * this is the native structured-output mechanism supported by all Ollama models.
+ *
+ * @param {string} systemPrompt  - The system instruction (role + task description)
+ * @param {string} userPrompt    - The user message (the actual content to evaluate)
+ * @param {object} [options]     - Optional generation parameters
+ * @returns {string}               Raw JSON string from the model
+ */
+export const generateChatJSON = async (systemPrompt, userPrompt, options = {}) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: options.model || OLLAMA_MODEL,
+        format: "json",   // ← enforces JSON-only output at the Ollama level
+        stream: false,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user",   content: userPrompt   },
+        ],
+        options: {
+          temperature:    options.temperature    ?? 0.0,
+          top_p:          options.top_p          ?? 0.9,
+          num_predict:    options.max_tokens     ?? 200,
+          num_ctx:        options.num_ctx        ?? 2048,
+          repeat_penalty: 1.1,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Ollama chat error (${response.status}): ${errText}`);
+    }
+
+    const data = await response.json();
+    // /api/chat returns { message: { role, content }, ... }
+    return data.message?.content ?? "";
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Ollama eval request timed out.");
+    }
+    console.error("generateChatJSON error:", error.message);
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+/**
  * Quick health-check: is Ollama reachable and is the model loaded?
  */
 export const checkOllamaHealth = async () => {
