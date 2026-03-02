@@ -10,3 +10,4 @@ export { default as adminService } from './adminService';
 export { default as userService } from './userService';
 export { default as statsService } from './statsService';
 export { default as courseService } from './courseService';
+export { default as chatService } from './chatService';

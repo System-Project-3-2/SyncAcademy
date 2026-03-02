@@ -13,9 +13,11 @@ const deletefromCloudinary = async (fileUrl) => {
     const url = new URL(fileUrl);
     const segments = url.pathname.split("/").filter(Boolean);
 
-    // Typical Cloudinary URL: /<resource_type>/<delivery_type>/.../v123/<public_id>.<ext>
-    const resourceType = segments[0] || "raw";
-    const deliveryType = segments[1] || "upload";
+    // Cloudinary URL format:
+    // https://res.cloudinary.com/<cloud_name>/<resource_type>/<delivery_type>/v<version>/<public_id>
+    // segments[0] = cloud_name, segments[1] = resource_type, segments[2] = delivery_type
+    const resourceType = segments[1] || "raw";
+    const deliveryType = segments[2] || "upload";
 
     const versionIndex = segments.findIndex((s) => /^v\d+$/.test(s));
     if (versionIndex === -1) {
@@ -30,7 +32,7 @@ const deletefromCloudinary = async (fileUrl) => {
     let publicId = publicIdParts.join("/");
 
     // For image resources, Cloudinary destroy expects public_id without extension.
-    // For raw resources, public_id might include dots; try stripping a trailing extension only for image.
+    // For raw resources, the public_id includes the full filename with extension.
     if (resourceType === "image") {
       publicId = publicId.replace(/\.[^/.]+$/i, "");
     }

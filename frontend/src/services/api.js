@@ -10,6 +10,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 150000, // 2.5 min — long enough for local LLM inference
 });
 
 // Request interceptor - adds auth token to requests

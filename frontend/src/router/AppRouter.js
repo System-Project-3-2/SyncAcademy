@@ -13,6 +13,7 @@ import { Login, Register, ForgotPassword, ResetPassword } from '../pages/auth';
 //Shared Pages
 import Materials from '../pages/shared/Materials';
 import Profile from '../pages/shared/Profile';
+import AITutor from '../pages/shared/AITutor';
 import {
   StudentDashboard,
   SearchMaterials,
@@ -70,6 +71,7 @@ const AppRouter = () => {
         <Route path="materials" element={<Materials />} />
         <Route path="search" element={<SharedSearchMaterials />} />
         <Route path="profile" element={<Profile />} />
+        <Route path="ai-tutor" element={<AITutor />} />
         <Route path="feedback/new" element={<SubmitFeedback />} />
         <Route path="feedbacks" element={<MyFeedbacks />} />
       </Route>
@@ -87,6 +89,7 @@ const AppRouter = () => {
         <Route path="dashboard" element={<TeacherDashboard />} />
         <Route path="materials" element={<Materials />} />
         <Route path="profile" element={<Profile />} />
+        <Route path="ai-tutor" element={<AITutor />} />
         <Route path="materials/upload" element={<UploadMaterial />} />
         <Route path="courses" element={<CourseManagement />} />
         <Route path="feedbacks" element={<TeacherFeedbacks />} />
@@ -111,6 +114,7 @@ const AppRouter = () => {
         <Route path="materials/upload" element={<UploadMaterial />} />
         <Route path="search" element={<SharedSearchMaterials />} />
         <Route path="profile" element={<Profile />} />
+        <Route path="ai-tutor" element={<AITutor />} />
       </Route>
 
       {/* Root redirect - redirect to login or appropriate dashboard */}
