@@ -1,27 +1,15 @@
-/**
- * Ollama LLM Service
- * Connects to a local Ollama instance for RAG-powered chat responses.
- *
- * Supported models (install any with `ollama pull <model>`):
- *   - mistral       (7B, best quality/speed balance)
- *   - llama3.2      (latest Meta model)
- *   - phi3          (small & fast, by Microsoft)
- *
- * Environment variables:
- *   OLLAMA_BASE_URL  – default http://localhost:11434
- *   OLLAMA_MODEL     – default mistral
- */
+
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "mistral";
 
 /**
- * Generate a chat completion from Ollama.
- * @param {string} prompt - The full prompt (system + context + user question)
- * @param {object} [options] - Optional generation parameters
- * @returns {string} The model's response text
+ 
+ * @param {string} prompt 
+ * @param {object} [options]
+ * @returns {string} 
  */
-const OLLAMA_TIMEOUT_MS = 120_000; // 2 minutes max per request
+const OLLAMA_TIMEOUT_MS = 120_000;
 
 export const generateResponse = async (prompt, options = {}) => {
   const controller = new AbortController();
@@ -37,12 +25,12 @@ export const generateResponse = async (prompt, options = {}) => {
         prompt,
         stream: false,
         options: {
-          temperature: options.temperature ?? 0.1,   // low = factual, less creative/hallucinatory
+          temperature: options.temperature ?? 0.1,   
           top_p: options.top_p ?? 0.9,
           num_predict: options.max_tokens ?? 384,
           num_ctx: 2048,
-          repeat_penalty: 1.3,                       // penalise repeated phrases/looping
-          stop: ["\n\nQuestion:", "\n\nStudent:"],     // only stop on clear prompt-echo patterns
+          repeat_penalty: 1.3,                      
+          stop: ["\n\nQuestion:", "\n\nStudent:"],     
         },
       }),
     });
@@ -97,12 +85,6 @@ export const generateResponseStream = async (prompt, options = {}) => {
 };
 
 /**
- * Send a chat-style request to Ollama with enforced JSON output mode.
- *
- * Uses /api/chat (system + user message roles) instead of /api/generate,
- * which is critical for instruction-following tasks like evaluation/scoring.
- * The `format: "json"` parameter forces Ollama to emit ONLY valid JSON —
- * this is the native structured-output mechanism supported by all Ollama models.
  *
  * @param {string} systemPrompt  - The system instruction (role + task description)
  * @param {string} userPrompt    - The user message (the actual content to evaluate)
