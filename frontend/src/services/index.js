@@ -11,3 +11,4 @@ export { default as userService } from './userService';
 export { default as statsService } from './statsService';
 export { default as courseService } from './courseService';
 export { default as chatService } from './chatService';
+export { default as enrollmentService } from './enrollmentService';

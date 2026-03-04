@@ -1,4 +1,5 @@
 import Material from "../models/materialModel.js";
+import Enrollment from "../models/enrollmentModel.js";
 import extractPdfText from "../utils/pdfParser.js";
 import extractDocText from "../utils/docParser.js";
 import extractPptx from "../utils/pptxParser.js";
@@ -78,6 +79,18 @@ export const getAllMaterials = async (req, res) => {
     const filter = {};
     if (role === "teacher") {
       filter.uploadedBy = _id;
+    }
+
+    // Students only see materials from enrolled courses
+    if (role === "student") {
+      const enrollments = await Enrollment.find({
+        student: _id,
+        status: "active",
+      }).populate("course", "courseNo");
+      const enrolledCourseNos = enrollments
+        .filter((e) => e.course)
+        .map((e) => e.course.courseNo);
+      filter.courseNo = { $in: enrolledCourseNos };
     }
     if (search) {
       filter.$or = [
