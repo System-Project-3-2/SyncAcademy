@@ -46,6 +46,7 @@ export const uploadMaterial = async (req, res) => {
       courseNo,
       type,
       fileUrl,
+      originalFileName: file.originalname,
       textContent,
       uploadedBy: req.user._id,
     };

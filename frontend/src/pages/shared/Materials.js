@@ -62,10 +62,11 @@ import {
   Close as CloseIcon,
   Save as SaveIcon,
 } from '@mui/icons-material';
-import { PageHeader, EmptyState } from '../../components';
+import { PageHeader, EmptyState, PaginationControl } from '../../components';
 import { materialService } from '../../services';
 import { useAuth } from '../../hooks';
 import { useNavigate } from 'react-router-dom';
+import { MATERIAL_TYPES } from '../../constants/materialTypes';
 
 // Get file type icon based on file extension
 const getFileIcon = (fileUrl, type) => {
@@ -506,12 +507,9 @@ const EditMaterialDialog = ({ open, material, onClose, onSave }) => {
               label="Material Type"
               onChange={handleChange}
             >
-              <MenuItem value="Lecture">Lecture</MenuItem>
-              <MenuItem value="Assignment">Assignment</MenuItem>
-              <MenuItem value="Notes">Notes</MenuItem>
-              <MenuItem value="Presentation">Presentation</MenuItem>
-              <MenuItem value="Reference">Reference</MenuItem>
-              <MenuItem value="Other">Other</MenuItem>
+              {MATERIAL_TYPES.map((t) => (
+                <MenuItem key={t} value={t}>{t}</MenuItem>
+              ))}
             </Select>
           </FormControl>
         </Box>
@@ -574,21 +572,43 @@ const Materials = () => {
   const [previewDialog, setPreviewDialog] = useState({ open: false, material: null });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageLimit, setPageLimit] = useState(20);
+  const [totalMaterials, setTotalMaterials] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   const userRole = user?.role;
   const currentUserId = user?.id || user?._id;
 
   useEffect(() => {
     fetchMaterials();
-  }, []);
+  }, [page, pageLimit]);
 
   const fetchMaterials = async () => {
     try {
       setIsLoading(true);
-      const data = await materialService.getAllMaterials();
-      setMaterials(data);
+      const data = await materialService.getAllMaterials({
+        page,
+        limit: pageLimit,
+        sort: '-createdAt',
+      });
+      // Handle both paginated and non-paginated API responses
+      if (data && data.data) {
+        setMaterials(data.data);
+        setTotalMaterials(data.pagination?.total || data.data.length);
+        setTotalPages(data.pagination?.pages || 1);
+      } else {
+        // Non-paginated (array) response
+        const arr = Array.isArray(data) ? data : [];
+        setMaterials(arr);
+        setTotalMaterials(arr.length);
+        setTotalPages(1);
+      }
       // Expand first course by default
-      if (data.length > 0) {
-        const courses = [...new Set(data.map((m) => m.courseNo))];
+      const matArr = data?.data || (Array.isArray(data) ? data : []);
+      if (matArr.length > 0) {
+        const courses = [...new Set(matArr.map((m) => m.courseNo))];
         setExpandedCourse(courses[0]);
       }
     } catch (error) {
@@ -654,9 +674,10 @@ const Materials = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      // Extract a meaningful filename from the URL or use a default
-      const urlPath = new URL(material.fileUrl).pathname;
-      const fileName = decodeURIComponent(urlPath.split('/').pop()) || `${material.courseTitle || 'material'}`;
+      // Use originalFileName if available, then derive from URL, finally fallback
+      const fileName = material.originalFileName
+        || decodeURIComponent(new URL(material.fileUrl).pathname.split('/').pop())
+        || `${material.courseTitle || 'material'}`;
       link.download = fileName;
       document.body.appendChild(link);
       link.click();
@@ -1025,6 +1046,20 @@ const Materials = () => {
               onView={handleView}
             />
           ))}
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <PaginationControl
+              page={page}
+              totalPages={totalPages}
+              total={totalMaterials}
+              limit={pageLimit}
+              onPageChange={(newPage) => setPage(newPage)}
+              onLimitChange={(newLimit) => {
+                setPageLimit(newLimit);
+                setPage(1);
+              }}
+            />
+          )}
         </Box>
       )}
 

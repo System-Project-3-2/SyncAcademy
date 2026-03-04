@@ -1,7 +1,7 @@
 /**
  * MaterialCard Component
  * Displays a search result material with matched content
- * Includes dark mode support
+ * Includes dark mode support, preview, and relevance score
  */
 import React from 'react';
 import {
@@ -15,12 +15,14 @@ import {
   List,
   ListItem,
   ListItemText,
+  LinearProgress,
   useTheme,
   alpha,
 } from '@mui/material';
 import {
   Description as DocumentIcon,
   Download as DownloadIcon,
+  Visibility as PreviewIcon,
   ExpandMore as ExpandMoreIcon,
   School as CourseIcon,
   Category as TypeIcon,
@@ -30,9 +32,15 @@ const MaterialCard = ({
   material,
   expanded = false,
   onToggleExpand = null,
+  onPreview = null,
 }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+
+  // Resilient field access — works for both search results and Materials page context
+  const title = material.courseTitle || material.title || 'Untitled Material';
+  const course = material.courseNo || material.course || '';
+  const relevance = material.relevanceScore;
 
   const handleDownload = async () => {
     const url = material.fileUrl;
@@ -44,7 +52,11 @@ const MaterialCard = ({
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;
-      a.download = material.courseTitle || material.courseNo || url.split('/').pop() || 'download';
+      // Use originalFileName if available, then derive from URL, finally fallback
+      a.download =
+        material.originalFileName ||
+        decodeURIComponent(url.split('/').pop()) ||
+        `${title}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -91,34 +103,78 @@ const MaterialCard = ({
             </Box>
             <Box sx={{ flex: 1 }}>
               <Typography variant="h6" gutterBottom color="text.primary">
-                {material.title}
+                {title}
               </Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                <Chip
-                  size="small"
-                  icon={<CourseIcon />}
-                  label={material.course}
-                  variant="outlined"
-                  color="primary"
-                />
-                <Chip
-                  size="small"
-                  icon={<TypeIcon />}
-                  label={material.type}
-                  variant="outlined"
-                />
+                {course && (
+                  <Chip
+                    size="small"
+                    icon={<CourseIcon />}
+                    label={course}
+                    variant="outlined"
+                    color="primary"
+                  />
+                )}
+                {material.type && (
+                  <Chip
+                    size="small"
+                    icon={<TypeIcon />}
+                    label={material.type}
+                    variant="outlined"
+                  />
+                )}
+                {relevance != null && (
+                  <Chip
+                    size="small"
+                    label={`Relevance: ${Math.round(relevance * 100)}%`}
+                    color={relevance >= 0.7 ? 'success' : relevance >= 0.4 ? 'warning' : 'default'}
+                    variant="filled"
+                    sx={{ fontWeight: 600 }}
+                  />
+                )}
               </Box>
             </Box>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<DownloadIcon />}
-            onClick={handleDownload}
-            size="small"
-          >
-            Download
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+            {onPreview && (
+              <Button
+                variant="outlined"
+                startIcon={<PreviewIcon />}
+                onClick={() => onPreview(material)}
+                size="small"
+              >
+                Preview
+              </Button>
+            )}
+            <Button
+              variant="contained"
+              startIcon={<DownloadIcon />}
+              onClick={handleDownload}
+              size="small"
+            >
+              Download
+            </Button>
+          </Box>
         </Box>
+
+        {/* Relevance Progress Bar */}
+        {relevance != null && (
+          <Box sx={{ mt: 1.5, mb: 0.5 }}>
+            <LinearProgress
+              variant="determinate"
+              value={Math.round(relevance * 100)}
+              sx={{
+                height: 6,
+                borderRadius: 3,
+                bgcolor: isDark ? alpha(theme.palette.primary.main, 0.1) : 'grey.100',
+                '& .MuiLinearProgress-bar': {
+                  borderRadius: 3,
+                  bgcolor: relevance >= 0.7 ? 'success.main' : relevance >= 0.4 ? 'warning.main' : 'grey.400',
+                },
+              }}
+            />
+          </Box>
+        )}
 
         {/* Matched Content Preview */}
         {material.matches && material.matches.length > 0 && (
