@@ -5,3 +5,4 @@
 export { default as TeacherDashboard } from './Dashboard';
 export { default as UploadMaterial } from './UploadMaterial';
 export { default as TeacherFeedbacks } from './Feedbacks';
+export { default as CourseStudents } from './CourseStudents';

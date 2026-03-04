@@ -1,5 +1,6 @@
 import MaterialChunk from "../models/materialChunkModel.js";
 import Material from "../models/materialModel.js";
+import Enrollment from "../models/enrollmentModel.js";
 import SearchHistory from "../models/searchHistoryModel.js";
 import { embedText } from "../services/embeddingServices.js";
 import { cosineSimilarity } from "../utils/cosineSimilarity.js";
@@ -18,6 +19,20 @@ export const semanticSearch = async (req, res) => {
     const materialFilter = {};
     if (courseNo) materialFilter.courseNo = courseNo;
     if (type) materialFilter.type = type;
+
+    // Students only search through enrolled courses
+    if (req.user.role === "student") {
+      const enrollments = await Enrollment.find({
+        student: req.user._id,
+        status: "active",
+      }).populate("course", "courseNo");
+      const enrolledCourseNos = enrollments
+        .filter((e) => e.course)
+        .map((e) => e.course.courseNo);
+      materialFilter.courseNo = courseNo
+        ? (enrolledCourseNos.includes(courseNo) ? courseNo : "__none__")
+        : { $in: enrolledCourseNos };
+    }
 
     // Fetch chunks with filtered materials
     const chunks = await MaterialChunk.find().populate({

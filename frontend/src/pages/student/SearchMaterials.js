@@ -40,12 +40,14 @@ import {
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { PageHeader, LoadingSpinner, EmptyState, MaterialCard, FilePreviewDialog } from '../../components';
-import { materialService, courseService } from '../../services';
+import { materialService, courseService, enrollmentService } from '../../services';
+import { useAuth } from '../../hooks';
 import { MATERIAL_TYPES } from '../../constants/materialTypes';
 
 const RESULTS_PER_PAGE = 5;
 
 const SearchMaterials = () => {
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [course, setCourse] = useState('');
   const [type, setType] = useState('');
@@ -77,10 +79,15 @@ const SearchMaterials = () => {
 
   const fetchCourses = async () => {
     try {
-      const data = await courseService.getAllCourses();
-      // data may be an array or { data: [...], pagination: {...} }
-      const courses = Array.isArray(data) ? data : data.data || [];
-      setCourseOptions(courses);
+      // Students only see enrolled courses in the filter
+      if (user?.role === 'student') {
+        const enrolled = await enrollmentService.getMyEnrolledCourses();
+        setCourseOptions(enrolled);
+      } else {
+        const data = await courseService.getAllCourses();
+        const courses = Array.isArray(data) ? data : data.data || [];
+        setCourseOptions(courses);
+      }
     } catch (error) {
       console.error('Error fetching courses:', error);
     }
