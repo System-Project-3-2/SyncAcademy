@@ -2,7 +2,7 @@
  * Upload Material Page
  * Allows teachers to upload educational materials
  */
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -16,6 +16,7 @@ import {
   Typography,
   Alert,
   LinearProgress,
+  Autocomplete,
 } from '@mui/material';
 import {
   CloudUpload as UploadIcon,
@@ -26,10 +27,8 @@ import {
 import { useTheme as useMuiTheme, alpha } from '@mui/material';
 import toast from 'react-hot-toast';
 import { PageHeader } from '../../components';
-import { materialService } from '../../services';
-
-// Material types
-const MATERIAL_TYPES = ['Lecture Notes', 'Assignment', 'Lab Report', 'Book', 'Slides', 'Other'];
+import { materialService, courseService } from '../../services';
+import { MATERIAL_TYPES } from '../../constants/materialTypes';
 
 // Accepted file types
 const ACCEPTED_FILES = '.pdf,.docx,.pptx';
@@ -49,6 +48,38 @@ const UploadMaterial = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
+
+  // Course autocomplete data
+  const [courseOptions, setCourseOptions] = useState([]);
+
+  // Track if form has unsaved changes
+  const isDirty = Boolean(formData.courseTitle || formData.courseNo || formData.type || file);
+
+  // Warn user before leaving with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  // Fetch courses for autocomplete
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const data = await courseService.getAllCourses();
+        const courses = Array.isArray(data) ? data : data.data || [];
+        setCourseOptions(courses);
+      } catch (err) {
+        console.error('Error fetching courses for autocomplete:', err);
+      }
+    };
+    fetchCourses();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -197,26 +228,56 @@ const UploadMaterial = () => {
           </Alert>
         )}
 
-        <TextField
-          fullWidth
-          label="Course Title"
-          name="courseTitle"
+        <Autocomplete
+          freeSolo
+          options={courseOptions.map((c) => c.courseTitle)}
           value={formData.courseTitle}
-          onChange={handleChange}
-          required
+          onInputChange={(_, newValue) => {
+            setFormData((prev) => ({ ...prev, courseTitle: newValue }));
+            setError('');
+            // Auto-fill courseNo when a matching course is selected
+            const match = courseOptions.find((c) => c.courseTitle === newValue);
+            if (match) {
+              setFormData((prev) => ({ ...prev, courseTitle: newValue, courseNo: match.courseNo }));
+            }
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              fullWidth
+              label="Course Title"
+              name="courseTitle"
+              required
+              placeholder="e.g., Introduction to Data Structures"
+            />
+          )}
           sx={{ mb: 3 }}
-          placeholder="e.g., Introduction to Data Structures"
         />
 
-        <TextField
-          fullWidth
-          label="Course Number"
-          name="courseNo"
+        <Autocomplete
+          freeSolo
+          options={courseOptions.map((c) => c.courseNo)}
           value={formData.courseNo}
-          onChange={handleChange}
-          required
+          onInputChange={(_, newValue) => {
+            setFormData((prev) => ({ ...prev, courseNo: newValue }));
+            setError('');
+            // Auto-fill courseTitle when a matching course is selected
+            const match = courseOptions.find((c) => c.courseNo === newValue);
+            if (match) {
+              setFormData((prev) => ({ ...prev, courseNo: newValue, courseTitle: match.courseTitle }));
+            }
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              fullWidth
+              label="Course Number"
+              name="courseNo"
+              required
+              placeholder="e.g., CSE101, MATH201"
+            />
+          )}
           sx={{ mb: 3 }}
-          placeholder="e.g., CSE101, MATH201"
         />
 
         <FormControl fullWidth sx={{ mb: 3 }}>
