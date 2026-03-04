@@ -3,6 +3,7 @@
  * CRUD interface for managing courses (Admin/Teacher)
  */
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -45,6 +46,7 @@ import {
   CalendarToday as SemesterIcon,
   Business as DepartmentIcon,
   Person as PersonIcon,
+  People as PeopleIcon,
 } from '@mui/icons-material';
 import { PageHeader, EmptyState, PaginationControl } from '../../components';
 import { courseService } from '../../services';
@@ -54,7 +56,7 @@ import { useAuth } from '../../hooks';
 const SEMESTERS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 
 // Course Card Component
-const CourseCard = ({ course, onEdit, onDelete, canEdit, canDelete }) => {
+const CourseCard = ({ course, onEdit, onDelete, onViewStudents, canEdit, canDelete }) => {
   const theme = useTheme();
 
   return (
@@ -167,6 +169,21 @@ const CourseCard = ({ course, onEdit, onDelete, canEdit, canDelete }) => {
             justifyContent: 'flex-end',
           }}
         >
+          {onViewStudents && (
+            <Tooltip title="View Enrolled Students">
+              <IconButton
+                size="small"
+                color="info"
+                onClick={() => onViewStudents(course)}
+                sx={{
+                  bgcolor: alpha(theme.palette.info.main, 0.08),
+                  '&:hover': { bgcolor: alpha(theme.palette.info.main, 0.15) },
+                }}
+              >
+                <PeopleIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           {canEdit && (
             <Tooltip title="Edit Course">
               <IconButton
@@ -350,6 +367,7 @@ const CoursesSkeleton = () => (
 // Main Course Management Component
 const CourseManagement = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -621,6 +639,7 @@ const CourseManagement = () => {
                   canDelete={canDelete}
                   onEdit={(c) => setFormDialog({ open: true, course: c })}
                   onDelete={(c) => setDeleteDialog({ open: true, course: c })}
+                  onViewStudents={(c) => navigate(`/${userRole}/courses/${c._id}/students`)}
                 />
               </Grid>
             ))}

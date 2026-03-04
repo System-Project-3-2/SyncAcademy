@@ -19,6 +19,7 @@ import {
   SearchMaterials,
   SubmitFeedback,
   MyFeedbacks,
+  MyCourses,
 } from '../pages/student';
 
 // Teacher Pages
@@ -26,6 +27,7 @@ import {
   TeacherDashboard,
   UploadMaterial,
   TeacherFeedbacks,
+  CourseStudents,
 } from '../pages/teacher';
 
 // Admin Pages
@@ -68,6 +70,7 @@ const AppRouter = () => {
       >
         <Route index element={<Navigate to="/student/dashboard" replace />} />
         <Route path="dashboard" element={<StudentDashboard />} />
+        <Route path="my-courses" element={<MyCourses />} />
         <Route path="materials" element={<Materials />} />
         <Route path="search" element={<SharedSearchMaterials />} />
         <Route path="profile" element={<Profile />} />
@@ -92,6 +95,7 @@ const AppRouter = () => {
         <Route path="ai-tutor" element={<AITutor />} />
         <Route path="materials/upload" element={<UploadMaterial />} />
         <Route path="courses" element={<CourseManagement />} />
+        <Route path="courses/:courseId/students" element={<CourseStudents />} />
         <Route path="feedbacks" element={<TeacherFeedbacks />} />
         <Route path="search" element={<SharedSearchMaterials />} />
       </Route>
@@ -111,6 +115,7 @@ const AppRouter = () => {
         <Route path="users" element={<UserManagement />} />
         <Route path="feedbacks" element={<AdminFeedbacks />} />
         <Route path="courses" element={<CourseManagement />} />
+        <Route path="courses/:courseId/students" element={<CourseStudents />} />
         <Route path="materials/upload" element={<UploadMaterial />} />
         <Route path="search" element={<SharedSearchMaterials />} />
         <Route path="profile" element={<Profile />} />
