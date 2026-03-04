@@ -189,6 +189,7 @@ const Navbar = ({ onMenuClick }) => {
                   }}
                 >
                   <Avatar 
+                    src={user.avatar || ''}
                     sx={{ 
                       bgcolor: getRoleColor(user.role),
                       fontWeight: 700,

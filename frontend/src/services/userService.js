@@ -37,6 +37,21 @@ const userService = {
     const response = await api.put('/users/change-password', data);
     return response.data;
   },
+
+  /**
+   * Upload avatar image
+   * @param {FormData} formData - FormData with 'avatar' file field
+   * @returns {Promise} API response with updated user
+   */
+  uploadAvatar: async (formData) => {
+    const response = await api.put('/users/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    if (response.data.user) {
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  },
 };
 
 export default userService;
