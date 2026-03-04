@@ -34,6 +34,7 @@ export const semanticSearch = async (req, res) => {
       courseNo: chunk.materialId.courseNo,
       type: chunk.materialId.type,
       fileUrl: chunk.materialId.fileUrl,
+      originalFileName: chunk.materialId.originalFileName,
       text: chunk.chunkText,
       score: cosineSimilarity(queryEmbedding, chunk.embedding),
     }));
@@ -45,12 +46,23 @@ export const semanticSearch = async (req, res) => {
     for (const item of scored.slice(0, 30)) {
       if (!grouped[item.materialId]) {
         grouped[item.materialId] = {
+          materialId: item.materialId,
           courseTitle: item.courseTitle,
           courseNo: item.courseNo,
+          // Aliases so frontend MaterialCard can read either naming convention
+          title: item.courseTitle,
+          course: item.courseNo,
           type: item.type,
           fileUrl: item.fileUrl,
+          originalFileName: item.originalFileName,
+          relevanceScore: item.score,
           matches: [],
         };
+      } else {
+        // Keep the best (max) similarity score
+        if (item.score > grouped[item.materialId].relevanceScore) {
+          grouped[item.materialId].relevanceScore = item.score;
+        }
       }
       grouped[item.materialId].matches.push(item.text);
     }

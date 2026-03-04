@@ -39,25 +39,11 @@ import {
   TrendingUp as SuggestionIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
-import { PageHeader, LoadingSpinner, EmptyState, MaterialCard } from '../../components';
+import { PageHeader, LoadingSpinner, EmptyState, MaterialCard, FilePreviewDialog } from '../../components';
 import { materialService, courseService } from '../../services';
+import { MATERIAL_TYPES } from '../../constants/materialTypes';
 
 const RESULTS_PER_PAGE = 5;
-
-// Course options - can be fetched from API in production
-const COURSES = [
-  'Computer Science',
-  'Mathematics',
-  'Physics',
-  'Chemistry',
-  'Electronics',
-  'Mechanical Engineering',
-  'Civil Engineering',
-  'Electrical Engineering',
-];
-
-// Material types
-const MATERIAL_TYPES = ['Lecture Notes', 'Assignment', 'Lab Report', 'Book', 'Slides', 'Other'];
 
 const SearchMaterials = () => {
   const [query, setQuery] = useState('');
@@ -77,10 +63,28 @@ const SearchMaterials = () => {
   const suggestionsAnchorRef = useRef(null);
   const debounceTimerRef = useRef(null);
 
-  // Fetch search history on mount
+  // Courses fetched from API for filter dropdown
+  const [courseOptions, setCourseOptions] = useState([]);
+
+  // File preview dialog state
+  const [previewDialog, setPreviewDialog] = useState({ open: false, material: null });
+
+  // Fetch search history and courses on mount
   useEffect(() => {
     fetchSearchHistory();
+    fetchCourses();
   }, []);
+
+  const fetchCourses = async () => {
+    try {
+      const data = await courseService.getAllCourses();
+      // data may be an array or { data: [...], pagination: {...} }
+      const courses = Array.isArray(data) ? data : data.data || [];
+      setCourseOptions(courses);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    }
+  };
 
   const fetchSearchHistory = async () => {
     try {
@@ -155,7 +159,7 @@ const SearchMaterials = () => {
 
     try {
       const searchParams = { query };
-      if (course) searchParams.course = course;
+      if (course) searchParams.courseNo = course;
       if (type) searchParams.type = type;
 
       const data = await materialService.searchMaterials(searchParams);
@@ -319,8 +323,10 @@ const SearchMaterials = () => {
                 onChange={(e) => setCourse(e.target.value)}
               >
                 <MenuItem value="">All Courses</MenuItem>
-                {COURSES.map((c) => (
-                  <MenuItem key={c} value={c}>{c}</MenuItem>
+                {courseOptions.map((c) => (
+                  <MenuItem key={c._id || c.courseNo} value={c.courseNo}>
+                    {c.courseNo} — {c.courseTitle}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -399,10 +405,11 @@ const SearchMaterials = () => {
             </Typography>
             {paginatedResults.map((material) => (
               <MaterialCard
-                key={material.courseTitle || material.title}
+                key={material.materialId || material.courseTitle || material.title}
                 material={material}
                 expanded={expandedMaterial === (material.courseTitle || material.title)}
                 onToggleExpand={() => toggleExpand(material.courseTitle || material.title)}
+                onPreview={(m) => setPreviewDialog({ open: true, material: m })}
               />
             ))}
 
@@ -454,6 +461,13 @@ const SearchMaterials = () => {
           icon={<SearchIcon sx={{ fontSize: 64 }} />}
         />
       )}
+
+      {/* File Preview Dialog */}
+      <FilePreviewDialog
+        open={previewDialog.open}
+        onClose={() => setPreviewDialog({ open: false, material: null })}
+        material={previewDialog.material}
+      />
     </Box>
   );
 };
