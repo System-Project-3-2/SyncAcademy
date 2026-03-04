@@ -10,6 +10,46 @@
 
 ---
 
+## 📋 Table of Contents
+
+1. [Current State Assessment](#current-state-assessment)
+   - [✅ What's Already Built](#-whats-already-built)
+   - [❌ What Google Classroom Has That We're Missing](#-what-google-classroom-has-that-were-missing)
+   - [🌟 Selling Points](#-selling-points-features-google-classroom-doesnt-have)
+
+2. [Phase Overview](#phase-overview)
+
+3. [Phase 0: Existing Feature Improvements](#phase-0-existing-feature-improvements)
+   - [🔴 Critical Fixes](#-critical-fixes)
+   - [🟡 Important Improvements](#-important-improvements)
+   - [🟢 Nice-to-Have Polish](#-nice-to-have-polish)
+
+4. [Phase 1: Course Enrollment System](#phase-1-course-enrollment-system)
+
+5. [Phase 2: Announcements & Class Stream](#phase-2-announcements--class-stream)
+
+6. [Phase 3: Assignment & Grading System](#phase-3-assignment--grading-system)
+
+7. [Phase 4: In-App Notification System](#phase-4-in-app-notification-system)
+
+8. [Phase 5: AI Quiz Generation from Materials](#phase-5-ai-quiz-generation-from-materials)
+
+9. [Phase 6: AI Summarization, Bookmarks & Study Analytics](#phase-6-ai-summarization-bookmarks--study-analytics)
+
+10. [Execution Order & Dependencies](#execution-order--dependencies)
+
+11. [Git Workflow](#git-workflow)
+
+12. [Prompt Templates](#prompt-templates)
+
+13. [Risk Mitigation](#risk-mitigation)
+
+14. [Files That Will Be Created](#files-that-will-be-created-new)
+
+15. [Summary Table](#summary-table)
+
+---
+
 ## Current State Assessment
 
 ### ✅ What's Already Built 
