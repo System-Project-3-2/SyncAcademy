@@ -14,6 +14,7 @@ import {
   Add as AddIcon,
   ArrowForward as ArrowForwardIcon,
   LibraryBooks as LibraryIcon,
+  SmartToy as AITutorIcon,
 } from '@mui/icons-material';
 import { PageHeader, StatCard, LoadingSpinner, EmptyState } from '../../components';
 import { useAuth } from '../../hooks';
@@ -56,6 +57,7 @@ const StudentDashboard = () => {
   }
 
   const quickActions = [
+    { label: 'AI Tutor', icon: <AITutorIcon />, path: '/student/ai-tutor', color: 'warning' },
     { label: 'Search Materials', icon: <SearchIcon />, path: '/student/search', color: 'primary' },
     { label: 'Submit Feedback', icon: <AddIcon />, path: '/student/feedback/new', color: 'secondary' },
     { label: 'My Feedbacks', icon: <FeedbackIcon />, path: '/student/feedbacks', color: 'info' },

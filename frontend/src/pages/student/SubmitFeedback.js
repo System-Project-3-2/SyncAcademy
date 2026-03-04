@@ -2,7 +2,7 @@
  * Submit Feedback Page
  * Allows students to submit new feedback or queries
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -42,6 +42,20 @@ const SubmitFeedback = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Unsaved changes guard
+  const isDirty = formData.title.trim() !== '' || formData.message.trim() !== '';
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
