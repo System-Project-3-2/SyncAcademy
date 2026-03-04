@@ -1,8 +1,8 @@
 /**
  * User Profile Page
- * Allows users to view and update their profile and change password
+ * Allows users to view and update their profile, change password, and upload avatar
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Container,
@@ -14,6 +14,8 @@ import {
   Tabs,
   InputAdornment,
   IconButton,
+  Avatar,
+  CircularProgress,
 } from '@mui/material';
 import {
   Person as UserIcon,
@@ -23,6 +25,7 @@ import {
   Save as SaveIcon,
   Visibility as EyeIcon,
   VisibilityOff as EyeOffIcon,
+  CameraAlt as CameraIcon,
 } from '@mui/icons-material';
 import { userService } from '../../services';
 import { useAuth } from '../../hooks';
@@ -53,6 +56,9 @@ const Profile = () => {
     confirm: false,
   });
 
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef(null);
+
   useEffect(() => {
     if (user) {
       setProfileData({
@@ -61,6 +67,38 @@ const Profile = () => {
       });
     }
   }, [user]);
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Only image files (JPG, PNG, GIF, WEBP) are allowed');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      const response = await userService.uploadAvatar(formData);
+      if (response.user) {
+        updateUser(response.user);
+      }
+      toast.success('Avatar updated successfully');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to upload avatar');
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  };
 
   const handleProfileChange = (e) => {
     setProfileData({
@@ -163,23 +201,45 @@ const Profile = () => {
           {/* Profile Tab */}
           {activeTab === 'profile' && (
             <Box>
-              {/* User Info Card */}
+              {/* User Info Card with Avatar */}
               <Paper elevation={0} sx={{ p: 3, bgcolor: 'grey.50', mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box
-                  sx={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: '50%',
-                    bgcolor: 'primary.main',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '1.5rem',
-                    fontWeight: 600,
-                  }}
-                >
-                  {user.name?.charAt(0).toUpperCase()}
+                <Box sx={{ position: 'relative' }}>
+                  <Avatar
+                    src={user.avatar || ''}
+                    sx={{
+                      width: 80,
+                      height: 80,
+                      bgcolor: 'primary.main',
+                      fontSize: '2rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {user.name?.charAt(0).toUpperCase()}
+                  </Avatar>
+                  <IconButton
+                    size="small"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={avatarUploading}
+                    sx={{
+                      position: 'absolute',
+                      bottom: -4,
+                      right: -4,
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      width: 30,
+                      height: 30,
+                      '&:hover': { bgcolor: 'primary.dark' },
+                    }}
+                  >
+                    {avatarUploading ? <CircularProgress size={16} color="inherit" /> : <CameraIcon sx={{ fontSize: 16 }} />}
+                  </IconButton>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    onChange={handleAvatarChange}
+                    style={{ display: 'none' }}
+                  />
                 </Box>
                 <Box>
                   <Typography variant="h6" fontWeight={600}>{user.name}</Typography>
