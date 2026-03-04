@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema(
       enum: ["teacher", "student", "admin"],
       default: "student",
     },
+    avatar: { type: String, default: '' },
     isVerified: { type: Boolean, default: false },
     otp: String,
     otpExpiry: Date,

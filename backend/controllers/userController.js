@@ -1,9 +1,10 @@
 /**
  * User Profile Controller
- * Handles user profile operations (get, update, change password)
+ * Handles user profile operations (get, update, change password, avatar)
  */
 import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
+import uploadToCloudinary from "../utils/cloudinaryUpload.js";
 
 /**
  * Get current user profile
@@ -66,6 +67,7 @@ export const updateProfile = async (req, res) => {
       name: updatedUser.name,
       email: updatedUser.email,
       role: updatedUser.role,
+      avatar: updatedUser.avatar,
       isVerified: updatedUser.isVerified,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,
@@ -134,6 +136,46 @@ export const changePassword = async (req, res) => {
 
     res.status(200).json({
       message: "Password changed successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * Upload/Update user avatar
+ * @route PUT /api/users/avatar
+ * @access Private
+ */
+export const uploadAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No image file provided" });
+    }
+
+    const avatarUrl = await uploadToCloudinary(req.file.path);
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.avatar = avatarUrl;
+    await user.save();
+
+    res.status(200).json({
+      message: "Avatar updated successfully",
+      avatar: avatarUrl,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
