@@ -15,6 +15,7 @@ import {
   ArrowForward as ArrowForwardIcon,
   LibraryBooks as LibraryIcon,
   SmartToy as AITutorIcon,
+  ClassOutlined as MyCoursesIcon,
 } from '@mui/icons-material';
 import { PageHeader, StatCard, LoadingSpinner, EmptyState } from '../../components';
 import { useAuth } from '../../hooks';
@@ -28,6 +29,7 @@ const StudentDashboard = () => {
   const [stats, setStats] = useState({
     materials: { total: 0, byType: [], recentlyAdded: 0 },
     feedbacks: { total: 0, pending: 0, resolved: 0, byCategory: [] },
+    enrollments: { enrolledCourses: 0 },
   });
   const [recentFeedbacks, setRecentFeedbacks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +60,7 @@ const StudentDashboard = () => {
 
   const quickActions = [
     { label: 'AI Tutor', icon: <AITutorIcon />, path: '/student/ai-tutor', color: 'warning' },
+    { label: 'My Courses', icon: <MyCoursesIcon />, path: '/student/my-courses', color: 'info' },
     { label: 'Search Materials', icon: <SearchIcon />, path: '/student/search', color: 'primary' },
     { label: 'Submit Feedback', icon: <AddIcon />, path: '/student/feedback/new', color: 'secondary' },
     { label: 'My Feedbacks', icon: <FeedbackIcon />, path: '/student/feedbacks', color: 'info' },
@@ -83,6 +86,16 @@ const StudentDashboard = () => {
 
       {/* Stats Grid */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Enrolled Courses"
+            value={stats.enrollments?.enrolledCourses || 0}
+            icon={<MyCoursesIcon fontSize="large" />}
+            color="info.main"
+            onClick={() => navigate('/student/my-courses')}
+            subtitle="Active enrollments"
+          />
+        </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Total Materials"
