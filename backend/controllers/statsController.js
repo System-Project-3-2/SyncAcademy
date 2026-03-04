@@ -5,6 +5,8 @@
 import User from "../models/userModel.js";
 import Material from "../models/materialModel.js";
 import Feedback from "../models/feedbackModel.js";
+import Enrollment from "../models/enrollmentModel.js";
+import Course from "../models/courseModel.js";
 
 /**
  * Get admin dashboard statistics
@@ -58,6 +60,9 @@ export const getAdminStats = async (req, res) => {
       createdAt: { $gte: sevenDaysAgo },
     });
 
+    // Enrollment stats
+    const totalEnrollments = await Enrollment.countDocuments({ status: "active" });
+
     res.status(200).json({
       users: {
         total: totalUsers,
@@ -78,6 +83,9 @@ export const getAdminStats = async (req, res) => {
         resolved: resolvedFeedbacks,
         byCategory: feedbacksByCategory,
         recentlyAdded: recentFeedbacks,
+      },
+      enrollments: {
+        total: totalEnrollments,
       },
     });
   } catch (error) {
@@ -133,6 +141,22 @@ export const getTeacherStats = async (req, res) => {
       status: "pending",
     });
 
+    // Enrollment stats: students enrolled in teacher's courses
+    const teacherCourses = await Course.find({ createdBy: teacherId }).select("_id courseNo courseTitle");
+    const teacherCourseIds = teacherCourses.map((c) => c._id);
+    const enrolledStudentsTotal = await Enrollment.countDocuments({
+      course: { $in: teacherCourseIds },
+      status: "active",
+    });
+
+    // Enrollment count per course
+    const enrollmentsByCourse = await Promise.all(
+      teacherCourses.map(async (c) => {
+        const count = await Enrollment.countDocuments({ course: c._id, status: "active" });
+        return { courseId: c._id, courseNo: c.courseNo, courseTitle: c.courseTitle, enrolledStudents: count };
+      })
+    );
+
     res.status(200).json({
       materials: {
         total: totalMaterials,
@@ -145,6 +169,10 @@ export const getTeacherStats = async (req, res) => {
         resolved: resolvedFeedbacks,
         respondedByYou: respondedByTeacher,
         recentPending: recentFeedbacks,
+      },
+      enrollments: {
+        totalStudents: enrolledStudentsTotal,
+        byCourse: enrollmentsByCourse,
       },
     });
   } catch (error) {
@@ -200,6 +228,12 @@ export const getStudentStats = async (req, res) => {
       createdAt: { $gte: sevenDaysAgo },
     });
 
+    // Enrollment stats for student
+    const enrolledCourses = await Enrollment.countDocuments({
+      student: studentId,
+      status: "active",
+    });
+
     res.status(200).json({
       materials: {
         total: totalMaterials,
@@ -211,6 +245,9 @@ export const getStudentStats = async (req, res) => {
         pending: pendingFeedbacks,
         resolved: resolvedFeedbacks,
         byCategory: feedbacksByCategory,
+      },
+      enrollments: {
+        enrolledCourses,
       },
     });
   } catch (error) {
