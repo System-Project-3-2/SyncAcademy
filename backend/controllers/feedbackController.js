@@ -2,15 +2,46 @@ import Feedback from "../models/feedbackModel.js";
 import User from "../models/userModel.js";
 import { sendEmail } from "../utils/sendEmail.js";
 
+/**
+ * Get all teachers (for private feedback dropdown)
+ * @route GET /api/feedbacks/teachers
+ * @access Student
+ */
+export const getTeachers = async (req, res) => {
+  try {
+    const teachers = await User.find({ role: "teacher", isVerified: true })
+      .select("name email avatar")
+      .sort("name");
+    res.json(teachers);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const createFeedback = async (req, res) => {
   try {
-    const { title, message, category } = req.body;
+    const { title, message, category, targetTeacher } = req.body;
+
+    const isPrivate = category === "Private Feedback";
+
+    if (isPrivate && !targetTeacher) {
+      return res.status(400).json({ message: "Please select a teacher for private feedback" });
+    }
+
+    if (isPrivate) {
+      const teacher = await User.findOne({ _id: targetTeacher, role: "teacher" });
+      if (!teacher) {
+        return res.status(400).json({ message: "Selected teacher not found" });
+      }
+    }
 
     const studentFeedback = {
       student: req.user._id,
       title,
       message,
       category,
+      isPrivate,
+      ...(isPrivate && { targetTeacher }),
     };
 
     const feedback = await Feedback.create(studentFeedback);
@@ -61,11 +92,21 @@ export const getAllFeedbacks = async (req, res) => {
     if (status && status !== "all") filter.status = status;
     if (category && category !== "all") filter.category = category;
 
+    // Teachers can only see: non-private feedbacks + private feedbacks targeted to them
+    // Admins can see everything
+    if (req.user.role === "teacher") {
+      filter.$or = [
+        { isPrivate: { $ne: true } },
+        { isPrivate: true, targetTeacher: req.user._id },
+      ];
+    }
+
     // If no pagination params, return all (backward compatible)
     if (!page && !limit) {
       const feedbacks = await Feedback.find(filter)
         .populate("student", "name email")
         .populate("respondedBy", "name email")
+        .populate("targetTeacher", "name email")
         .sort(sort);
       return res.json(feedbacks);
     }
@@ -78,6 +119,7 @@ export const getAllFeedbacks = async (req, res) => {
     const feedbacks = await Feedback.find(filter)
       .populate("student", "name email")
       .populate("respondedBy", "name email")
+      .populate("targetTeacher", "name email")
       .sort(sort)
       .skip(skip)
       .limit(limitNum);

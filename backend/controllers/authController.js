@@ -7,7 +7,7 @@ import { detectRoleFromEmail } from "../utils/detectRoleFromEmail.js";
 
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, idNumber } = req.body;
 
     const role = detectRoleFromEmail(email);
     if (!role) {
@@ -18,6 +18,15 @@ export const registerUser = async (req, res) => {
 
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
+    }
+
+    // Validate and check uniqueness of idNumber
+    if (!idNumber || !/^\d{7}$/.test(idNumber)) {
+      return res.status(400).json({ message: "ID number must be exactly 7 digits" });
+    }
+    const existingId = await User.findOne({ idNumber });
+    if (existingId) {
+      return res.status(400).json({ message: "This ID number is already in use" });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -31,6 +40,7 @@ export const registerUser = async (req, res) => {
       email,
       password: hashedPassword,
       role,
+      idNumber,
       otp,
       otpExpiry,
     };
