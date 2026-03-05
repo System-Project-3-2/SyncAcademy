@@ -50,6 +50,7 @@ import {
   ContentCopy as CopyIcon,
   Refresh as RefreshIcon,
   Key as KeyIcon,
+  Forum as StreamIcon,
 } from '@mui/icons-material';
 import { PageHeader, EmptyState, PaginationControl } from '../../components';
 import { courseService } from '../../services';
@@ -60,7 +61,7 @@ import toast from 'react-hot-toast';
 const SEMESTERS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 
 // Course Card Component
-const CourseCard = ({ course, onEdit, onDelete, onViewStudents, canEdit, canDelete }) => {
+const CourseCard = ({ course, onEdit, onDelete, onViewStudents, onViewStream, canEdit, canDelete }) => {
   const theme = useTheme();
 
   return (
@@ -226,6 +227,21 @@ const CourseCard = ({ course, onEdit, onDelete, onViewStudents, canEdit, canDele
                 }}
               >
                 <PeopleIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {onViewStream && (
+            <Tooltip title="View Notice & Discussion">
+              <IconButton
+                size="small"
+                color="secondary"
+                onClick={() => onViewStream(course)}
+                sx={{
+                  bgcolor: alpha(theme.palette.secondary.main, 0.08),
+                  '&:hover': { bgcolor: alpha(theme.palette.secondary.main, 0.15) },
+                }}
+              >
+                <StreamIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
@@ -685,6 +701,7 @@ const CourseManagement = () => {
                   onEdit={(c) => setFormDialog({ open: true, course: c })}
                   onDelete={(c) => setDeleteDialog({ open: true, course: c })}
                   onViewStudents={(c) => navigate(`/${userRole}/courses/${c._id}/students`)}
+                  onViewStream={(c) => navigate(`/${userRole}/courses/${c._id}/stream`)}                  
                 />
               </Grid>
             ))}
