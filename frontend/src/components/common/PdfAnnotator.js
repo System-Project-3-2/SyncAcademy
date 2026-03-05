@@ -4,6 +4,7 @@
  * Teacher can draw, erase, change color/size, navigate pages, and save.
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
 import {
   Dialog,
   DialogTitle,
@@ -18,6 +19,7 @@ import {
   ToggleButtonGroup,
   CircularProgress,
   Tooltip,
+  Alert,
   useTheme,
 } from '@mui/material';
 import {
@@ -31,6 +33,9 @@ import {
 } from '@mui/icons-material';
 import { jsPDF } from 'jspdf';
 
+// Set worker source once at module level — serves from public/ folder
+pdfjsLib.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
+
 const COLORS = ['#FF0000', '#0000FF', '#00AA00', '#FF6600', '#000000', '#9C27B0'];
 
 const PdfAnnotator = ({ open, onClose, fileUrl, fileName, onSave }) => {
@@ -43,6 +48,7 @@ const PdfAnnotator = ({ open, onClose, fileUrl, fileName, onSave }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
   const scale = 1.5;
 
@@ -65,21 +71,30 @@ const PdfAnnotator = ({ open, onClose, fileUrl, fileName, onSave }) => {
 
     const loadPdf = async () => {
       setLoading(true);
-      try {
-        const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+      setLoadError('');
+      setPdfDoc(null);
+      setTotalPages(0);
+      setCurrentPage(1);
+      annotationsRef.current = {};
+      undoStackRef.current = {};
 
-        const loadingTask = pdfjsLib.getDocument(fileUrl);
+      try {
+        // Fetch as ArrayBuffer to reliably handle remote URLs (Cloudinary, etc.)
+        const response = await fetch(fileUrl);
+        if (!response.ok) throw new Error(`Failed to fetch PDF: HTTP ${response.status}`);
+        const arrayBuffer = await response.arrayBuffer();
+
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
         const pdf = await loadingTask.promise;
+
         if (!cancelled) {
           setPdfDoc(pdf);
           setTotalPages(pdf.numPages);
           setCurrentPage(1);
-          annotationsRef.current = {};
-          undoStackRef.current = {};
         }
       } catch (err) {
-        console.error('Failed to load PDF:', err);
+        console.error('PdfAnnotator: Failed to load PDF:', err);
+        if (!cancelled) setLoadError(err.message || 'Failed to load PDF');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -386,6 +401,12 @@ const PdfAnnotator = ({ open, onClose, fileUrl, fileName, onSave }) => {
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
             <CircularProgress />
             <Typography sx={{ ml: 2 }}>Loading PDF...</Typography>
+          </Box>
+        ) : loadError ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', p: 3 }}>
+            <Alert severity="error" sx={{ maxWidth: 500 }}>
+              <strong>Failed to load PDF</strong><br />{loadError}
+            </Alert>
           </Box>
         ) : (
           <Box sx={{ position: 'relative', display: 'inline-block', my: 2 }}>

@@ -452,21 +452,14 @@ const AssignmentDetail = () => {
         </DialogActions>
       </Dialog>
 
-      {/* PDF Annotator Dialog */}
-      <Dialog open={annotatorOpen} onClose={() => { setAnnotatorOpen(false); setAnnotatorTarget(null); }} maxWidth="lg" fullWidth>
-        <DialogTitle>
-          Evaluate Submission — {annotatorTarget?.student?.name}
-        </DialogTitle>
-        <DialogContent sx={{ p: 0, height: '75vh' }}>
-          {annotatorTarget?.fileUrl && (
-            <PdfAnnotator
-              fileUrl={annotatorTarget.fileUrl}
-              onSave={handleSaveEvaluated}
-              onCancel={() => { setAnnotatorOpen(false); setAnnotatorTarget(null); }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* PDF Annotator */}
+      <PdfAnnotator
+        open={annotatorOpen}
+        onClose={() => { setAnnotatorOpen(false); setAnnotatorTarget(null); }}
+        fileUrl={annotatorTarget?.fileUrl}
+        fileName={annotatorTarget?.fileName}
+        onSave={handleSaveEvaluated}
+      />
     </Box>
   );
 };

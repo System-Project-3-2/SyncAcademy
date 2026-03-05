@@ -21,10 +21,12 @@ import {
 import {
   Search as SearchIcon,
   Grade as GradeIcon,
+  Description as ScriptIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { assignmentService } from '../../services';
 import { LoadingSpinner, PageHeader } from '../../components';
+import { Link as MuiLink } from '@mui/material';
 
 const formatDate = (date) => {
   if (!date) return '—';
@@ -157,7 +159,7 @@ const MyGrades = () => {
                     Mark
                   </TableSortLabel>
                 </TableCell>
-                <TableCell>Max Marks</TableCell>
+                <TableCell>Evaluated Script</TableCell>
                 <TableCell>
                   <TableSortLabel active={orderBy === 'percentage'} direction={orderBy === 'percentage' ? order : 'asc'} onClick={() => handleSort('percentage')}>
                     Percentage
@@ -198,7 +200,16 @@ const MyGrades = () => {
                         <Chip label="Pending" size="small" variant="outlined" />
                       )}
                     </TableCell>
-                    <TableCell>{sub.assignment?.totalMarks || '—'}</TableCell>
+                    <TableCell>
+                      {sub.evaluatedFileUrl && sub.showEvaluatedToStudent ? (
+                        <MuiLink href={sub.evaluatedFileUrl} target="_blank" rel="noopener noreferrer" underline="hover" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <ScriptIcon fontSize="small" />
+                          View Script
+                        </MuiLink>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">Not available</Typography>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {pct !== null ? (
                         <Chip

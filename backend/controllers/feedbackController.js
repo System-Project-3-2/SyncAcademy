@@ -92,13 +92,15 @@ export const getAllFeedbacks = async (req, res) => {
     if (status && status !== "all") filter.status = status;
     if (category && category !== "all") filter.category = category;
 
-    // Teachers can only see: non-private feedbacks + private feedbacks targeted to them
-    // Admins can see everything
+    // Teachers: see non-private + private feedbacks targeted to them
+    // Admins: see non-private only (private is between student and teacher only)
     if (req.user.role === "teacher") {
       filter.$or = [
         { isPrivate: { $ne: true } },
         { isPrivate: true, targetTeacher: req.user._id },
       ];
+    } else if (req.user.role === "admin") {
+      filter.isPrivate = { $ne: true };
     }
 
     // If no pagination params, return all (backward compatible)

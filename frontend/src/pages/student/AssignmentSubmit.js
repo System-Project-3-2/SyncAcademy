@@ -225,7 +225,7 @@ const AssignmentSubmit = () => {
           )}
 
           {/* Evaluated Script */}
-          {submission && submission.evaluatedFileUrl && (
+          {submission && submission.evaluatedFileUrl && submission.showEvaluatedToStudent && (
             <Paper variant="outlined" sx={{ p: 2, mb: 2, borderColor: 'secondary.main' }}>
               <Typography variant="subtitle2" color="secondary.main" sx={{ mb: 1 }}>
                 Evaluated Script
