@@ -47,6 +47,15 @@ const feedbackService = {
     });
     return response.data;
   },
+
+  /**
+   * Get all teachers (for private feedback dropdown)
+   * @returns {Promise} Array of teachers { _id, name, email }
+   */
+  getTeachers: async () => {
+    const response = await api.get('/feedbacks/teachers');
+    return response.data;
+  },
 };
 
 export default feedbackService;

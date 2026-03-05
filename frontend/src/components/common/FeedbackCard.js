@@ -21,6 +21,7 @@ import {
   CheckCircle as ResolvedIcon,
   HourglassEmpty as PendingIcon,
   Person as PersonIcon,
+  Lock as LockIcon,
 } from '@mui/icons-material';
 
 const FeedbackCard = ({
@@ -39,6 +40,7 @@ const FeedbackCard = ({
       'Missing Material': 'warning',
       'Wrong Content': 'error',
       'Technical Issue': 'info',
+      'Private Feedback': 'secondary',
       'Other': 'default',
     };
     return colors[category] || 'default';
@@ -88,6 +90,15 @@ const FeedbackCard = ({
                 color={getCategoryColor(feedback.category)}
                 variant="outlined"
               />
+              {feedback.isPrivate && (
+                <Chip
+                  size="small"
+                  icon={<LockIcon />}
+                  label="Private"
+                  color="secondary"
+                  variant="filled"
+                />
+              )}
             </Box>
             <Typography variant="h6" gutterBottom>
               {feedback.title}
@@ -97,6 +108,14 @@ const FeedbackCard = ({
                 <PersonIcon fontSize="small" color="action" />
                 <Typography variant="body2" color="text.secondary">
                   {feedback.student.name} ({feedback.student.email})
+                </Typography>
+              </Box>
+            )}
+            {feedback.isPrivate && feedback.targetTeacher && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                <LockIcon fontSize="small" color="secondary" />
+                <Typography variant="body2" color="text.secondary">
+                  To: {feedback.targetTeacher.name} ({feedback.targetTeacher.email})
                 </Typography>
               </Box>
             )}

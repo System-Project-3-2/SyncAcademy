@@ -21,8 +21,18 @@ const feedbackSchema = new mongoose.Schema(
 
     category: {
       type: String,
-      enum: ["Missing Material", "Wrong Content", "Technical Issue", "Other"],
+      enum: ["Missing Material", "Wrong Content", "Technical Issue", "Private Feedback", "Other"],
       default: "Other",
+    },
+
+    isPrivate: {
+      type: Boolean,
+      default: false,
+    },
+
+    targetTeacher: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
 
     status: {
