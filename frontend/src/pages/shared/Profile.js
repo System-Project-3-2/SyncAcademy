@@ -16,6 +16,7 @@ import {
   IconButton,
   Avatar,
   CircularProgress,
+  Chip,
 } from '@mui/material';
 import {
   Person as UserIcon,
@@ -26,6 +27,7 @@ import {
   Visibility as EyeIcon,
   VisibilityOff as EyeOffIcon,
   CameraAlt as CameraIcon,
+  Star as StarIcon,
 } from '@mui/icons-material';
 import { userService } from '../../services';
 import { useAuth } from '../../hooks';
@@ -250,6 +252,14 @@ const Profile = () => {
                       {user.role}
                     </Typography>
                   </Box>
+                  {(user.contribution !== undefined && user.contribution !== null) && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5, gap: 0.5 }}>
+                      <StarIcon sx={{ fontSize: 16, color: user.contribution > 0 ? 'success.main' : user.contribution < 0 ? 'error.main' : 'text.disabled' }} />
+                      <Typography variant="caption" fontWeight={600} color={user.contribution > 0 ? 'success.main' : user.contribution < 0 ? 'error.main' : 'text.disabled'}>
+                        {user.contribution} Contribution Point{user.contribution !== 1 ? 's' : ''}
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               </Paper>
 
