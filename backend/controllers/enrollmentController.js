@@ -8,25 +8,31 @@ import Material from "../models/materialModel.js";
 import User from "../models/userModel.js";
 
 /**
- * Enroll in a course using course code (courseNo)
+ * Enroll in a course using secret course code
  * @route POST /api/enrollments/enroll
  * @access Student
  */
 export const enrollInCourse = async (req, res) => {
   try {
-    const { courseNo } = req.body;
+    const { courseCode } = req.body;
     const studentId = req.user._id;
 
-    if (!courseNo) {
+    // Support both courseCode (new) and courseNo (legacy) field names
+    const code = courseCode || req.body.courseNo;
+
+    if (!code) {
       return res.status(400).json({ message: "Course code is required" });
     }
 
-    // Find the course by courseNo
-    const course = await Course.findOne({ courseNo: courseNo.trim() });
+    // Try finding by courseCode first, then fall back to courseNo for backward compatibility
+    let course = await Course.findOne({ courseCode: code.trim() });
+    if (!course) {
+      course = await Course.findOne({ courseNo: code.trim() });
+    }
     if (!course) {
       return res
         .status(404)
-        .json({ message: "No course found with that code" });
+        .json({ message: "No course found with that code. Please check the code and try again." });
     }
 
     // Check if already enrolled
@@ -216,6 +222,7 @@ export const getCourseStudents = async (req, res) => {
         _id: course._id,
         courseNo: course.courseNo,
         courseTitle: course.courseTitle,
+        courseCode: course.courseCode,
       },
       students,
       totalStudents: students.length,

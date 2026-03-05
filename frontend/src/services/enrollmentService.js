@@ -6,12 +6,12 @@ import api from './api';
 
 const enrollmentService = {
   /**
-   * Enroll in a course using course code
-   * @param {string} courseNo - The course code to enroll in
+   * Enroll in a course using secret course code
+   * @param {string} courseCode - The secret course code to enroll with
    * @returns {Promise} API response with enrollment data
    */
-  enrollInCourse: async (courseNo) => {
-    const response = await api.post('/enrollments/enroll', { courseNo });
+  enrollInCourse: async (courseCode) => {
+    const response = await api.post('/enrollments/enroll', { courseCode });
     return response.data;
   },
 
