@@ -40,6 +40,7 @@ const UploadMaterial = () => {
   const isDark = muiTheme.palette.mode === 'dark';
   
   const [formData, setFormData] = useState({
+    title: '',
     courseTitle: '',
     courseNo: '',
     type: '',
@@ -124,6 +125,10 @@ const UploadMaterial = () => {
       setError('Please enter a course number');
       return false;
     }
+    if (!formData.title.trim()) {
+      setError('Please enter a material title');
+      return false;
+    }
     if (!formData.type) {
       setError('Please select a material type');
       return false;
@@ -146,6 +151,7 @@ const UploadMaterial = () => {
 
     try {
       const uploadData = new FormData();
+      uploadData.append('title', formData.title);
       uploadData.append('courseTitle', formData.courseTitle);
       uploadData.append('courseNo', formData.courseNo);
       uploadData.append('type', formData.type);
@@ -277,6 +283,18 @@ const UploadMaterial = () => {
               placeholder="e.g., CSE101, MATH201"
             />
           )}
+          sx={{ mb: 3 }}
+        />
+
+        <TextField
+          fullWidth
+          label="Material Title"
+          name="title"
+          value={formData.title}
+          onChange={handleChange}
+          required
+          placeholder="e.g., Lecture 3 - Sorting Algorithms"
+          helperText="Give a descriptive title for this material"
           sx={{ mb: 3 }}
         />
 

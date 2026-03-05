@@ -38,8 +38,9 @@ const MaterialCard = ({
   const isDark = theme.palette.mode === 'dark';
 
   // Resilient field access — works for both search results and Materials page context
-  const title = material.courseTitle || material.title || 'Untitled Material';
+  const title = material.title || material.courseTitle || 'Untitled Material';
   const course = material.courseNo || material.course || '';
+  const courseTitle = material.courseTitle || '';
   const relevance = material.relevanceScore;
 
   const handleDownload = async () => {
@@ -106,13 +107,20 @@ const MaterialCard = ({
                 {title}
               </Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                {course && (
+                {courseTitle && (
                   <Chip
                     size="small"
                     icon={<CourseIcon />}
-                    label={course}
+                    label={courseTitle}
                     variant="outlined"
                     color="primary"
+                  />
+                )}
+                {course && (
+                  <Chip
+                    size="small"
+                    label={course}
+                    variant="outlined"
                   />
                 )}
                 {material.type && (

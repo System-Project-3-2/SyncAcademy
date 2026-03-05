@@ -169,7 +169,7 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
           <Typography
             variant="subtitle1"
             fontWeight={600}
-            title={material.courseTitle}
+            title={material.title || material.courseTitle}
             sx={{
               color: 'text.primary',
               lineHeight: 1.3,
@@ -180,14 +180,14 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
               overflow: 'hidden',
             }}
           >
-            {material.courseTitle}
+            {material.title || material.courseTitle}
           </Typography>
           <Typography
             variant="body2"
             color="text.secondary"
             sx={{ fontWeight: 500 }}
           >
-            {material.courseNo}
+            {material.courseTitle} • {material.courseNo}
           </Typography>
         </Box>
       </Box>
@@ -429,6 +429,7 @@ const CourseGroup = ({ courseNo, courseTitle, materials, expandedCourse, onExpan
 // Edit Dialog Component
 const EditMaterialDialog = ({ open, material, onClose, onSave }) => {
   const [formData, setFormData] = useState({
+    title: '',
     courseTitle: '',
     courseNo: '',
     type: '',
@@ -438,6 +439,7 @@ const EditMaterialDialog = ({ open, material, onClose, onSave }) => {
   useEffect(() => {
     if (material) {
       setFormData({
+        title: material.title || '',
         courseTitle: material.courseTitle || '',
         courseNo: material.courseNo || '',
         type: material.type || '',
@@ -483,6 +485,15 @@ const EditMaterialDialog = ({ open, material, onClose, onSave }) => {
       </DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+          <TextField
+            fullWidth
+            label="Material Title"
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
+            variant="outlined"
+            placeholder="e.g., Lecture 3 - Sorting Algorithms"
+          />
           <TextField
             fullWidth
             label="Course Title"
@@ -638,6 +649,7 @@ const Materials = () => {
     return materials.filter((material) => {
       const matchesSearch =
         !searchQuery ||
+        material.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         material.courseTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         material.courseNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         material.type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1080,7 +1092,7 @@ const Materials = () => {
         <DialogContent>
           <DialogContentText>
             Are you sure you want to delete{' '}
-            <strong>"{deleteDialog.material?.courseTitle}"</strong>? This action cannot
+            <strong>"{deleteDialog.material?.title || deleteDialog.material?.courseTitle}"</strong>? This action cannot
             be undone and will also remove all associated data.
           </DialogContentText>
         </DialogContent>
@@ -1121,7 +1133,7 @@ const Materials = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
             <ViewIcon color="info" />
             <Typography variant="h6" noWrap fontWeight={600}>
-              {previewDialog.material?.courseTitle || 'Preview'}
+              {previewDialog.material?.title || previewDialog.material?.courseTitle || 'Preview'}
             </Typography>
           </Box>
           <IconButton onClick={() => setPreviewDialog({ open: false, material: null })}>

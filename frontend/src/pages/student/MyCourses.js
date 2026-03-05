@@ -337,19 +337,21 @@ const MyCourses = () => {
         </DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
-            Enter the course code provided by your teacher to join a course.
+            Enter the secret enrollment code provided by your teacher to join a course.
           </DialogContentText>
           <TextField
             autoFocus
             fullWidth
-            label="Course Code"
-            placeholder="e.g., CSE101"
+            label="Enrollment Code"
+            placeholder="e.g., A3F7B2C1"
             value={courseCode}
-            onChange={(e) => setCourseCode(e.target.value)}
+            onChange={(e) => setCourseCode(e.target.value.toUpperCase())}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleJoinCourse();
             }}
             disabled={isJoining}
+            helperText="Ask your teacher for the secret code"
+            inputProps={{ style: { fontFamily: 'monospace', letterSpacing: 2, fontWeight: 700 } }}
             sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
           />
         </DialogContent>

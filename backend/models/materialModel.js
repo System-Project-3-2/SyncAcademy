@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const materialSchema = new mongoose.Schema(
   {
+    title: { type: String, default: "" },
     courseTitle: { type: String, required: true },
     type: { type: String, required: true },
     courseNo: { type: String, required: true },

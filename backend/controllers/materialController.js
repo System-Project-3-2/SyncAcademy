@@ -17,7 +17,7 @@ import path from "path";
 // Upload material (Teacher/Admin only)
 export const uploadMaterial = async (req, res) => {
   try {
-    const { courseTitle, courseNo, type } = req.body;
+    const { title, courseTitle, courseNo, type } = req.body;
     const file = req.file;
 
     if (!req.file) {
@@ -43,6 +43,7 @@ export const uploadMaterial = async (req, res) => {
     });
 
     const material = {
+      title: title || "",
       courseTitle,
       courseNo,
       type,
@@ -94,6 +95,7 @@ export const getAllMaterials = async (req, res) => {
     }
     if (search) {
       filter.$or = [
+        { title: { $regex: search, $options: "i" } },
         { courseTitle: { $regex: search, $options: "i" } },
         { courseNo: { $regex: search, $options: "i" } },
         { type: { $regex: search, $options: "i" } },
@@ -166,7 +168,7 @@ export const getMaterialById = async (req, res) => {
 export const updateMaterial = async (req, res) => {
   try {
     const { id } = req.params;
-    const { courseTitle, courseNo, type } = req.body;
+    const { title, courseTitle, courseNo, type } = req.body;
     const { role, _id } = req.user;
 
     const material = await Material.findById(id);
@@ -181,6 +183,7 @@ export const updateMaterial = async (req, res) => {
     }
 
     // Update only provided fields
+    if (title !== undefined) material.title = title;
     if (courseTitle) material.courseTitle = courseTitle;
     if (courseNo) material.courseNo = courseNo;
     if (type) material.type = type;
