@@ -36,6 +36,7 @@ import {
   Close as CloseIcon,
   LoginOutlined as JoinIcon,
   CalendarToday as DateIcon,
+  Forum as StreamIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import {
@@ -267,15 +268,26 @@ const MyCourses = () => {
                   </Box>
                 </CardContent>
                 <CardActions sx={{ px: 3, pb: 2, pt: 0, justifyContent: 'space-between' }}>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<MaterialsIcon />}
-                    onClick={() => navigate('/student/materials')}
-                    sx={{ borderRadius: 2, fontWeight: 600 }}
-                  >
-                    Materials
-                  </Button>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<MaterialsIcon />}
+                      onClick={() => navigate('/student/materials')}
+                      sx={{ borderRadius: 2, fontWeight: 600 }}
+                    >
+                      Materials
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      startIcon={<StreamIcon />}
+                      onClick={() => navigate(`/student/courses/${course._id}/stream`)}
+                      sx={{ borderRadius: 2, fontWeight: 600 }}
+                    >
+                      Notice
+                    </Button>
+                  </Box>
                   <Tooltip title="Unenroll from course">
                     <IconButton
                       size="small"
