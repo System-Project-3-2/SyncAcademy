@@ -14,6 +14,7 @@ import { Login, Register, ForgotPassword, ResetPassword } from '../pages/auth';
 import Materials from '../pages/shared/Materials';
 import Profile from '../pages/shared/Profile';
 import AITutor from '../pages/shared/AITutor';
+import CourseStream from '../pages/shared/CourseStream';
 import {
   StudentDashboard,
   SearchMaterials,
@@ -77,6 +78,7 @@ const AppRouter = () => {
         <Route path="ai-tutor" element={<AITutor />} />
         <Route path="feedback/new" element={<SubmitFeedback />} />
         <Route path="feedbacks" element={<MyFeedbacks />} />
+        <Route path="courses/:courseId/stream" element={<CourseStream />} />
       </Route>
 
       {/* Teacher Routes */}
@@ -96,6 +98,7 @@ const AppRouter = () => {
         <Route path="materials/upload" element={<UploadMaterial />} />
         <Route path="courses" element={<CourseManagement />} />
         <Route path="courses/:courseId/students" element={<CourseStudents />} />
+        <Route path="courses/:courseId/stream" element={<CourseStream />} />
         <Route path="feedbacks" element={<TeacherFeedbacks />} />
         <Route path="search" element={<SharedSearchMaterials />} />
       </Route>
@@ -116,6 +119,7 @@ const AppRouter = () => {
         <Route path="feedbacks" element={<AdminFeedbacks />} />
         <Route path="courses" element={<CourseManagement />} />
         <Route path="courses/:courseId/students" element={<CourseStudents />} />
+        <Route path="courses/:courseId/stream" element={<CourseStream />} />
         <Route path="materials/upload" element={<UploadMaterial />} />
         <Route path="search" element={<SharedSearchMaterials />} />
         <Route path="profile" element={<Profile />} />
