@@ -7,6 +7,8 @@ import Material from "../models/materialModel.js";
 import Feedback from "../models/feedbackModel.js";
 import Enrollment from "../models/enrollmentModel.js";
 import Course from "../models/courseModel.js";
+import Assignment from "../models/assignmentModel.js";
+import Submission from "../models/submissionModel.js";
 
 /**
  * Get admin dashboard statistics
@@ -157,6 +159,14 @@ export const getTeacherStats = async (req, res) => {
       })
     );
 
+    // Assignment stats for teacher
+    const totalAssignments = await Assignment.countDocuments({ createdBy: teacherId });
+    const allTeacherAssignmentIds = await Assignment.find({ createdBy: teacherId }).distinct("_id");
+    const pendingGrading = await Submission.countDocuments({
+      assignment: { $in: allTeacherAssignmentIds },
+      grade: null,
+    });
+
     res.status(200).json({
       materials: {
         total: totalMaterials,
@@ -173,6 +183,10 @@ export const getTeacherStats = async (req, res) => {
       enrollments: {
         totalStudents: enrolledStudentsTotal,
         byCourse: enrollmentsByCourse,
+      },
+      assignments: {
+        total: totalAssignments,
+        pendingGrading,
       },
     });
   } catch (error) {
@@ -234,6 +248,15 @@ export const getStudentStats = async (req, res) => {
       status: "active",
     });
 
+    // Assignment stats for student
+    const enrolledCourseIds = (await Enrollment.find({ student: studentId, status: "active" }).distinct("course"));
+    const studentAssignments = await Assignment.find({ course: { $in: enrolledCourseIds }, isPublished: true }).select("_id dueDate").lean();
+    const studentAssignmentIds = studentAssignments.map((a) => a._id);
+    const submittedCount = await Submission.countDocuments({ student: studentId, assignment: { $in: studentAssignmentIds } });
+    const gradedCount = await Submission.countDocuments({ student: studentId, assignment: { $in: studentAssignmentIds }, grade: { $ne: null } });
+    const now = new Date();
+    const dueAssignments = studentAssignments.filter((a) => a.dueDate && new Date(a.dueDate) > now).length;
+
     res.status(200).json({
       materials: {
         total: totalMaterials,
@@ -248,6 +271,12 @@ export const getStudentStats = async (req, res) => {
       },
       enrollments: {
         enrolledCourses,
+      },
+      assignments: {
+        total: studentAssignments.length,
+        due: dueAssignments,
+        submitted: submittedCount,
+        graded: gradedCount,
       },
     });
   } catch (error) {
