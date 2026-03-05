@@ -15,12 +15,15 @@ import Materials from '../pages/shared/Materials';
 import Profile from '../pages/shared/Profile';
 import AITutor from '../pages/shared/AITutor';
 import CourseStream from '../pages/shared/CourseStream';
+import CourseAssignments from '../pages/shared/CourseAssignments';
 import {
   StudentDashboard,
   SearchMaterials,
   SubmitFeedback,
   MyFeedbacks,
   MyCourses,
+  AssignmentSubmit,
+  MyGrades,
 } from '../pages/student';
 
 // Teacher Pages
@@ -29,6 +32,7 @@ import {
   UploadMaterial,
   TeacherFeedbacks,
   CourseStudents,
+  AssignmentDetail,
 } from '../pages/teacher';
 
 // Admin Pages
@@ -78,7 +82,10 @@ const AppRouter = () => {
         <Route path="ai-tutor" element={<AITutor />} />
         <Route path="feedback/new" element={<SubmitFeedback />} />
         <Route path="feedbacks" element={<MyFeedbacks />} />
+        <Route path="my-grades" element={<MyGrades />} />
         <Route path="courses/:courseId/stream" element={<CourseStream />} />
+        <Route path="courses/:courseId/assignments" element={<CourseAssignments />} />
+        <Route path="courses/:courseId/assignments/:assignmentId/submit" element={<AssignmentSubmit />} />
       </Route>
 
       {/* Teacher Routes */}
@@ -99,6 +106,8 @@ const AppRouter = () => {
         <Route path="courses" element={<CourseManagement />} />
         <Route path="courses/:courseId/students" element={<CourseStudents />} />
         <Route path="courses/:courseId/stream" element={<CourseStream />} />
+        <Route path="courses/:courseId/assignments" element={<CourseAssignments />} />
+        <Route path="courses/:courseId/assignments/:assignmentId" element={<AssignmentDetail />} />
         <Route path="feedbacks" element={<TeacherFeedbacks />} />
         <Route path="search" element={<SharedSearchMaterials />} />
       </Route>
@@ -120,6 +129,8 @@ const AppRouter = () => {
         <Route path="courses" element={<CourseManagement />} />
         <Route path="courses/:courseId/students" element={<CourseStudents />} />
         <Route path="courses/:courseId/stream" element={<CourseStream />} />
+        <Route path="courses/:courseId/assignments" element={<CourseAssignments />} />
+        <Route path="courses/:courseId/assignments/:assignmentId" element={<AssignmentDetail />} />
         <Route path="materials/upload" element={<UploadMaterial />} />
         <Route path="search" element={<SharedSearchMaterials />} />
         <Route path="profile" element={<Profile />} />

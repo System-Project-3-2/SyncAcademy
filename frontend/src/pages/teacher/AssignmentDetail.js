@@ -29,18 +29,12 @@ import {
   Tooltip,
   Divider,
   Link as MuiLink,
-  useTheme,
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
   CalendarToday as CalendarIcon,
   Grade as GradeIcon,
   AttachFile as AttachIcon,
-  CheckCircle as CheckIcon,
-  Schedule as ScheduleIcon,
-  Warning as WarningIcon,
-  Download as DownloadIcon,
-  Person as PersonIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks';
@@ -58,7 +52,6 @@ const AssignmentDetail = () => {
   const { courseId, assignmentId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const theme = useTheme();
 
   const [assignment, setAssignment] = useState(null);
   const [submissions, setSubmissions] = useState([]);

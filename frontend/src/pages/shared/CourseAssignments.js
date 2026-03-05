@@ -20,11 +20,7 @@ import {
   DialogActions,
   TextField,
   CircularProgress,
-  Tooltip,
   Paper,
-  alpha,
-  useTheme,
-  Divider,
   Menu,
   MenuItem,
   ListItemIcon,
@@ -42,7 +38,6 @@ import {
   AttachFile as AttachIcon,
   CheckCircle as CheckIcon,
   Schedule as ScheduleIcon,
-  Warning as WarningIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks';
@@ -79,7 +74,6 @@ const CourseAssignments = () => {
   const { courseId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const theme = useTheme();
   const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
 
   const [assignments, setAssignments] = useState([]);

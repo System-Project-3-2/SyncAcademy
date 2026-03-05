@@ -77,6 +77,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks';
 import { announcementService, discussionService } from '../../services';
 import { LoadingSpinner } from '../../components';
+import { Assignment as AssignmentNavIcon } from '@mui/icons-material';
 
 // ─── Utility helpers ─────────────────────────────────────────────────────────
 
@@ -1839,15 +1840,24 @@ const CourseStream = () => {
         </Paper>
       )}
 
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, display: 'flex', alignItems: 'center' }}>
         <Tabs
           value={activeTab}
           onChange={(_, v) => setActiveTab(v)}
-          sx={{ '& .MuiTab-root': { fontWeight: 600, textTransform: 'none', minHeight: 48 } }}
+          sx={{ flex: 1, '& .MuiTab-root': { fontWeight: 600, textTransform: 'none', minHeight: 48 } }}
         >
           <Tab icon={<NoticeIcon />} iconPosition="start" label="Notice" />
           <Tab icon={<DiscussionIcon />} iconPosition="start" label="Discussion" />
         </Tabs>
+        <Button
+          startIcon={<AssignmentNavIcon />}
+          variant="outlined"
+          size="small"
+          sx={{ ml: 1, textTransform: 'none', whiteSpace: 'nowrap' }}
+          onClick={() => navigate(`/${user?.role}/courses/${courseId}/assignments`)}
+        >
+          Assignments
+        </Button>
       </Box>
 
       {activeTab === 0 && (

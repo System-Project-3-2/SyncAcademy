@@ -18,7 +18,6 @@ import {
   Divider,
   Alert,
   Link as MuiLink,
-  useTheme,
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
@@ -45,7 +44,6 @@ const AssignmentSubmit = () => {
   const { courseId, assignmentId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const theme = useTheme();
 
   const [assignment, setAssignment] = useState(null);
   const [submission, setSubmission] = useState(null);
