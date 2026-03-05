@@ -67,6 +67,7 @@ export const updateProfile = async (req, res) => {
       name: updatedUser.name,
       email: updatedUser.email,
       role: updatedUser.role,
+      idNumber: updatedUser.idNumber || "",
       avatar: updatedUser.avatar,
       contribution: updatedUser.contribution || 0,
       isVerified: updatedUser.isVerified,

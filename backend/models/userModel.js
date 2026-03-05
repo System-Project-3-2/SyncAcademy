@@ -10,6 +10,17 @@ const userSchema = new mongoose.Schema(
       enum: ["teacher", "student", "admin"],
       default: "student",
     },
+    idNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
+      validate: {
+        validator: function (v) {
+          return !v || /^\d{7}$/.test(v);
+        },
+        message: "ID number must be exactly 7 digits",
+      },
+    },
     avatar: { type: String, default: '' },
     contribution: { type: Number, default: 0 },
     isVerified: { type: Boolean, default: false },
