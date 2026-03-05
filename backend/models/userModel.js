@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema(
       default: "student",
     },
     avatar: { type: String, default: '' },
+    contribution: { type: Number, default: 0 },
     isVerified: { type: Boolean, default: false },
     otp: String,
     otpExpiry: Date,
