@@ -14,7 +14,8 @@
     "officeparser": "^5.2.2",
     "openai": "^6.15.0",
     "pdf-parse": "^2.4.5",
-    "pdfjs-dist": "^5.4.530"
+    "pdfjs-dist": "^5.4.530",
+    "pdfkit": "^0.17.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
