@@ -14,3 +14,4 @@ export { default as chatService } from './chatService';
 export { default as enrollmentService } from './enrollmentService';
 export { default as announcementService } from './announcementService';
 export { default as discussionService } from './discussionService';
+export { default as assignmentService } from './assignmentService';
