@@ -45,6 +45,14 @@ const submissionSchema = new mongoose.Schema(
     gradedAt: {
       type: Date,
     },
+    evaluatedFileUrl: {
+      type: String,
+      default: "",
+    },
+    showEvaluatedToStudent: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

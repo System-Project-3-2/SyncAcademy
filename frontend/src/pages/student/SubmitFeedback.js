@@ -15,6 +15,8 @@ import {
   MenuItem,
   Typography,
   Alert,
+  Autocomplete,
+  CircularProgress,
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -29,6 +31,7 @@ const CATEGORIES = [
   { value: 'Missing Material', label: 'Missing Material', description: 'Report missing course materials' },
   { value: 'Wrong Content', label: 'Wrong Content', description: 'Report incorrect content in materials' },
   { value: 'Technical Issue', label: 'Technical Issue', description: 'Report technical problems' },
+  { value: 'Private Feedback', label: 'Private Feedback', description: 'Send private feedback to a specific teacher' },
   { value: 'Other', label: 'Other', description: 'General feedback or queries' },
 ];
 
@@ -39,9 +42,32 @@ const SubmitFeedback = () => {
     title: '',
     message: '',
     category: 'Other',
+    targetTeacher: null,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [teachers, setTeachers] = useState([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
+
+  const isPrivate = formData.category === 'Private Feedback';
+
+  // Fetch teachers when Private Feedback is selected
+  useEffect(() => {
+    if (isPrivate && teachers.length === 0) {
+      const fetchTeachers = async () => {
+        setLoadingTeachers(true);
+        try {
+          const data = await feedbackService.getTeachers();
+          setTeachers(data);
+        } catch (err) {
+          console.error('Error fetching teachers:', err);
+        } finally {
+          setLoadingTeachers(false);
+        }
+      };
+      fetchTeachers();
+    }
+  }, [isPrivate, teachers.length]);
 
   // Unsaved changes guard
   const isDirty = formData.title.trim() !== '' || formData.message.trim() !== '';
@@ -59,7 +85,11 @@ const SubmitFeedback = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'category' && value !== 'Private Feedback' ? { targetTeacher: null } : {}),
+    }));
     setError('');
   };
 
@@ -80,6 +110,10 @@ const SubmitFeedback = () => {
       setError('Message must be at least 20 characters');
       return false;
     }
+    if (isPrivate && !formData.targetTeacher) {
+      setError('Please select a teacher for private feedback');
+      return false;
+    }
     return true;
   };
 
@@ -92,7 +126,15 @@ const SubmitFeedback = () => {
     setError('');
 
     try {
-      await feedbackService.createFeedback(formData);
+      const payload = {
+        title: formData.title,
+        message: formData.message,
+        category: formData.category,
+      };
+      if (isPrivate && formData.targetTeacher) {
+        payload.targetTeacher = formData.targetTeacher._id;
+      }
+      await feedbackService.createFeedback(payload);
       toast.success('Feedback submitted successfully!');
       navigate('/student/feedbacks');
     } catch (err) {
@@ -133,6 +175,7 @@ const SubmitFeedback = () => {
           border: '1px solid',
           borderColor: 'divider',
           maxWidth: 700,
+          mx: 'auto',
         }}
       >
         {error && (
@@ -161,6 +204,37 @@ const SubmitFeedback = () => {
             ))}
           </Select>
         </FormControl>
+
+        {isPrivate && (
+          <Autocomplete
+            options={teachers}
+            loading={loadingTeachers}
+            getOptionLabel={(option) => `${option.name} (${option.email})`}
+            value={formData.targetTeacher}
+            onChange={(_, newValue) => {
+              setFormData((prev) => ({ ...prev, targetTeacher: newValue }));
+              setError('');
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Select Teacher"
+                required
+                placeholder="Search for a teacher..."
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {loadingTeachers ? <CircularProgress size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+            sx={{ mb: 3 }}
+          />
+        )}
 
         <TextField
           fullWidth

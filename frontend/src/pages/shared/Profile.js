@@ -252,6 +252,13 @@ const Profile = () => {
                       {user.role}
                     </Typography>
                   </Box>
+                  {user.idNumber && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5, gap: 0.5 }}>
+                      <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                        ID: {user.idNumber}
+                      </Typography>
+                    </Box>
+                  )}
                   {(user.contribution !== undefined && user.contribution !== null) && (
                     <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5, gap: 0.5 }}>
                       <StarIcon sx={{ fontSize: 16, color: user.contribution > 0 ? 'success.main' : user.contribution < 0 ? 'error.main' : 'text.disabled' }} />

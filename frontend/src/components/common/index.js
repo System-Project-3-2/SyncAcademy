@@ -19,3 +19,4 @@ export {
 } from './ThemeToggle';
 export { default as FilePreviewDialog } from './FilePreviewDialog';
 export { default as PaginationControl } from './PaginationControl';
+export { default as PdfAnnotator } from './PdfAnnotator';

@@ -72,12 +72,14 @@ const getFileTypeIcon = (type) => {
 /**
  * Return an embeddable URL.
  * - Image → direct URL
- * - PDF/DOC/PPT → Google Docs Viewer (most reliable for Cloudinary-hosted files)
+ * - PDF   → direct URL (browser native PDF viewer handles multi-page)
+ * - DOC/PPT → Google Docs Viewer (browsers can't render natively)
  */
 const getPreviewUrl = (url, fileType) => {
   if (!url) return null;
   if (fileType === 'image') return url;
-  if (fileType === 'pdf' || fileType === 'doc' || fileType === 'ppt') {
+  if (fileType === 'pdf') return url;
+  if (fileType === 'doc' || fileType === 'ppt') {
     return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
   }
   return null;
@@ -172,8 +174,9 @@ const FilePreviewDialog = ({ open, onClose, material }) => {
       maxWidth="lg"
       fullWidth
       PaperProps={{
-        sx: { borderRadius: 3, height: '85vh', maxHeight: '85vh' },
+        sx: { borderRadius: 3, height: '85vh', maxHeight: '85vh', mx: 'auto' },
       }}
+      sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
       {/* ── title bar ── */}
       <DialogTitle
