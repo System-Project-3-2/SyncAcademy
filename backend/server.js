@@ -14,11 +14,32 @@ import courseRoutes from "./routes/courseRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import enrollmentRoutes from "./routes/enrollmentRoutes.js";
 import deleteResolvedFeedbacks from './utils/cleanupResolvedFeedbacks.js';
+import Course, { generateCourseCode } from './models/courseModel.js';
 
 deleteResolvedFeedbacks();
 
+// Backfill courseCode for any existing courses that don't have one
+const backfillCourseCodes = async () => {
+  try {
+    const coursesWithoutCode = await Course.find({
+      $or: [{ courseCode: { $exists: false } }, { courseCode: null }, { courseCode: "" }],
+    });
+    if (coursesWithoutCode.length > 0) {
+      for (const course of coursesWithoutCode) {
+        course.courseCode = generateCourseCode();
+        await course.save();
+      }
+      console.log(`[Migration] Generated courseCode for ${coursesWithoutCode.length} existing course(s)`);
+    }
+  } catch (err) {
+    console.warn("[Migration] courseCode backfill skipped:", err.message);
+  }
+};
+
 const app = express();
-connectDB();
+connectDB().then(() => {
+  backfillCourseCodes();
+});
 
 app.use(cors());
 app.use(express.json());

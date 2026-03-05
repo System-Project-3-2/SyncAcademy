@@ -161,11 +161,16 @@ const SearchMaterials = () => {
       return;
     }
 
+    if (query.trim().length < 3) {
+      toast.error('Search query must be at least 3 characters long');
+      return;
+    }
+
     setIsLoading(true);
     setHasSearched(true);
 
     try {
-      const searchParams = { query };
+      const searchParams = { query: query.trim() };
       if (course) searchParams.courseNo = course;
       if (type) searchParams.type = type;
 
@@ -174,15 +179,19 @@ const SearchMaterials = () => {
       setCurrentPage(1); // Reset to first page on new search
       
       if (data.length === 0) {
-        toast.info('No materials found matching your query');
+        toast('No relevant materials found. Try rephrasing your query or using different keywords.', {
+          icon: '🔍',
+          duration: 4000,
+        });
       } else {
-        toast.success(`Found ${data.length} material(s)`);
+        toast.success(`Found ${data.length} relevant material(s)`);
       }
 
       // Refresh search history
       fetchSearchHistory();
     } catch (error) {
-      toast.error('Search failed. Please try again.');
+      const message = error.response?.data?.message || 'Search failed. Please try again.';
+      toast.error(message);
       console.error('Search error:', error);
     } finally {
       setIsLoading(false);
@@ -456,8 +465,8 @@ const SearchMaterials = () => {
           </Box>
         ) : (
           <EmptyState
-            title="No materials found"
-            description="Try adjusting your search query or filters to find more results."
+            title="No relevant materials found"
+            description="Try using different keywords, broader terms, or check your course filters. Example: instead of 'BFS', try 'breadth first search algorithm'."
             icon={<SearchIcon sx={{ fontSize: 64 }} />}
           />
         )

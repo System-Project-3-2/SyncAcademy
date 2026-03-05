@@ -5,6 +5,41 @@ import SearchHistory from "../models/searchHistoryModel.js";
 import { embedText } from "../services/embeddingServices.js";
 import { cosineSimilarity } from "../utils/cosineSimilarity.js";
 
+// ==================== Search Configuration ====================
+const SEARCH_CONFIG = {
+  MIN_QUERY_LENGTH: 3,            // Minimum characters for a valid query
+  MIN_SIMILARITY_THRESHOLD: 0.35, // Minimum cosine similarity to include a result
+  MAX_CHUNKS_TO_CONSIDER: 50,     // Top N scored chunks to consider before grouping
+  MAX_MATCHES_PER_MATERIAL: 5,    // Max matched text snippets per material
+  MAX_RESULTS: 20,                // Max materials in final results
+};
+
+/**
+ * Validate search query quality
+ * Returns { valid: boolean, message?: string }
+ */
+const validateQuery = (query) => {
+  const trimmed = query.trim();
+
+  if (trimmed.length < SEARCH_CONFIG.MIN_QUERY_LENGTH) {
+    return {
+      valid: false,
+      message: `Search query must be at least ${SEARCH_CONFIG.MIN_QUERY_LENGTH} characters long`,
+    };
+  }
+
+  // Check for gibberish — query should contain at least one real word (2+ alpha chars)
+  const words = trimmed.split(/\s+/).filter((w) => /[a-zA-Z]{2,}/.test(w));
+  if (words.length === 0) {
+    return {
+      valid: false,
+      message: "Please enter a meaningful search query with real words",
+    };
+  }
+
+  return { valid: true };
+};
+
 export const semanticSearch = async (req, res) => {
   try {
     const { query, courseNo, type } = req.body;
@@ -13,7 +48,13 @@ export const semanticSearch = async (req, res) => {
       return res.status(400).json({ message: "Query is required" });
     }
 
-    const queryEmbedding = await embedText(query);
+    // Validate query quality
+    const validation = validateQuery(query);
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.message });
+    }
+
+    const queryEmbedding = await embedText(query.trim());
 
     // Build material filter
     const materialFilter = {};
@@ -45,6 +86,7 @@ export const semanticSearch = async (req, res) => {
 
     const scored = validChunks.map((chunk) => ({
       materialId: chunk.materialId._id.toString(), //material ID as string
+      title: chunk.materialId.title,
       courseTitle: chunk.materialId.courseTitle,
       courseNo: chunk.materialId.courseNo,
       type: chunk.materialId.type,
@@ -54,18 +96,26 @@ export const semanticSearch = async (req, res) => {
       score: cosineSimilarity(queryEmbedding, chunk.embedding),
     }));
 
-    scored.sort((a, b) => b.score - a.score);
+    // Filter out chunks below the minimum similarity threshold
+    const relevantScored = scored.filter(
+      (item) => item.score >= SEARCH_CONFIG.MIN_SIMILARITY_THRESHOLD
+    );
+
+    // Sort by score descending
+    relevantScored.sort((a, b) => b.score - a.score);
+
+    // Take top N chunks for grouping
+    const topChunks = relevantScored.slice(0, SEARCH_CONFIG.MAX_CHUNKS_TO_CONSIDER);
 
     // Group by material
     const grouped = {};
-    for (const item of scored.slice(0, 30)) {
+    for (const item of topChunks) {
       if (!grouped[item.materialId]) {
         grouped[item.materialId] = {
           materialId: item.materialId,
+          title: item.title || item.courseTitle,
           courseTitle: item.courseTitle,
           courseNo: item.courseNo,
-          // Aliases so frontend MaterialCard can read either naming convention
-          title: item.courseTitle,
           course: item.courseNo,
           type: item.type,
           fileUrl: item.fileUrl,
@@ -79,10 +129,16 @@ export const semanticSearch = async (req, res) => {
           grouped[item.materialId].relevanceScore = item.score;
         }
       }
-      grouped[item.materialId].matches.push(item.text);
+      // Limit matches per material to avoid overloading
+      if (grouped[item.materialId].matches.length < SEARCH_CONFIG.MAX_MATCHES_PER_MATERIAL) {
+        grouped[item.materialId].matches.push(item.text);
+      }
     }
 
-    const results = Object.values(grouped);
+    // Sort results by relevance score and limit
+    const results = Object.values(grouped)
+      .sort((a, b) => b.relevanceScore - a.relevanceScore)
+      .slice(0, SEARCH_CONFIG.MAX_RESULTS);
 
     // Save search to history (non-blocking, best-effort)
     try {
@@ -153,14 +209,18 @@ export const getSearchSuggestions = async (req, res) => {
 
     const regex = new RegExp(q, "i");
 
-    // Search in material titles and course numbers
-    const [titleMatches, courseMatches, recentSearches] = await Promise.all([
+    // Search in material titles, course titles, and course numbers
+    const [titleMatches, courseMatches, materialTitleMatches, recentSearches] = await Promise.all([
       Material.find({ courseTitle: regex })
-        .select("courseTitle courseNo")
+        .select("title courseTitle courseNo")
         .limit(5)
         .lean(),
       Material.find({ courseNo: regex })
-        .select("courseTitle courseNo")
+        .select("title courseTitle courseNo")
+        .limit(5)
+        .lean(),
+      Material.find({ title: regex })
+        .select("title courseTitle courseNo")
         .limit(5)
         .lean(),
       SearchHistory.find({ user: req.user._id, query: regex })
@@ -185,6 +245,13 @@ export const getSearchSuggestions = async (req, res) => {
       if (!seen.has(m.courseTitle.toLowerCase())) {
         seen.add(m.courseTitle.toLowerCase());
         suggestions.push({ text: m.courseTitle, type: "material", courseNo: m.courseNo });
+      }
+    });
+
+    materialTitleMatches.forEach((m) => {
+      if (m.title && !seen.has(m.title.toLowerCase())) {
+        seen.add(m.title.toLowerCase());
+        suggestions.push({ text: m.title, type: "material", courseNo: m.courseNo });
       }
     });
 
