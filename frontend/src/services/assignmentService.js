@@ -27,6 +27,7 @@ const assignmentService = {
     if (data.dueDate) fd.append('dueDate', data.dueDate);
     if (data.totalMarks !== undefined) fd.append('totalMarks', data.totalMarks);
     if (data.isPublished !== undefined) fd.append('isPublished', data.isPublished);
+    if (data.allowLateSubmission !== undefined) fd.append('allowLateSubmission', data.allowLateSubmission);
     if (data.files) {
       data.files.forEach((f) => fd.append('attachments', f));
     }
@@ -41,6 +42,7 @@ const assignmentService = {
     if (data.dueDate !== undefined) fd.append('dueDate', data.dueDate);
     if (data.totalMarks !== undefined) fd.append('totalMarks', data.totalMarks);
     if (data.isPublished !== undefined) fd.append('isPublished', data.isPublished);
+    if (data.allowLateSubmission !== undefined) fd.append('allowLateSubmission', data.allowLateSubmission);
     if (data.removeAttachments) {
       data.removeAttachments.forEach((u) => fd.append('removeAttachments', u));
     }
@@ -80,6 +82,37 @@ const assignmentService = {
       grade,
       feedback,
     });
+    return response.data;
+  },
+
+  // ─── Result Publishing ────────────────────────────────────────────────
+  publishResult: async (assignmentId, publish) => {
+    const response = await api.put(`/assignments/${assignmentId}/publish-result`, { publish });
+    return response.data;
+  },
+
+  generateResultSheet: async (assignmentId) => {
+    const response = await api.post(`/assignments/${assignmentId}/result-sheet`);
+    return response.data;
+  },
+
+  // ─── Evaluated Files ──────────────────────────────────────────────────
+  saveEvaluatedFile: async (assignmentId, submissionId, file) => {
+    const fd = new FormData();
+    fd.append('evaluatedFile', file);
+    const response = await api.put(
+      `/assignments/${assignmentId}/submissions/${submissionId}/evaluate`,
+      fd,
+      multipartConfig
+    );
+    return response.data;
+  },
+
+  toggleEvaluatedVisibility: async (assignmentId, submissionId, show) => {
+    const response = await api.put(
+      `/assignments/${assignmentId}/submissions/${submissionId}/toggle-evaluated`,
+      { show }
+    );
     return response.data;
   },
 

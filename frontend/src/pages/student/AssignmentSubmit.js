@@ -77,6 +77,8 @@ const AssignmentSubmit = () => {
 
   const isOverdue = assignment?.dueDate && new Date() > new Date(assignment.dueDate);
   const isGraded = submission?.grade !== null && submission?.grade !== undefined;
+  const isResultPublished = assignment?.isResultPublished;
+  const lateNotAllowed = isOverdue && assignment?.allowLateSubmission === false;
 
   const handleSubmit = async () => {
     if (!file && !textContent.trim()) {
@@ -157,9 +159,16 @@ const AssignmentSubmit = () => {
       </Card>
 
       {/* Late Warning */}
-      {isOverdue && !submission && (
+      {isOverdue && !submission && !lateNotAllowed && (
         <Alert severity="warning" icon={<WarningIcon />} sx={{ mb: 3 }}>
           This assignment is past the due date. Your submission will be marked as late.
+        </Alert>
+      )}
+
+      {/* Late submission not allowed */}
+      {lateNotAllowed && !submission && (
+        <Alert severity="error" icon={<WarningIcon />} sx={{ mb: 3 }}>
+          Late submission is not allowed for this assignment.
         </Alert>
       )}
 
@@ -196,10 +205,10 @@ const AssignmentSubmit = () => {
           )}
 
           {/* Grade & Feedback */}
-          {isGraded && (
+          {submission && isResultPublished && isGraded && (
             <Paper variant="outlined" sx={{ p: 2, mb: 2, borderColor: 'info.main' }}>
               <Typography variant="subtitle2" color="info.main" sx={{ mb: 1 }}>
-                Grade: {submission.grade} / {assignment.totalMarks}
+                Mark: {submission.grade} / {assignment.totalMarks}
                 {' '}({((submission.grade / assignment.totalMarks) * 100).toFixed(1)}%)
               </Typography>
               {submission.feedback && (
@@ -212,6 +221,27 @@ const AssignmentSubmit = () => {
                   Graded by {submission.gradedBy.name} on {formatDate(submission.gradedAt)}
                 </Typography>
               )}
+            </Paper>
+          )}
+
+          {/* Evaluated Script */}
+          {submission && submission.evaluatedFileUrl && (
+            <Paper variant="outlined" sx={{ p: 2, mb: 2, borderColor: 'secondary.main' }}>
+              <Typography variant="subtitle2" color="secondary.main" sx={{ mb: 1 }}>
+                Evaluated Script
+              </Typography>
+              <MuiLink href={submission.evaluatedFileUrl} target="_blank" rel="noopener noreferrer">
+                View Evaluated Script
+              </MuiLink>
+            </Paper>
+          )}
+
+          {/* Result not published */}
+          {submission && !isResultPublished && (
+            <Paper variant="outlined" sx={{ p: 2, mb: 2, borderColor: 'warning.main' }}>
+              <Typography variant="subtitle2" color="warning.main">
+                Result not published yet
+              </Typography>
             </Paper>
           )}
 
@@ -236,7 +266,7 @@ const AssignmentSubmit = () => {
             <Button
               variant="contained"
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={submitting || (lateNotAllowed && !submission)}
               sx={{ alignSelf: 'flex-start' }}
             >
               {submitting ? <CircularProgress size={20} /> : submission ? 'Update Submission' : 'Submit'}

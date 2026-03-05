@@ -10,6 +10,10 @@ import {
   getSubmissions,
   gradeSubmission,
   getMyGrades,
+  publishResult,
+  generateResultSheet,
+  saveEvaluatedFile,
+  toggleEvaluatedVisibility,
 } from "../controllers/assignmentController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorize } from "../middleware/roleMiddleware.js";
@@ -67,6 +71,35 @@ router.put(
   "/:id/submissions/:submissionId/grade",
   authorize("teacher", "admin"),
   gradeSubmission
+);
+
+// Publish / unpublish result
+router.put(
+  "/:id/publish-result",
+  authorize("teacher", "admin"),
+  publishResult
+);
+
+// Generate result sheet PDF
+router.post(
+  "/:id/result-sheet",
+  authorize("teacher", "admin"),
+  generateResultSheet
+);
+
+// Save evaluated (annotated) file for a submission
+router.put(
+  "/:id/submissions/:submissionId/evaluate",
+  authorize("teacher", "admin"),
+  attachmentUpload.single("evaluatedFile"),
+  saveEvaluatedFile
+);
+
+// Toggle evaluated file visibility for student
+router.put(
+  "/:id/submissions/:submissionId/toggle-evaluated",
+  authorize("teacher", "admin"),
+  toggleEvaluatedVisibility
 );
 
 export default router;

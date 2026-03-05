@@ -38,6 +38,18 @@ const assignmentSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    allowLateSubmission: {
+      type: Boolean,
+      default: true,
+    },
+    isResultPublished: {
+      type: Boolean,
+      default: false,
+    },
+    resultSheetUrl: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );
