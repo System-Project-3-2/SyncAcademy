@@ -93,7 +93,7 @@ export const getUserById = async (req, res) => {
  */
 export const createUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, idNumber } = req.body;
 
     // Validate required fields
     if (!name || !email || !password || !role) {
@@ -116,6 +116,17 @@ export const createUser = async (req, res) => {
       return res.status(400).json({ message: "User with this email already exists" });
     }
 
+    // Validate and check uniqueness of idNumber if provided
+    if (idNumber) {
+      if (!/^\d{7}$/.test(idNumber)) {
+        return res.status(400).json({ message: "ID number must be exactly 7 digits" });
+      }
+      const existingId = await User.findOne({ idNumber });
+      if (existingId) {
+        return res.status(400).json({ message: "This ID number is already in use" });
+      }
+    }
+
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -127,6 +138,7 @@ export const createUser = async (req, res) => {
       password: hashedPassword,
       role,
       isVerified: true, // Admin-created users are automatically verified
+      ...(idNumber && { idNumber }),
     });
 
     // Return user without sensitive fields
@@ -135,6 +147,7 @@ export const createUser = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      idNumber: user.idNumber || "",
       isVerified: user.isVerified,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -157,7 +170,7 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, role, isVerified, password } = req.body;
+    const { name, email, role, isVerified, password, idNumber } = req.body;
 
     const user = await User.findById(id);
 
@@ -172,6 +185,22 @@ export const updateUser = async (req, res) => {
         return res.status(400).json({ message: "Email already in use by another user" });
       }
       user.email = email;
+    }
+
+    // Validate and check uniqueness of idNumber if provided
+    if (idNumber !== undefined) {
+      if (idNumber === "") {
+        user.idNumber = undefined;
+      } else {
+        if (!/^\d{7}$/.test(idNumber)) {
+          return res.status(400).json({ message: "ID number must be exactly 7 digits" });
+        }
+        const existingId = await User.findOne({ idNumber, _id: { $ne: id } });
+        if (existingId) {
+          return res.status(400).json({ message: "This ID number is already in use" });
+        }
+        user.idNumber = idNumber;
+      }
     }
 
     // Validate role if provided
@@ -203,6 +232,7 @@ export const updateUser = async (req, res) => {
       name: updatedUser.name,
       email: updatedUser.email,
       role: updatedUser.role,
+      idNumber: updatedUser.idNumber || "",
       isVerified: updatedUser.isVerified,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt,

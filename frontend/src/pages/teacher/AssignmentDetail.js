@@ -29,17 +29,23 @@ import {
   Tooltip,
   Divider,
   Link as MuiLink,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
   CalendarToday as CalendarIcon,
   Grade as GradeIcon,
   AttachFile as AttachIcon,
+  Publish as PublishIcon,
+  PictureAsPdf as PdfIcon,
+  Download as DownloadIcon,
+  RateReview as EvaluateIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks';
 import { assignmentService } from '../../services';
-import { LoadingSpinner } from '../../components';
+import { LoadingSpinner, PdfAnnotator } from '../../components';
 
 const formatDate = (date) => {
   if (!date) return '—';
@@ -63,6 +69,14 @@ const AssignmentDetail = () => {
   const [gradeTarget, setGradeTarget] = useState(null);
   const [gradeForm, setGradeForm] = useState({ grade: '', feedback: '' });
   const [grading, setGrading] = useState(false);
+
+  // Publish & Result Sheet
+  const [publishing, setPublishing] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  // PDF Annotator
+  const [annotatorOpen, setAnnotatorOpen] = useState(false);
+  const [annotatorTarget, setAnnotatorTarget] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -110,6 +124,66 @@ const AssignmentDetail = () => {
     }
   };
 
+  const handlePublishResult = async () => {
+    try {
+      setPublishing(true);
+      const newState = !assignment.isResultPublished;
+      await assignmentService.publishResult(assignmentId, newState);
+      toast.success(newState ? 'Result published' : 'Result unpublished');
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to publish result');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const handleGenerateResultSheet = async () => {
+    try {
+      setGeneratingPdf(true);
+      const data = await assignmentService.generateResultSheet(assignmentId);
+      toast.success('Result sheet generated');
+      fetchData();
+      // Open the PDF in a new tab
+      if (data.resultSheetUrl) {
+        window.open(data.resultSheetUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to generate result sheet');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
+  const handleOpenAnnotator = (sub) => {
+    setAnnotatorTarget(sub);
+    setAnnotatorOpen(true);
+  };
+
+  const handleSaveEvaluated = async (file) => {
+    if (!annotatorTarget) return;
+    try {
+      await assignmentService.saveEvaluatedFile(assignmentId, annotatorTarget._id, file);
+      toast.success('Evaluated script saved');
+      setAnnotatorOpen(false);
+      setAnnotatorTarget(null);
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save evaluated file');
+    }
+  };
+
+  const handleToggleEvaluatedVisibility = async (sub) => {
+    try {
+      const newState = !sub.showEvaluatedToStudent;
+      await assignmentService.toggleEvaluatedVisibility(assignmentId, sub._id, newState);
+      toast.success(newState ? 'Evaluated script visible to student' : 'Evaluated script hidden from student');
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to toggle visibility');
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
   if (!assignment) return <Typography>Assignment not found</Typography>;
 
@@ -140,6 +214,8 @@ const AssignmentDetail = () => {
             <Chip icon={<CalendarIcon />} label={`Due: ${formatDate(assignment.dueDate)}`} variant="outlined" />
             <Chip icon={<GradeIcon />} label={`${assignment.totalMarks} marks`} variant="outlined" />
             {!assignment.isPublished && <Chip label="Draft (not visible to students)" color="warning" />}
+            {assignment.isResultPublished && <Chip label="Result Published" color="success" size="small" />}
+            {!assignment.isResultPublished && <Chip label="Result Not Published" color="default" size="small" variant="outlined" />}
           </Box>
           {assignment.attachments?.length > 0 && (
             <>
@@ -165,6 +241,39 @@ const AssignmentDetail = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Actions: Publish Result & Generate Result Sheet */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+        <Button
+          variant={assignment.isResultPublished ? 'outlined' : 'contained'}
+          color={assignment.isResultPublished ? 'warning' : 'success'}
+          startIcon={<PublishIcon />}
+          onClick={handlePublishResult}
+          disabled={publishing}
+        >
+          {publishing ? <CircularProgress size={20} /> : assignment.isResultPublished ? 'Unpublish Result' : 'Publish Result'}
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={generatingPdf ? <CircularProgress size={20} /> : <PdfIcon />}
+          onClick={handleGenerateResultSheet}
+          disabled={generatingPdf}
+        >
+          Generate Result Sheet
+        </Button>
+        {assignment.resultSheetUrl && (
+          <Button
+            variant="text"
+            startIcon={<DownloadIcon />}
+            component="a"
+            href={assignment.resultSheetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Download Result Sheet
+          </Button>
+        )}
+      </Box>
 
       {/* Stats */}
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
@@ -194,10 +303,12 @@ const AssignmentDetail = () => {
             <TableHead>
               <TableRow>
                 <TableCell>Student</TableCell>
+                <TableCell>ID</TableCell>
                 <TableCell>Submitted</TableCell>
                 <TableCell>File</TableCell>
                 <TableCell>Late</TableCell>
-                <TableCell>Grade</TableCell>
+                <TableCell>Mark</TableCell>
+                <TableCell>Evaluate</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -214,6 +325,11 @@ const AssignmentDetail = () => {
                         <Typography variant="caption" color="text.secondary">{sub.student?.email}</Typography>
                       </Box>
                     </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" fontFamily="monospace">
+                      {sub.student?.idNumber || '—'}
+                    </Typography>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">{formatDate(sub.submittedAt)}</Typography>
@@ -247,9 +363,44 @@ const AssignmentDetail = () => {
                       <Chip label="Pending" size="small" variant="outlined" />
                     )}
                   </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+                      {sub.fileUrl && sub.fileUrl.toLowerCase().endsWith('.pdf') && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<EvaluateIcon />}
+                          onClick={() => handleOpenAnnotator(sub)}
+                        >
+                          Evaluate
+                        </Button>
+                      )}
+                      {sub.evaluatedFileUrl && (
+                        <>
+                          <MuiLink href={sub.evaluatedFileUrl} target="_blank" rel="noopener noreferrer" underline="hover" variant="caption">
+                            View Evaluated
+                          </MuiLink>
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={!!sub.showEvaluatedToStudent}
+                                onChange={() => handleToggleEvaluatedVisibility(sub)}
+                              />
+                            }
+                            label={
+                              <Typography variant="caption">
+                                {sub.showEvaluatedToStudent ? 'Visible to student' : 'Hidden from student'}
+                              </Typography>
+                            }
+                          />
+                        </>
+                      )}
+                    </Box>
+                  </TableCell>
                   <TableCell align="right">
                     <Button size="small" variant="outlined" onClick={() => openGradeDialog(sub)}>
-                      {sub.grade !== null && sub.grade !== undefined ? 'Re-grade' : 'Grade'}
+                      {sub.grade !== null && sub.grade !== undefined ? 'Re-mark' : 'Mark'}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -262,7 +413,7 @@ const AssignmentDetail = () => {
       {/* Grade Dialog */}
       <Dialog open={gradeOpen} onClose={() => setGradeOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
-          Grade Submission — {gradeTarget?.student?.name}
+          Mark Submission — {gradeTarget?.student?.name}
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           {gradeTarget?.fileUrl && (
@@ -277,7 +428,7 @@ const AssignmentDetail = () => {
             </Paper>
           )}
           <TextField
-            label={`Grade (out of ${assignment?.totalMarks})`}
+            label={`Mark (out of ${assignment?.totalMarks})`}
             type="number"
             fullWidth
             value={gradeForm.grade}
@@ -296,9 +447,25 @@ const AssignmentDetail = () => {
         <DialogActions>
           <Button onClick={() => setGradeOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleGrade} disabled={grading}>
-            {grading ? <CircularProgress size={20} /> : 'Save Grade'}
+            {grading ? <CircularProgress size={20} /> : 'Save Mark'}
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* PDF Annotator Dialog */}
+      <Dialog open={annotatorOpen} onClose={() => { setAnnotatorOpen(false); setAnnotatorTarget(null); }} maxWidth="lg" fullWidth>
+        <DialogTitle>
+          Evaluate Submission — {annotatorTarget?.student?.name}
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, height: '75vh' }}>
+          {annotatorTarget?.fileUrl && (
+            <PdfAnnotator
+              fileUrl={annotatorTarget.fileUrl}
+              onSave={handleSaveEvaluated}
+              onCancel={() => { setAnnotatorOpen(false); setAnnotatorTarget(null); }}
+            />
+          )}
+        </DialogContent>
       </Dialog>
     </Box>
   );
