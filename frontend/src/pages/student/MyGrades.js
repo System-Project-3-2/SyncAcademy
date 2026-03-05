@@ -108,8 +108,8 @@ const MyGrades = () => {
   return (
     <Box>
       <PageHeader
-        title="My Grades"
-        subtitle="View grades and feedback for all your assignments"
+        title="Results"
+        subtitle="View results and feedback for all your assignments"
       />
 
       <Box sx={{ mb: 3 }}>
@@ -154,7 +154,7 @@ const MyGrades = () => {
                 </TableCell>
                 <TableCell>
                   <TableSortLabel active={orderBy === 'grade'} direction={orderBy === 'grade' ? order : 'asc'} onClick={() => handleSort('grade')}>
-                    Grade
+                    Mark
                   </TableSortLabel>
                 </TableCell>
                 <TableCell>Max Marks</TableCell>
@@ -168,7 +168,8 @@ const MyGrades = () => {
             </TableHead>
             <TableBody>
               {sorted.map((sub) => {
-                const pct = sub.grade !== null && sub.grade !== undefined && sub.assignment?.totalMarks
+                const published = sub.assignment?.isResultPublished;
+                const pct = published && sub.grade !== null && sub.grade !== undefined && sub.assignment?.totalMarks
                   ? ((sub.grade / sub.assignment.totalMarks) * 100).toFixed(1)
                   : null;
                 return (
@@ -189,7 +190,9 @@ const MyGrades = () => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      {sub.grade !== null && sub.grade !== undefined ? (
+                      {!published ? (
+                        <Chip label="Not published" size="small" color="default" variant="outlined" />
+                      ) : sub.grade !== null && sub.grade !== undefined ? (
                         <Chip label={sub.grade} size="small" color="info" />
                       ) : (
                         <Chip label="Pending" size="small" variant="outlined" />
@@ -209,7 +212,7 @@ const MyGrades = () => {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ maxWidth: 200, whiteSpace: 'pre-wrap' }} noWrap>
-                        {sub.feedback || '—'}
+                        {published ? (sub.feedback || '—') : '—'}
                       </Typography>
                     </TableCell>
                   </TableRow>

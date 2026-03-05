@@ -25,6 +25,8 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   Assignment as AssignmentIcon,
@@ -84,12 +86,12 @@ const CourseAssignments = () => {
   // Create dialog
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', dueDate: '', totalMarks: 100 });
+  const [form, setForm] = useState({ title: '', description: '', dueDate: '', totalMarks: 100, allowLateSubmission: true });
   const [files, setFiles] = useState([]);
 
   // Edit dialog
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ title: '', description: '', dueDate: '', totalMarks: 100 });
+  const [editForm, setEditForm] = useState({ title: '', description: '', dueDate: '', totalMarks: 100, allowLateSubmission: true });
   const [editId, setEditId] = useState(null);
   const [editFiles, setEditFiles] = useState([]);
   const [editing, setEditing] = useState(false);
@@ -135,7 +137,7 @@ const CourseAssignments = () => {
       await assignmentService.createAssignment({ ...form, courseId, files });
       toast.success('Assignment created');
       setCreateOpen(false);
-      setForm({ title: '', description: '', dueDate: '', totalMarks: 100 });
+      setForm({ title: '', description: '', dueDate: '', totalMarks: 100, allowLateSubmission: true });
       setFiles([]);
       fetchAssignments();
     } catch (err) {
@@ -153,6 +155,7 @@ const CourseAssignments = () => {
       description: a.description || '',
       dueDate: a.dueDate ? new Date(a.dueDate).toISOString().slice(0, 16) : '',
       totalMarks: a.totalMarks,
+      allowLateSubmission: a.allowLateSubmission !== false,
     });
     setEditFiles([]);
     setEditOpen(true);
@@ -288,8 +291,11 @@ const CourseAssignments = () => {
                       color={subChip.color}
                     />
                   )}
-                  {!isTeacher && a.submissionStatus === 'graded' && a.myGrade !== undefined && (
-                    <Chip label={`Grade: ${a.myGrade}/${a.totalMarks}`} size="small" color="info" variant="filled" />
+                  {!isTeacher && a.submissionStatus === 'graded' && a.myGrade !== undefined && a.isResultPublished && (
+                    <Chip label={`Mark: ${a.myGrade}/${a.totalMarks}`} size="small" color="info" variant="filled" />
+                  )}
+                  {!isTeacher && a.submissionStatus === 'submitted' && !a.isResultPublished && a.submissionStatus !== 'not_submitted' && (
+                    <Chip label="Result not published" size="small" color="default" variant="outlined" />
                   )}
                 </CardActions>
               </Card>
@@ -347,6 +353,15 @@ const CourseAssignments = () => {
             value={form.totalMarks}
             onChange={(e) => setForm({ ...form, totalMarks: e.target.value })}
           />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={form.allowLateSubmission}
+                onChange={(e) => setForm({ ...form, allowLateSubmission: e.target.checked })}
+              />
+            }
+            label="Allow Late Submission"
+          />
           <Button variant="outlined" component="label" startIcon={<AttachIcon />}>
             Attach Files
             <input type="file" hidden multiple onChange={(e) => setFiles(Array.from(e.target.files))} />
@@ -385,6 +400,15 @@ const CourseAssignments = () => {
             fullWidth
             value={editForm.totalMarks}
             onChange={(e) => setEditForm({ ...editForm, totalMarks: e.target.value })}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={editForm.allowLateSubmission}
+                onChange={(e) => setEditForm({ ...editForm, allowLateSubmission: e.target.checked })}
+              />
+            }
+            label="Allow Late Submission"
           />
           <Button variant="outlined" component="label" startIcon={<AttachIcon />}>
             Attach New Files

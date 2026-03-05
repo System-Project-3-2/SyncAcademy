@@ -70,6 +70,7 @@ const UserManagement = () => {
     password: '',
     role: 'student',
     isVerified: true,
+    idNumber: '',
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -121,7 +122,8 @@ const UserManagement = () => {
     // Search filter
     const matchesSearch =
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (user.idNumber && user.idNumber.includes(searchQuery));
 
     // Status filter
     const matchesStatus =
@@ -192,6 +194,7 @@ const UserManagement = () => {
       password: '',
       role: 'student',
       isVerified: true,
+      idNumber: '',
     });
     setFormErrors({});
   };
@@ -263,6 +266,7 @@ const UserManagement = () => {
       password: '',
       role: user.role,
       isVerified: user.isVerified,
+      idNumber: user.idNumber || '',
     });
     setEditDialogOpen(true);
   };
@@ -433,6 +437,7 @@ const UserManagement = () => {
           <TableHead>
             <TableRow sx={{ bgcolor: 'background.default' }}>
               <TableCell>User</TableCell>
+              <TableCell>ID Number</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Role</TableCell>
               <TableCell>Status</TableCell>
@@ -443,7 +448,7 @@ const UserManagement = () => {
           <TableBody>
             {filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6}>
+                <TableCell colSpan={7}>
                   <EmptyState
                     title="No users found"
                     description="No users match your search criteria."
@@ -465,6 +470,11 @@ const UserManagement = () => {
                       </Avatar>
                       <Typography fontWeight={500}>{user.name}</Typography>
                     </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" fontFamily="monospace">
+                      {user.idNumber || '—'}
+                    </Typography>
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
@@ -542,6 +552,15 @@ const UserManagement = () => {
               required
             />
             <TextField
+              label="ID Number"
+              fullWidth
+              value={formData.idNumber}
+              onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
+              error={!!formErrors.idNumber}
+              helperText={formErrors.idNumber || '7-digit unique ID (e.g., 2107119)'}
+              inputProps={{ maxLength: 7 }}
+            />
+            <TextField
               label="Password"
               type="password"
               fullWidth
@@ -616,6 +635,15 @@ const UserManagement = () => {
               error={!!formErrors.email}
               helperText={formErrors.email}
               required
+            />
+            <TextField
+              label="ID Number"
+              fullWidth
+              value={formData.idNumber}
+              onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
+              error={!!formErrors.idNumber}
+              helperText={formErrors.idNumber || '7-digit unique ID (e.g., 2107119)'}
+              inputProps={{ maxLength: 7 }}
             />
             <TextField
               label="New Password"
