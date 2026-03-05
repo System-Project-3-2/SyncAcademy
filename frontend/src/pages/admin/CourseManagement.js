@@ -47,10 +47,14 @@ import {
   Business as DepartmentIcon,
   Person as PersonIcon,
   People as PeopleIcon,
+  ContentCopy as CopyIcon,
+  Refresh as RefreshIcon,
+  Key as KeyIcon,
 } from '@mui/icons-material';
 import { PageHeader, EmptyState, PaginationControl } from '../../components';
 import { courseService } from '../../services';
 import { useAuth } from '../../hooks';
+import toast from 'react-hot-toast';
 
 // Semester options
 const SEMESTERS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
@@ -116,6 +120,47 @@ const CourseCard = ({ course, onEdit, onDelete, onViewStudents, canEdit, canDele
           >
             {course.description}
           </Typography>
+        )}
+
+        {/* Course Code (Secret Enrollment Key) */}
+        {course.courseCode && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              mb: 1.5,
+              p: 1,
+              borderRadius: 1.5,
+              bgcolor: alpha(theme.palette.warning.main, 0.06),
+              border: '1px dashed',
+              borderColor: alpha(theme.palette.warning.main, 0.3),
+            }}
+          >
+            <KeyIcon sx={{ fontSize: 14, color: 'warning.main' }} />
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+              Enrollment Code:
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ fontFamily: 'monospace', fontWeight: 700, letterSpacing: 1 }}
+            >
+              {course.courseCode}
+            </Typography>
+            <Tooltip title="Copy enrollment code">
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(course.courseCode);
+                  toast.success('Enrollment code copied!');
+                }}
+                sx={{ ml: 'auto', p: 0.5 }}
+              >
+                <CopyIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
         )}
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>

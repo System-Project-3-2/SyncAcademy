@@ -2,7 +2,7 @@
  * Course Controller
  * CRUD operations for course management
  */
-import Course from "../models/courseModel.js";
+import Course, { generateCourseCode } from "../models/courseModel.js";
 import Material from "../models/materialModel.js";
 
 /**
@@ -72,7 +72,12 @@ export const getAllCourses = async (req, res) => {
     const coursesWithCounts = await Promise.all(
       courses.map(async (course) => {
         const materialCount = await Material.countDocuments({ courseNo: course.courseNo });
-        return { ...course.toObject(), materialCount };
+        const courseObj = { ...course.toObject(), materialCount };
+        // Hide courseCode from students — only teachers/admins can see it
+        if (req.user.role === "student") {
+          delete courseObj.courseCode;
+        }
+        return courseObj;
       })
     );
 
@@ -186,6 +191,33 @@ export const getDepartments = async (req, res) => {
   try {
     const departments = await Course.distinct("department", { department: { $ne: "" } });
     res.status(200).json(departments.sort());
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * Regenerate course code (secret enrollment key)
+ * @route POST /api/courses/:id/regenerate-code
+ * @access Teacher (own), Admin (any)
+ */
+export const regenerateCourseCode = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    // Teachers can only regenerate for their own courses
+    if (req.user.role === "teacher" && course.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Access denied. You can only manage your own courses." });
+    }
+
+    course.courseCode = generateCourseCode();
+    await course.save();
+
+    res.status(200).json({ courseCode: course.courseCode, message: "Course code regenerated successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

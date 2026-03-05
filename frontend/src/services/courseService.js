@@ -57,6 +57,16 @@ const courseService = {
   },
 
   /**
+   * Regenerate course code (secret enrollment key)
+   * @param {string} courseId - Course ID
+   * @returns {Promise} API response with new { courseCode }
+   */
+  regenerateCourseCode: async (courseId) => {
+    const response = await api.post(`/courses/${courseId}/regenerate-code`);
+    return response.data;
+  },
+
+  /**
    * Get all unique departments
    * @returns {Promise} API response with departments array
    */

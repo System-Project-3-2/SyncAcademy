@@ -1,4 +1,12 @@
 import mongoose from "mongoose";
+import crypto from "crypto";
+
+/**
+ * Generate a unique 8-character alphanumeric course code
+ */
+const generateCourseCode = () => {
+  return crypto.randomBytes(4).toString("hex").toUpperCase();
+};
 
 const courseSchema = new mongoose.Schema(
   {
@@ -12,6 +20,11 @@ const courseSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+    },
+    courseCode: {
+      type: String,
+      unique: true,
+      default: generateCourseCode,
     },
     description: {
       type: String,
@@ -36,4 +49,5 @@ const courseSchema = new mongoose.Schema(
 
 const Course = mongoose.model("Course", courseSchema);
 
+export { generateCourseCode };
 export default Course;

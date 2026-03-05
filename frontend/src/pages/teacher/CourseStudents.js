@@ -35,6 +35,8 @@ import {
   PersonRemove as RemoveIcon,
   People as PeopleIcon,
   School as CourseIcon,
+  ContentCopy as CopyIcon,
+  Key as KeyIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { PageHeader, LoadingSpinner, EmptyState } from '../../components';
@@ -270,19 +272,24 @@ const CourseStudents = () => {
             gap: 2,
           }}
         >
-          <CourseIcon color="primary" />
+          <KeyIcon color="warning" />
           <Box>
             <Typography variant="subtitle2" fontWeight={700}>
-              Course Code
+              Enrollment Code
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Share this code with students so they can enroll:{' '}
+              Share this secret code with students so they can enroll:{' '}
               <Chip
-                label={courseInfo.courseNo}
+                label={courseInfo.courseCode || courseInfo.courseNo}
                 size="small"
-                color="primary"
+                color="warning"
                 variant={isDark ? 'filled' : 'outlined'}
-                sx={{ fontWeight: 700, ml: 0.5 }}
+                sx={{ fontFamily: 'monospace', fontWeight: 700, letterSpacing: 1, ml: 0.5 }}
+                onDelete={() => {
+                  navigator.clipboard.writeText(courseInfo.courseCode || courseInfo.courseNo);
+                  toast.success('Enrollment code copied!');
+                }}
+                deleteIcon={<CopyIcon sx={{ fontSize: 14 }} />}
               />
             </Typography>
           </Box>

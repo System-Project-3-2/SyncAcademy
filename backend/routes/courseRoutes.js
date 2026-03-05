@@ -10,6 +10,7 @@ import {
   updateCourse,
   deleteCourse,
   getDepartments,
+  regenerateCourseCode,
 } from "../controllers/courseController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorize } from "../middleware/roleMiddleware.js";
@@ -36,5 +37,8 @@ router.put("/:id", authorize("teacher", "admin"), updateCourse);
 
 // Delete course - Teacher (own) and Admin (any)
 router.delete("/:id", authorize("teacher", "admin"), deleteCourse);
+
+// Regenerate course code - Teacher (own) and Admin (any)
+router.post("/:id/regenerate-code", authorize("teacher", "admin"), regenerateCourseCode);
 
 export default router;
