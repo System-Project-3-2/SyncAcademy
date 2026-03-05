@@ -28,6 +28,7 @@ import {
   VisibilityOff,
   School as SchoolIcon,
   Pin as PinIcon,
+  Badge as BadgeIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks';
@@ -45,6 +46,7 @@ const Register = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    idNumber: '',
     password: '',
     confirmPassword: '',
   });
@@ -60,6 +62,10 @@ const Register = () => {
   };
 
   const validateForm = () => {
+    if (!formData.idNumber || !/^\d{7}$/.test(formData.idNumber)) {
+      setError('ID number must be exactly 7 digits');
+      return false;
+    }
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
       return false;
@@ -83,6 +89,7 @@ const Register = () => {
       await register({
         name: formData.name,
         email: formData.email,
+        idNumber: formData.idNumber,
         password: formData.password,
       });
       toast.success('OTP sent to your email!');
@@ -239,6 +246,25 @@ const Register = () => {
                   startAdornment: (
                     <InputAdornment position="start">
                       <EmailIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <TextField
+                fullWidth
+                label="ID Number"
+                name="idNumber"
+                value={formData.idNumber}
+                onChange={handleChange}
+                required
+                margin="normal"
+                helperText="7-digit unique ID (e.g., 2107119)"
+                inputProps={{ maxLength: 7 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <BadgeIcon color="action" />
                     </InputAdornment>
                   ),
                 }}

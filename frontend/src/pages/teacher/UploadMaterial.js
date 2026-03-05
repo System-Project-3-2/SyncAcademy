@@ -226,6 +226,7 @@ const UploadMaterial = () => {
           border: '1px solid',
           borderColor: 'divider',
           maxWidth: 700,
+          mx: 'auto',
         }}
       >
         {error && (
