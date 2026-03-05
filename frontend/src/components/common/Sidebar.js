@@ -29,6 +29,8 @@ import {
   School as CourseIconNav,
   SmartToy as AITutorIcon,
   ClassOutlined as MyCoursesIcon,
+  Assignment as AssignmentIcon,
+  Grading as GradingIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
 
@@ -43,6 +45,7 @@ const getNavItems = (role) => {
       { text: 'AI Tutor', icon: <AITutorIcon />, path: '/student/ai-tutor' },
       { text: 'All Materials', icon: <LibraryIcon />, path: '/student/materials' },
       { text: 'Search Materials', icon: <SearchIcon />, path: '/student/search' },
+      { text: 'My Grades', icon: <GradingIcon />, path: '/student/my-grades' },
       { text: 'Submit Feedback', icon: <AddIcon />, path: '/student/feedback/new' },
       { text: 'My Feedbacks', icon: <FeedbackIcon />, path: '/student/feedbacks' },
     ],
