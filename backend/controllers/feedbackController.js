@@ -1,6 +1,7 @@
 import Feedback from "../models/feedbackModel.js";
 import User from "../models/userModel.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import { createNotification } from "../utils/notificationHelper.js";
 
 /**
  * Get all teachers (for private feedback dropdown)
@@ -157,13 +158,22 @@ export const respondToFeedback = async (req, res) => {
       const student = await User.findById(feedback.student);
       if (student && student.email) {
         const emailSubject = `Feedback Response: ${feedback.title}`;
-        const emailBody = `Dear ${student.name},\n\nYour feedback titled "${feedback.title}" has been responded to.\n\nResponse:\n${response}\n\nThank you for your feedback!\n\n- Student Aid System`;
-        await sendEmail(student.email, emailSubject, emailBody);
+        const emailBody = `Your feedback titled "${feedback.title}" has been responded to.\n\nResponse:\n${response}`;
+        await sendEmail(student.email, emailSubject, emailBody, { name: student.name, link: "/student/feedbacks" });
       }
     } catch (emailError) {
       // Non-critical: email notification is best-effort
       console.warn("[INFO] Feedback email notification skipped:", emailError.message);
     }
+
+    // In-app notification
+    createNotification({
+      recipient: feedback.student,
+      type: "feedback_response",
+      title: "Feedback Responded",
+      message: `Your feedback "${feedback.title}" has been responded to.`,
+      link: `/student/feedbacks`,
+    }).catch(() => {});
 
     res.json(feedback);
   } catch (error) {

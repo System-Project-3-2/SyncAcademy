@@ -11,6 +11,8 @@ import { chunkText } from "../utils/chunkText.js";
 import { embedText } from "../services/embeddingServices.js";
 
 import cloudinary from "../config/cloudinary.js";
+import Course from "../models/courseModel.js";
+import { notifyEnrolledStudents } from "../utils/notificationHelper.js";
 
 import path from "path";
 
@@ -65,6 +67,21 @@ export const uploadMaterial = async (req, res) => {
     }
 
     res.status(201).json(newMaterial);
+
+    // Non-blocking: notify enrolled students
+    try {
+      const course = await Course.findOne({ courseNo }).lean();
+      if (course) {
+        notifyEnrolledStudents({
+          courseId: course._id,
+          type: "material_upload",
+          title: "New Material Uploaded",
+          message: `New material "${title || file.originalname}" has been uploaded in ${courseTitle}.Please check it out!`,
+          link: `/materials`,
+          sendEmailFlag: true,
+        });
+      }
+    } catch (_) { /* best effort */ }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
