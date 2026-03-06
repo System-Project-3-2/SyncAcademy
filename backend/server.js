@@ -14,7 +14,7 @@ import courseRoutes from "./routes/courseRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import enrollmentRoutes from "./routes/enrollmentRoutes.js";
 import announcementRoutes from "./routes/announcementRoutes.js";
-import discussionRoutes from "./routes/discussionRoutes.js";import assignmentRoutes from './routes/assignmentRoutes.js';import notificationRoutes from './routes/notificationRoutes.js';import courseInvitationRoutes from './routes/courseInvitationRoutes.js';import eventRoutes from './routes/eventRoutes.js';import deleteResolvedFeedbacks from './utils/cleanupResolvedFeedbacks.js';
+import discussionRoutes from "./routes/discussionRoutes.js";import assignmentRoutes from './routes/assignmentRoutes.js';import notificationRoutes from './routes/notificationRoutes.js';import courseInvitationRoutes from './routes/courseInvitationRoutes.js';import eventRoutes from './routes/eventRoutes.js';import quizRoutes from './routes/quizRoutes.js';import deleteResolvedFeedbacks from './utils/cleanupResolvedFeedbacks.js';
 import Course, { generateCourseCode } from './models/courseModel.js';
 
 deleteResolvedFeedbacks();
@@ -81,6 +81,8 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/course-invitations", courseInvitationRoutes);
 
 app.use("/api/events", eventRoutes);
+
+app.use("/api/quizzes", quizRoutes);
 
 // Global error handler for multer and other errors
 app.use((err, req, res, next) => {
