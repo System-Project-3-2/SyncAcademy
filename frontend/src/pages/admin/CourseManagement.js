@@ -47,6 +47,7 @@ import {
   Business as DepartmentIcon,
   Person as PersonIcon,
   People as PeopleIcon,
+  PersonAdd as PersonAddIcon,
   ContentCopy as CopyIcon,
   Refresh as RefreshIcon,
   Key as KeyIcon,
@@ -61,7 +62,7 @@ import toast from 'react-hot-toast';
 const SEMESTERS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 
 // Course Card Component
-const CourseCard = ({ course, onEdit, onDelete, onViewStudents, onViewStream, canEdit, canDelete }) => {
+const CourseCard = ({ course, onEdit, onDelete, onViewStudents, onViewStream, onInvite, canEdit, canDelete }) => {
   const theme = useTheme();
 
   return (
@@ -215,6 +216,21 @@ const CourseCard = ({ course, onEdit, onDelete, onViewStudents, onViewStream, ca
             justifyContent: 'flex-end',
           }}
         >
+          {onInvite && (
+            <Tooltip title="Invite Co-Teacher">
+              <IconButton
+                size="small"
+                color="success"
+                onClick={() => onInvite(course)}
+                sx={{
+                  bgcolor: alpha(theme.palette.success.main, 0.08),
+                  '&:hover': { bgcolor: alpha(theme.palette.success.main, 0.15) },
+                }}
+              >
+                <PersonAddIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           {onViewStudents && (
             <Tooltip title="View Enrolled Students">
               <IconButton
@@ -701,7 +717,8 @@ const CourseManagement = () => {
                   onEdit={(c) => setFormDialog({ open: true, course: c })}
                   onDelete={(c) => setDeleteDialog({ open: true, course: c })}
                   onViewStudents={(c) => navigate(`/${userRole}/courses/${c._id}/students`)}
-                  onViewStream={(c) => navigate(`/${userRole}/courses/${c._id}/stream`)}                  
+                  onViewStream={(c) => navigate(`/${userRole}/courses/${c._id}/stream`)}
+                  onInvite={user?.role === 'teacher' && course.createdBy?._id === user._id ? (c) => navigate(`/teacher/invitations?courseId=${c._id}`) : undefined}
                 />
               </Grid>
             ))}

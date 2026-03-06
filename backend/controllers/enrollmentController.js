@@ -176,16 +176,19 @@ export const getCourseStudents = async (req, res) => {
     const { courseId } = req.params;
     const { search } = req.query;
 
-    // Verify the course exists
-    const course = await Course.findById(courseId);
+    // Verify the course exists and populate teachers
+    const course = await Course.findById(courseId)
+      .populate("createdBy", "name email avatar")
+      .populate("coTeachers", "name email avatar");
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    // For teachers, only show students in their own courses
+    // For teachers, only show students in their own or co-taught courses
     if (
       req.user.role === "teacher" &&
-      course.createdBy.toString() !== req.user._id.toString()
+      course.createdBy._id.toString() !== req.user._id.toString() &&
+      !(course.coTeachers || []).some((t) => t._id.toString() === req.user._id.toString())
     ) {
       return res
         .status(403)
@@ -224,6 +227,10 @@ export const getCourseStudents = async (req, res) => {
         courseTitle: course.courseTitle,
         courseCode: course.courseCode,
       },
+      teachers: [
+        { ...course.createdBy.toObject(), isOwner: true },
+        ...(course.coTeachers || []).map((t) => ({ ...t.toObject(), isOwner: false })),
+      ],
       students,
       totalStudents: students.length,
     });

@@ -30,6 +30,7 @@ const canAccessCourse = async (userId, courseId, userRole) => {
   const course = await Course.findById(courseId).lean();
   if (!course) return false;
   if (course.createdBy.toString() === userId.toString()) return true;
+  if ((course.coTeachers || []).some((id) => id.toString() === userId.toString())) return true;
   const enrollment = await Enrollment.findOne({ student: userId, course: courseId, status: "active" }).lean();
   return !!enrollment;
 };
@@ -217,7 +218,7 @@ export const deleteDiscussion = async (req, res) => {
 
     const isAuthor = discussion.author.toString() === req.user._id.toString();
     const course = await Course.findById(discussion.course).lean();
-    const isTeacher = course && course.createdBy.toString() === req.user._id.toString();
+    const isTeacher = course && (course.createdBy.toString() === req.user._id.toString() || (course.coTeachers || []).some((id) => id.toString() === req.user._id.toString()));
     if (!isAuthor && !isTeacher && req.user.role !== "admin") {
       return res.status(403).json({ message: "Access denied." });
     }
@@ -241,7 +242,7 @@ export const toggleDiscussionStatus = async (req, res) => {
 
     const isAuthor = discussion.author.toString() === req.user._id.toString();
     const course = await Course.findById(discussion.course).lean();
-    const isTeacher = course && course.createdBy.toString() === req.user._id.toString();
+    const isTeacher = course && (course.createdBy.toString() === req.user._id.toString() || (course.coTeachers || []).some((id) => id.toString() === req.user._id.toString()));
     if (!isAuthor && !isTeacher && req.user.role !== "admin") {
       return res.status(403).json({ message: "Only the poster, teacher, or admin can change status." });
     }
@@ -362,7 +363,7 @@ export const deleteReply = async (req, res) => {
 
     const isOwner = reply.user.toString() === req.user._id.toString();
     const course = await Course.findById(discussion.course).lean();
-    const isTeacher = course && course.createdBy.toString() === req.user._id.toString();
+    const isTeacher = course && (course.createdBy.toString() === req.user._id.toString() || (course.coTeachers || []).some((id) => id.toString() === req.user._id.toString()));
     if (!isOwner && !isTeacher && req.user.role !== "admin") {
       return res.status(403).json({ message: "Access denied." });
     }
@@ -395,7 +396,7 @@ export const acceptReply = async (req, res) => {
 
     const isAuthor = discussion.author.toString() === req.user._id.toString();
     const course = await Course.findById(discussion.course).lean();
-    const isTeacher = course && course.createdBy.toString() === req.user._id.toString();
+    const isTeacher = course && (course.createdBy.toString() === req.user._id.toString() || (course.coTeachers || []).some((id) => id.toString() === req.user._id.toString()));
     if (!isAuthor && !isTeacher && req.user.role !== "admin") {
       return res.status(403).json({ message: "Only the poster, teacher, or admin can accept a reply." });
     }
@@ -624,7 +625,7 @@ export const deleteSubReply = async (req, res) => {
 
     const isOwner = subReply.user.toString() === req.user._id.toString();
     const course = await Course.findById(discussion.course).lean();
-    const isTeacher = course && course.createdBy.toString() === req.user._id.toString();
+    const isTeacher = course && (course.createdBy.toString() === req.user._id.toString() || (course.coTeachers || []).some((id) => id.toString() === req.user._id.toString()));
     if (!isOwner && !isTeacher && req.user.role !== "admin") {
       return res.status(403).json({ message: "Access denied." });
     }
