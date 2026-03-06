@@ -9,6 +9,8 @@ import Enrollment from "../models/enrollmentModel.js";
 import Course from "../models/courseModel.js";
 import Assignment from "../models/assignmentModel.js";
 import Submission from "../models/submissionModel.js";
+import Quiz from "../models/quizModel.js";
+import QuizAttempt from "../models/quizAttemptModel.js";
 
 /**
  * Get admin dashboard statistics
@@ -167,6 +169,10 @@ export const getTeacherStats = async (req, res) => {
       grade: null,
     });
 
+    // Quiz stats for teacher
+    const totalQuizzes = await Quiz.countDocuments({ createdBy: teacherId });
+    const publishedQuizzes = await Quiz.countDocuments({ createdBy: teacherId, isPublished: true });
+
     res.status(200).json({
       materials: {
         total: totalMaterials,
@@ -187,6 +193,10 @@ export const getTeacherStats = async (req, res) => {
       assignments: {
         total: totalAssignments,
         pendingGrading,
+      },
+      quizzes: {
+        total: totalQuizzes,
+        published: publishedQuizzes,
       },
     });
   } catch (error) {
@@ -257,6 +267,10 @@ export const getStudentStats = async (req, res) => {
     const now = new Date();
     const dueAssignments = studentAssignments.filter((a) => a.dueDate && new Date(a.dueDate) > now).length;
 
+    // Quiz stats for student
+    const availableQuizzes = await Quiz.countDocuments({ course: { $in: enrolledCourseIds }, isPublished: true });
+    const attemptedQuizzes = await QuizAttempt.countDocuments({ student: studentId });
+
     res.status(200).json({
       materials: {
         total: totalMaterials,
@@ -277,6 +291,10 @@ export const getStudentStats = async (req, res) => {
         due: dueAssignments,
         submitted: submittedCount,
         graded: gradedCount,
+      },
+      quizzes: {
+        available: availableQuizzes,
+        attempted: attemptedQuizzes,
       },
     });
   } catch (error) {
