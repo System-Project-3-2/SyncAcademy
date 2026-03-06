@@ -37,12 +37,10 @@ import {
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { quizService } from '../../services';
-import { useAuth } from '../../hooks';
 import { PageHeader, LoadingSpinner } from '../../components';
 
 const QuizEdit = () => {
   const { quizId } = useParams();
-  useAuth();
   const navigate = useNavigate();
 
   const [quiz, setQuiz] = useState(null);
