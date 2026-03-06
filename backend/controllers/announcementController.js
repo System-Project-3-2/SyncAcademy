@@ -38,6 +38,11 @@ const canAccessCourse = async (userId, courseId, userRole) => {
     return { access: true, course };
   }
 
+  // Co-teachers get full access
+  if ((course.coTeachers || []).some((id) => id.toString() === userId.toString())) {
+    return { access: true, course };
+  }
+
   // Check if student (or other teachers) are enrolled
   const enrollment = await Enrollment.findOne({
     student: userId,
@@ -59,7 +64,10 @@ const canManageCourse = async (userId, courseId, userRole) => {
   const course = await Course.findById(courseId).lean();
   if (!course) return false;
 
-  return course.createdBy.toString() === userId.toString();
+  return (
+    course.createdBy.toString() === userId.toString() ||
+    (course.coTeachers || []).some((id) => id.toString() === userId.toString())
+  );
 };
 
 /**
