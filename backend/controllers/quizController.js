@@ -65,7 +65,7 @@ export const generateQuiz = async (req, res) => {
     const diff = ["easy", "medium", "hard"].includes(difficulty) ? difficulty : "medium";
 
     // Generate questions using AI
-    const questions = await generateQuizFromMaterials(course.courseNo, count, diff, materialId || null);
+    const questions = await generateQuizFromMaterials(course.courseNo, count, diff, materialId || null, courseId);
 
     // Create quiz (unpublished so teacher can review)
     const quiz = await Quiz.create({

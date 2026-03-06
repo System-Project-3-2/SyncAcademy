@@ -93,7 +93,8 @@ export const generateResponseStream = async (prompt, options = {}) => {
  */
 export const generateChatJSON = async (systemPrompt, userPrompt, options = {}) => {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+  const timeoutMs = options.timeoutMs || OLLAMA_TIMEOUT_MS;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {

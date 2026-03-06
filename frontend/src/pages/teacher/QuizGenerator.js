@@ -73,7 +73,8 @@ const QuizGenerator = () => {
   const fetchCourses = useCallback(async () => {
     try {
       const data = await courseService.getAllCourses({ limit: 100 });
-      const courseList = data.courses || data;
+      // Backend returns { data: [...courses], pagination: {...} }
+      const courseList = data.data || data.courses || data;
       setCourses(Array.isArray(courseList) ? courseList : []);
     } catch (err) {
       toast.error('Failed to load courses');
