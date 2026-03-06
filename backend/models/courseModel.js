@@ -43,6 +43,12 @@ const courseSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    coTeachers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   { timestamps: true }
 );

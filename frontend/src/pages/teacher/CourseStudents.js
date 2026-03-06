@@ -37,6 +37,8 @@ import {
   School as CourseIcon,
   ContentCopy as CopyIcon,
   Key as KeyIcon,
+  Person as PersonIcon,
+  StarRounded as OwnerIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { PageHeader, LoadingSpinner, EmptyState } from '../../components';
@@ -51,6 +53,7 @@ const CourseStudents = () => {
   const isDark = theme.palette.mode === 'dark';
 
   const [courseInfo, setCourseInfo] = useState(null);
+  const [teachers, setTeachers] = useState([]);
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,6 +70,7 @@ const CourseStudents = () => {
     try {
       const data = await enrollmentService.getCourseStudents(courseId);
       setCourseInfo(data.course);
+      setTeachers(data.teachers || []);
       setStudents(data.students);
     } catch (error) {
       console.error('Error fetching course students:', error);
@@ -111,7 +115,7 @@ const CourseStudents = () => {
         title={courseInfo ? `${courseInfo.courseNo} — Students` : 'Course Students'}
         subtitle={
           courseInfo
-            ? `${courseInfo.courseTitle} • ${students.length} enrolled student(s)`
+            ? `${courseInfo.courseTitle} • ${teachers.length} teacher(s) • ${students.length} enrolled student(s)`
             : ''
         }
         breadcrumbs={[
@@ -129,6 +133,58 @@ const CourseStudents = () => {
           </Button>
         }
       />
+
+      {/* Teachers Section */}
+      {teachers.length > 0 && (
+        <Paper
+          elevation={0}
+          sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', mb: 3 }}
+        >
+          <Box sx={{ px: 3, py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="subtitle1" fontWeight={700}>
+              Teachers ({teachers.length})
+            </Typography>
+          </Box>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ bgcolor: isDark ? alpha(theme.palette.secondary.main, 0.08) : 'grey.50' }}>
+                <TableCell sx={{ fontWeight: 700 }}>Teacher</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Role</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {teachers.map((teacher) => (
+                <TableRow key={teacher._id}>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Avatar
+                        src={teacher.avatar || ''}
+                        sx={{ width: 36, height: 36, bgcolor: 'secondary.main', fontSize: '0.9rem', fontWeight: 600 }}
+                      >
+                        {teacher.name?.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Typography variant="body2" fontWeight={600}>{teacher.name}</Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary">{teacher.email}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      icon={teacher.isOwner ? <OwnerIcon sx={{ fontSize: 14 }} /> : <PersonIcon sx={{ fontSize: 14 }} />}
+                      label={teacher.isOwner ? 'Course Owner' : 'Co-Teacher'}
+                      color={teacher.isOwner ? 'primary' : 'default'}
+                      variant="outlined"
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Paper>
+      )}
 
       {/* Search */}
       {students.length > 0 && (
