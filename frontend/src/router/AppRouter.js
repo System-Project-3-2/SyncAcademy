@@ -16,6 +16,7 @@ import Profile from '../pages/shared/Profile';
 import AITutor from '../pages/shared/AITutor';
 import CourseStream from '../pages/shared/CourseStream';
 import CourseAssignments from '../pages/shared/CourseAssignments';
+import Notifications from '../pages/shared/Notifications';
 import {
   StudentDashboard,
   SearchMaterials,
@@ -83,6 +84,7 @@ const AppRouter = () => {
         <Route path="feedback/new" element={<SubmitFeedback />} />
         <Route path="feedbacks" element={<MyFeedbacks />} />
         <Route path="my-grades" element={<MyGrades />} />
+        <Route path="notifications" element={<Notifications />} />
         <Route path="courses/:courseId/stream" element={<CourseStream />} />
         <Route path="courses/:courseId/assignments" element={<CourseAssignments />} />
         <Route path="courses/:courseId/assignments/:assignmentId/submit" element={<AssignmentSubmit />} />
@@ -110,6 +112,7 @@ const AppRouter = () => {
         <Route path="courses/:courseId/assignments/:assignmentId" element={<AssignmentDetail />} />
         <Route path="feedbacks" element={<TeacherFeedbacks />} />
         <Route path="search" element={<SharedSearchMaterials />} />
+        <Route path="notifications" element={<Notifications />} />
       </Route>
 
       {/* Admin Routes */}
@@ -133,6 +136,7 @@ const AppRouter = () => {
         <Route path="courses/:courseId/assignments/:assignmentId" element={<AssignmentDetail />} />
         <Route path="materials/upload" element={<UploadMaterial />} />
         <Route path="search" element={<SharedSearchMaterials />} />
+        <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
         <Route path="ai-tutor" element={<AITutor />} />
       </Route>

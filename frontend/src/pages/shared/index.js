@@ -7,3 +7,4 @@ export { default as Profile } from './Profile';
 export { default as AITutor } from './AITutor';
 export { default as CourseStream } from './CourseStream';
 export { default as CourseAssignments } from './CourseAssignments';
+export { default as Notifications } from './Notifications';
