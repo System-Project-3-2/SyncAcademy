@@ -49,15 +49,30 @@ export const getAllCourses = async (req, res) => {
     const { page = 1, limit = 20, search, department, semester, sort = "-createdAt" } = req.query;
 
     const filter = {};
+    const andConditions = [];
+
     if (search) {
-      filter.$or = [
-        { courseNo: { $regex: search, $options: "i" } },
-        { courseTitle: { $regex: search, $options: "i" } },
-        { department: { $regex: search, $options: "i" } },
-      ];
+      andConditions.push({
+        $or: [
+          { courseNo: { $regex: search, $options: "i" } },
+          { courseTitle: { $regex: search, $options: "i" } },
+          { department: { $regex: search, $options: "i" } },
+        ],
+      });
     }
     if (department) filter.department = department;
     if (semester) filter.semester = semester;
+
+    // Teachers only see courses they created or co-teach
+    if (req.user.role === "teacher") {
+      andConditions.push({
+        $or: [{ createdBy: req.user._id }, { coTeachers: req.user._id }],
+      });
+    }
+
+    if (andConditions.length > 0) {
+      filter.$and = andConditions;
+    }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const total = await Course.countDocuments(filter);
@@ -128,8 +143,12 @@ export const updateCourse = async (req, res) => {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    // Teachers can only update their own courses
-    if (req.user.role === "teacher" && course.createdBy.toString() !== req.user._id.toString()) {
+    // Teachers can only update courses they own or co-teach
+    if (
+      req.user.role === "teacher" &&
+      course.createdBy.toString() !== req.user._id.toString() &&
+      !course.coTeachers.some((id) => id.toString() === req.user._id.toString())
+    ) {
       return res.status(403).json({ message: "Access denied. You can only update your own courses." });
     }
 
@@ -162,8 +181,12 @@ export const deleteCourse = async (req, res) => {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    // Teachers can only delete their own courses
-    if (req.user.role === "teacher" && course.createdBy.toString() !== req.user._id.toString()) {
+    // Teachers can only delete courses they own or co-teach
+    if (
+      req.user.role === "teacher" &&
+      course.createdBy.toString() !== req.user._id.toString() &&
+      !course.coTeachers.some((id) => id.toString() === req.user._id.toString())
+    ) {
       return res.status(403).json({ message: "Access denied. You can only delete your own courses." });
     }
 
@@ -209,8 +232,12 @@ export const regenerateCourseCode = async (req, res) => {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    // Teachers can only regenerate for their own courses
-    if (req.user.role === "teacher" && course.createdBy.toString() !== req.user._id.toString()) {
+    // Teachers can only regenerate for courses they own or co-teach
+    if (
+      req.user.role === "teacher" &&
+      course.createdBy.toString() !== req.user._id.toString() &&
+      !course.coTeachers.some((id) => id.toString() === req.user._id.toString())
+    ) {
       return res.status(403).json({ message: "Access denied. You can only manage your own courses." });
     }
 

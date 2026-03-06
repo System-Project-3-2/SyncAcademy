@@ -20,6 +20,8 @@ const notificationSchema = new mongoose.Schema(
         "evaluated_script",
         "feedback_response",
         "enrollment",
+        "course_invite",
+        "event_invite",
       ],
       required: true,
     },
