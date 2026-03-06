@@ -11,3 +11,4 @@ export { default as AssignmentSubmit } from './AssignmentSubmit';
 export { default as MyGrades } from './MyGrades';
 export { default as MyEventRegistrations } from './MyEventRegistrations';
 export { default as TakeQuiz } from './TakeQuiz';
+export { default as MyQuizAttempts } from './MyQuizAttempts';

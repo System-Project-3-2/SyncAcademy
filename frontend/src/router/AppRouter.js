@@ -16,6 +16,7 @@ import Profile from '../pages/shared/Profile';
 import AITutor from '../pages/shared/AITutor';
 import CourseStream from '../pages/shared/CourseStream';
 import CourseAssignments from '../pages/shared/CourseAssignments';
+import QuizList from '../pages/shared/QuizList';
 import Notifications from '../pages/shared/Notifications';
 import {
   StudentDashboard,
@@ -26,6 +27,8 @@ import {
   AssignmentSubmit,
   MyGrades,
   MyEventRegistrations,
+  TakeQuiz,
+  MyQuizAttempts,
 } from '../pages/student';
 
 // Teacher Pages
@@ -39,6 +42,9 @@ import {
   CreateEvent,
   MyEvents,
   EventDetail,
+  QuizGenerator,
+  QuizResults,
+  QuizEdit,
 } from '../pages/teacher';
 
 // Admin Pages
