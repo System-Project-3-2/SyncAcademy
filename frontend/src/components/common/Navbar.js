@@ -3,7 +3,7 @@
  * Role-based navigation bar with user menu and theme toggle
  * Polished with glassmorphism and smooth transitions
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
@@ -18,16 +18,36 @@ import {
   Divider,
   useTheme as useMuiTheme,
   alpha,
+  Badge,
+  Popover,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Button,
+  CircularProgress,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   School as SchoolIcon,
   Logout,
   Person as PersonIcon,
+  Notifications as NotificationsIcon,
+  UploadFile as UploadIcon,
+  Campaign as AnnouncementIcon,
+  Comment as CommentIcon,
+  Assignment as AssignmentIcon,
+  Grading as GradingIcon,
+  EmojiEvents as ResultIcon,
+  Description as ScriptIcon,
+  Feedback as FeedbackIcon,
+  School as EnrollmentIcon,
+  Circle as UnreadDot,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
 import { useTheme } from '../../hooks/useTheme';
 import { ThemeToggleMenu } from './ThemeToggle';
+import notificationService from '../../services/notificationService';
 
 const Navbar = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
@@ -35,6 +55,84 @@ const Navbar = ({ onMenuClick }) => {
   const muiTheme = useMuiTheme();
   const navigate = useNavigate();
   const [anchorElUser, setAnchorElUser] = useState(null);
+  const [anchorElNotif, setAnchorElNotif] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [recentNotifs, setRecentNotifs] = useState([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+
+  // Poll unread count every 30 seconds
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await notificationService.getUnreadCount();
+      setUnreadCount(res.data.count);
+    } catch { /* ignore */ }
+  }, [user]);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
+  const handleOpenNotif = async (event) => {
+    setAnchorElNotif(event.currentTarget);
+    setNotifLoading(true);
+    try {
+      const res = await notificationService.getNotifications(1, 5);
+      setRecentNotifs(res.data.data);
+    } catch { /* ignore */ }
+    setNotifLoading(false);
+  };
+
+  const handleCloseNotif = () => setAnchorElNotif(null);
+
+  const handleNotifClick = async (notif) => {
+    if (!notif.isRead) {
+      try {
+        await notificationService.markAsRead(notif._id);
+        setUnreadCount((c) => Math.max(0, c - 1));
+        setRecentNotifs((prev) => prev.map((n) => (n._id === notif._id ? { ...n, isRead: true } : n)));
+      } catch { /* ignore */ }
+    }
+    handleCloseNotif();
+    if (notif.link) {
+      const link = notif.link.startsWith(`/${user?.role}`) ? notif.link : `/${user?.role}${notif.link}`;
+      navigate(link);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setUnreadCount(0);
+      setRecentNotifs((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch { /* ignore */ }
+  };
+
+  const notifTypeIcons = {
+    material_upload: <UploadIcon fontSize="small" color="primary" />,
+    announcement: <AnnouncementIcon fontSize="small" color="warning" />,
+    comment: <CommentIcon fontSize="small" color="info" />,
+    assignment_created: <AssignmentIcon fontSize="small" color="secondary" />,
+    assignment_graded: <GradingIcon fontSize="small" color="success" />,
+    result_published: <ResultIcon fontSize="small" sx={{ color: '#f59e0b' }} />,
+    evaluated_script: <ScriptIcon fontSize="small" color="primary" />,
+    feedback_response: <FeedbackIcon fontSize="small" color="info" />,
+    enrollment: <EnrollmentIcon fontSize="small" color="success" />,
+  };
+
+  const formatTime = (date) => {
+    const diff = Date.now() - new Date(date).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(date).toLocaleDateString();
+  };
 
   const handleOpenUserMenu = (event) => {
     setAnchorElUser(event.currentTarget);
@@ -173,6 +271,88 @@ const Navbar = ({ onMenuClick }) => {
           <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
             <ThemeToggleMenu size="medium" />
           </Box>
+
+          {/* Notification Bell */}
+          {user && (
+            <Box sx={{ mr: 1 }}>
+              <Tooltip title="Notifications">
+                <IconButton color="inherit" onClick={handleOpenNotif}>
+                  <Badge badgeContent={unreadCount} color="error" max={99}>
+                    <NotificationsIcon />
+                  </Badge>
+                </IconButton>
+              </Tooltip>
+              <Popover
+                open={Boolean(anchorElNotif)}
+                anchorEl={anchorElNotif}
+                onClose={handleCloseNotif}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                PaperProps={{ sx: { width: 360, maxHeight: 420, borderRadius: 2, mt: 0.5 } }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5 }}>
+                  <Typography fontWeight={700} variant="body1">Notifications</Typography>
+                  {unreadCount > 0 && (
+                    <Button size="small" onClick={handleMarkAllRead}>Mark all read</Button>
+                  )}
+                </Box>
+                <Divider />
+                {notifLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : recentNotifs.length === 0 ? (
+                  <Box sx={{ py: 3, textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">No notifications</Typography>
+                  </Box>
+                ) : (
+                  <List disablePadding dense>
+                    {recentNotifs.map((n) => (
+                      <ListItem
+                        key={n._id}
+                        onClick={() => handleNotifClick(n)}
+                        sx={{
+                          cursor: 'pointer',
+                          bgcolor: n.isRead ? 'transparent' : alpha(muiTheme.palette.primary.main, 0.04),
+                          '&:hover': { bgcolor: alpha(muiTheme.palette.primary.main, 0.08) },
+                          py: 1,
+                          px: 2,
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 32 }}>
+                          {notifTypeIcons[n.type] || <NotificationsIcon fontSize="small" />}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              {!n.isRead && <UnreadDot sx={{ fontSize: 6, color: 'primary.main' }} />}
+                              <Typography variant="body2" fontWeight={n.isRead ? 400 : 600} noWrap>
+                                {n.title}
+                              </Typography>
+                            </Box>
+                          }
+                          secondary={
+                            <Typography variant="caption" color="text.secondary" noWrap>
+                              {n.message} · {formatTime(n.createdAt)}
+                            </Typography>
+                          }
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
+                <Divider />
+                <Box sx={{ p: 1, textAlign: 'center' }}>
+                  <Button
+                    size="small"
+                    onClick={() => { handleCloseNotif(); navigate(`/${user?.role}/notifications`); }}
+                  >
+                    See all notifications
+                  </Button>
+                </Box>
+              </Popover>
+            </Box>
+          )}
 
           {/* User Menu */}
           {user && (
