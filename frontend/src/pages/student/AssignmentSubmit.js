@@ -245,33 +245,41 @@ const AssignmentSubmit = () => {
             </Paper>
           )}
 
-          {/* Submit / Resubmit form */}
-          <Divider sx={{ mb: 2 }} />
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            {submission ? 'Update Your Submission' : 'Upload your work'}
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Button variant="outlined" component="label" startIcon={<UploadIcon />} sx={{ alignSelf: 'flex-start' }}>
-              {file ? file.name : 'Choose File'}
-              <input type="file" hidden onChange={(e) => setFile(e.target.files[0] || null)} />
-            </Button>
-            <TextField
-              label="Text Response (optional)"
-              multiline
-              rows={4}
-              fullWidth
-              value={textContent}
-              onChange={(e) => setTextContent(e.target.value)}
-            />
-            <Button
-              variant="contained"
-              onClick={handleSubmit}
-              disabled={submitting || (lateNotAllowed && !submission)}
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              {submitting ? <CircularProgress size={20} /> : submission ? 'Update Submission' : 'Submit'}
-            </Button>
-          </Box>
+          {/* Submit / Resubmit form — hidden once results are published */}
+          {isResultPublished ? (
+            <Alert severity="info" sx={{ mt: 1 }}>
+              Submissions are closed — results have been published.
+            </Alert>
+          ) : (
+            <>
+              <Divider sx={{ mb: 2 }} />
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                {submission ? 'Update Your Submission' : 'Upload your work'}
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Button variant="outlined" component="label" startIcon={<UploadIcon />} sx={{ alignSelf: 'flex-start' }}>
+                  {file ? file.name : 'Choose File'}
+                  <input type="file" hidden onChange={(e) => setFile(e.target.files[0] || null)} />
+                </Button>
+                <TextField
+                  label="Text Response (optional)"
+                  multiline
+                  rows={4}
+                  fullWidth
+                  value={textContent}
+                  onChange={(e) => setTextContent(e.target.value)}
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleSubmit}
+                  disabled={submitting || (lateNotAllowed && !submission)}
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  {submitting ? <CircularProgress size={20} /> : submission ? 'Update Submission' : 'Submit'}
+                </Button>
+              </Box>
+            </>
+          )}
         </CardContent>
       </Card>
     </Box>
