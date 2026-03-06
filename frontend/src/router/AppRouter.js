@@ -25,6 +25,7 @@ import {
   MyCourses,
   AssignmentSubmit,
   MyGrades,
+  MyEventRegistrations,
 } from '../pages/student';
 
 // Teacher Pages
@@ -34,6 +35,10 @@ import {
   TeacherFeedbacks,
   CourseStudents,
   AssignmentDetail,
+  CourseInvitations,
+  CreateEvent,
+  MyEvents,
+  EventDetail,
 } from '../pages/teacher';
 
 // Admin Pages
@@ -85,6 +90,7 @@ const AppRouter = () => {
         <Route path="feedbacks" element={<MyFeedbacks />} />
         <Route path="my-grades" element={<MyGrades />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="events" element={<MyEventRegistrations />} />
         <Route path="courses/:courseId/stream" element={<CourseStream />} />
         <Route path="courses/:courseId/assignments" element={<CourseAssignments />} />
         <Route path="courses/:courseId/assignments/:assignmentId/submit" element={<AssignmentSubmit />} />
@@ -113,6 +119,10 @@ const AppRouter = () => {
         <Route path="feedbacks" element={<TeacherFeedbacks />} />
         <Route path="search" element={<SharedSearchMaterials />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="invitations" element={<CourseInvitations />} />
+        <Route path="events" element={<MyEvents />} />
+        <Route path="events/create" element={<CreateEvent />} />
+        <Route path="events/:eventId" element={<EventDetail />} />
       </Route>
 
       {/* Admin Routes */}

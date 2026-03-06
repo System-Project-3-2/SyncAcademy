@@ -9,3 +9,4 @@ export { default as MyFeedbacks } from './MyFeedbacks';
 export { default as MyCourses } from './MyCourses';
 export { default as AssignmentSubmit } from './AssignmentSubmit';
 export { default as MyGrades } from './MyGrades';
+export { default as MyEventRegistrations } from './MyEventRegistrations';

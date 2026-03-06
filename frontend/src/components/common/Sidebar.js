@@ -32,6 +32,8 @@ import {
   Assignment as AssignmentIcon,
   Grading as GradingIcon,
   Notifications as NotificationsIcon,
+  PersonAdd as InviteIcon,
+  Event as EventIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
 
@@ -47,6 +49,7 @@ const getNavItems = (role) => {
       { text: 'All Materials', icon: <LibraryIcon />, path: '/student/materials' },
       { text: 'Search Materials', icon: <SearchIcon />, path: '/student/search' },
       { text: 'Results', icon: <GradingIcon />, path: '/student/my-grades' },
+      { text: 'Events', icon: <EventIcon />, path: '/student/events' },
       { text: 'Notifications', icon: <NotificationsIcon />, path: '/student/notifications' },
       { text: 'Submit Feedback', icon: <AddIcon />, path: '/student/feedback/new' },
       { text: 'My Feedbacks', icon: <FeedbackIcon />, path: '/student/feedbacks' },
@@ -57,6 +60,8 @@ const getNavItems = (role) => {
       { text: 'My Materials', icon: <LibraryIcon />, path: '/teacher/materials' },
       { text: 'Upload Material', icon: <UploadIcon />, path: '/teacher/materials/upload' },
       { text: 'Courses', icon: <CourseIconNav />, path: '/teacher/courses' },
+      { text: 'Course Invitations', icon: <InviteIcon />, path: '/teacher/invitations' },
+      { text: 'Events', icon: <EventIcon />, path: '/teacher/events' },
       { text: 'Notifications', icon: <NotificationsIcon />, path: '/teacher/notifications' },
       { text: 'All Feedbacks', icon: <FeedbackIcon />, path: '/teacher/feedbacks' },
       { text: 'Search Materials', icon: <SearchIcon />, path: '/teacher/search' },
