@@ -18,3 +18,4 @@ export { default as assignmentService } from './assignmentService';
 export { default as notificationService } from './notificationService';
 export { default as invitationService } from './invitationService';
 export { default as eventService } from './eventService';
+export { default as quizService } from './quizService';
