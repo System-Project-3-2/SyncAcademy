@@ -11,3 +11,6 @@ export { default as CourseInvitations } from './CourseInvitations';
 export { default as CreateEvent } from './CreateEvent';
 export { default as MyEvents } from './MyEvents';
 export { default as EventDetail } from './EventDetail';
+export { default as QuizGenerator } from './QuizGenerator';
+export { default as QuizResults } from './QuizResults';
+export { default as QuizEdit } from './QuizEdit';

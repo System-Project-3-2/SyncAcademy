@@ -34,6 +34,7 @@ import {
   Notifications as NotificationsIcon,
   PersonAdd as InviteIcon,
   Event as EventIcon,
+  Quiz as QuizIconNav,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
 
