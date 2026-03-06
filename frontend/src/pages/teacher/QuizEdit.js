@@ -42,7 +42,7 @@ import { PageHeader, LoadingSpinner } from '../../components';
 
 const QuizEdit = () => {
   const { quizId } = useParams();
-  const { user } = useAuth();
+  useAuth();
   const navigate = useNavigate();
 
   const [quiz, setQuiz] = useState(null);

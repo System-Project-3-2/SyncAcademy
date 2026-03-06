@@ -100,6 +100,9 @@ const AppRouter = () => {
         <Route path="courses/:courseId/stream" element={<CourseStream />} />
         <Route path="courses/:courseId/assignments" element={<CourseAssignments />} />
         <Route path="courses/:courseId/assignments/:assignmentId/submit" element={<AssignmentSubmit />} />
+        <Route path="courses/:courseId/quizzes" element={<QuizList />} />
+        <Route path="quizzes/:quizId/take" element={<TakeQuiz />} />
+        <Route path="my-quizzes" element={<MyQuizAttempts />} />
       </Route>
 
       {/* Teacher Routes */}
@@ -129,6 +132,10 @@ const AppRouter = () => {
         <Route path="events" element={<MyEvents />} />
         <Route path="events/create" element={<CreateEvent />} />
         <Route path="events/:eventId" element={<EventDetail />} />
+        <Route path="courses/:courseId/quizzes" element={<QuizList />} />
+        <Route path="quizzes/generate" element={<QuizGenerator />} />
+        <Route path="quizzes/:quizId/results" element={<QuizResults />} />
+        <Route path="quizzes/:quizId/edit" element={<QuizEdit />} />
       </Route>
 
       {/* Admin Routes */}
@@ -155,6 +162,10 @@ const AppRouter = () => {
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
         <Route path="ai-tutor" element={<AITutor />} />
+        <Route path="courses/:courseId/quizzes" element={<QuizList />} />
+        <Route path="quizzes/generate" element={<QuizGenerator />} />
+        <Route path="quizzes/:quizId/results" element={<QuizResults />} />
+        <Route path="quizzes/:quizId/edit" element={<QuizEdit />} />
       </Route>
 
       {/* Root redirect - redirect to login or appropriate dashboard */}
