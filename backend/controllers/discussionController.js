@@ -7,6 +7,7 @@ import Course from "../models/courseModel.js";
 import Enrollment from "../models/enrollmentModel.js";
 import User from "../models/userModel.js";
 import uploadToCloudinary from "../utils/cloudinaryUpload.js";
+import { createNotification } from "../utils/notificationHelper.js";
 import path from "path";
 
 // â”€â”€â”€ Upload helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -291,6 +292,17 @@ export const addReply = async (req, res) => {
       .populate("replies.subReplies.user", "name email avatar role contribution");
 
     res.status(201).json(populated);
+
+    // Non-blocking: notify discussion author about the reply
+    if (discussion.author.toString() !== req.user._id.toString()) {
+      createNotification({
+        recipient: discussion.author,
+        type: "comment",
+        title: "New Reply to Your Discussion",
+        message: `${req.user.name} replied to your discussion.`,
+        link: `/courses/${discussion.course}/stream`,
+      }).catch(() => {});
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -456,6 +468,17 @@ export const voteDiscussion = async (req, res) => {
       .populate("replies.subReplies.user", "name email avatar role contribution");
 
     res.status(200).json(populated);
+
+    // Non-blocking: notify discussion author on upvote
+    if (value === 1 && discussion.author.toString() !== userId) {
+      createNotification({
+        recipient: discussion.author,
+        type: "comment",
+        title: "Someone Upvoted Your Discussion",
+        message: `${req.user.name} upvoted your discussion.`,
+        link: `/courses/${discussion.course}/stream`,
+      }).catch(() => {});
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -505,6 +528,17 @@ export const voteReply = async (req, res) => {
       .populate("replies.subReplies.user", "name email avatar role contribution");
 
     res.status(200).json(populated);
+
+    // Non-blocking: notify reply author on upvote
+    if (value === 1 && reply.user.toString() !== userId) {
+      createNotification({
+        recipient: reply.user,
+        type: "comment",
+        title: "Someone Upvoted Your Reply",
+        message: `${req.user.name} upvoted your reply.`,
+        link: `/courses/${discussion.course}/stream`,
+      }).catch(() => {});
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

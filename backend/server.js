@@ -14,7 +14,7 @@ import courseRoutes from "./routes/courseRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import enrollmentRoutes from "./routes/enrollmentRoutes.js";
 import announcementRoutes from "./routes/announcementRoutes.js";
-import discussionRoutes from "./routes/discussionRoutes.js";import assignmentRoutes from './routes/assignmentRoutes.js';import deleteResolvedFeedbacks from './utils/cleanupResolvedFeedbacks.js';
+import discussionRoutes from "./routes/discussionRoutes.js";import assignmentRoutes from './routes/assignmentRoutes.js';import notificationRoutes from './routes/notificationRoutes.js';import deleteResolvedFeedbacks from './utils/cleanupResolvedFeedbacks.js';
 import Course, { generateCourseCode } from './models/courseModel.js';
 
 deleteResolvedFeedbacks();
@@ -75,6 +75,8 @@ app.use("/api/announcements", announcementRoutes);
 app.use("/api/discussions", discussionRoutes);
 
 app.use("/api/assignments", assignmentRoutes);
+
+app.use("/api/notifications", notificationRoutes);
 
 // Global error handler for multer and other errors
 app.use((err, req, res, next) => {

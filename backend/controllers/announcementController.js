@@ -6,6 +6,7 @@ import Announcement from "../models/announcementModel.js";
 import Course from "../models/courseModel.js";
 import Enrollment from "../models/enrollmentModel.js";
 import uploadToCloudinary from "../utils/cloudinaryUpload.js";
+import { notifyEnrolledStudents, createNotification } from "../utils/notificationHelper.js";
 import path from "path";
 
 // â”€â”€â”€ Upload helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -101,6 +102,16 @@ export const createAnnouncement = async (req, res) => {
       .populate("comments.replies.user", "name email avatar role contribution");
 
     res.status(201).json(populated);
+
+    // Non-blocking: notify enrolled students about new announcement
+    notifyEnrolledStudents({
+      courseId,
+      type: "announcement",
+      title: `New Notice: ${title.trim()}`,
+      message: `A new notice "${title.trim()}" has been posted in your course.`,
+      link: `/courses/${courseId}/stream`,
+      sendEmailFlag: true,
+    }).catch(() => {});
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -331,6 +342,17 @@ export const addComment = async (req, res) => {
       .populate("comments.replies.user", "name email avatar role contribution");
 
     res.status(201).json(populated);
+
+    // Non-blocking: notify announcement author about the comment
+    if (announcement.author.toString() !== req.user._id.toString()) {
+      createNotification({
+        recipient: announcement.author,
+        type: "comment",
+        title: "New Comment",
+        message: `${req.user.name} commented on your announcement.`,
+        link: `/courses/${announcement.course._id}/stream`,
+      }).catch(() => {});
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -438,6 +460,7 @@ export const addCommentReply = async (req, res) => {
     const comment = announcement.comments.id(commentId);
     if (!comment) return res.status(404).json({ message: "Comment not found" });
 
+    const commentAuthor = comment.user;
     comment.replies.push({ user: req.user._id, text: text.trim() });
     await announcement.save();
 
@@ -447,6 +470,17 @@ export const addCommentReply = async (req, res) => {
       .populate("comments.replies.user", "name email avatar role contribution");
 
     res.status(201).json(populated);
+
+    // Non-blocking: notify the comment author about the reply
+    if (commentAuthor.toString() !== req.user._id.toString()) {
+      createNotification({
+        recipient: commentAuthor,
+        type: "comment",
+        title: "New Reply to Your Comment",
+        message: `${req.user.name} replied to your comment on an announcement.`,
+        link: `/courses/${announcement.course._id}/stream`,
+      }).catch(() => {});
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

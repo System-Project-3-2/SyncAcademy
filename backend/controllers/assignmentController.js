@@ -11,6 +11,8 @@ import uploadToCloudinary from "../utils/cloudinaryUpload.js";
 import deletefromCloudinary from "../utils/cloudinaryDelete.js";
 import path from "path";
 import PDFDocument from "pdfkit";
+import { notifyEnrolledStudents, createNotification } from "../utils/notificationHelper.js";
+import { sendEmail } from "../utils/sendEmail.js";
 import fs from "fs";
 import os from "os";
 
@@ -94,6 +96,16 @@ export const createAssignment = async (req, res) => {
       .populate("course", "courseNo courseTitle");
 
     res.status(201).json(populated);
+
+    // Non-blocking: notify enrolled students
+    notifyEnrolledStudents({
+      courseId,
+      type: "assignment_created",
+      title: "New Assignment",
+      message: `New assignment "${title.trim()}" has been posted.`,
+      link: `/courses/${courseId}/assignments`,
+      sendEmailFlag: true,
+    }).catch(() => {});
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -306,6 +318,11 @@ export const submitAssignment = async (req, res) => {
       return res.status(404).json({ message: "Assignment not found" });
     }
 
+    // Block new/updated submissions once results are published
+    if (assignment.isResultPublished) {
+      return res.status(403).json({ message: "Submissions are closed. Results have been published." });
+    }
+
     // Check enrollment
     const enrolled = await Enrollment.findOne({
       student: req.user._id,
@@ -511,6 +528,15 @@ export const gradeSubmission = async (req, res) => {
       .populate("assignment", "title dueDate totalMarks");
 
     res.json(populated);
+
+    // Non-blocking: notify the student that their submission was graded
+    createNotification({
+      recipient: submission.student,
+      type: "assignment_graded",
+      title: "Assignment Graded",
+      message: `Your submission for "${assignment.title}" has been graded.`,
+      link: `/student/courses/${assignment.course}/assignments/${assignment._id}/submit`,
+    }).catch(() => {});
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -575,6 +601,18 @@ export const publishResult = async (req, res) => {
     await assignment.save();
 
     res.json({ message: publish ? "Result published" : "Result unpublished", isResultPublished: assignment.isResultPublished });
+
+    // Non-blocking: notify enrolled students when result is published
+    if (publish) {
+      notifyEnrolledStudents({
+        courseId: assignment.course,
+        type: "result_published",
+        title: "Result Published",
+        message: `Results for "${assignment.title}" have been published.`,
+        link: `/student/my-grades`,
+        sendEmailFlag: true,
+      }).catch(() => {});
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -921,6 +959,31 @@ export const toggleEvaluatedVisibility = async (req, res) => {
     await submission.save();
 
     res.json({ showEvaluatedToStudent: submission.showEvaluatedToStudent });
+
+    // Non-blocking: notify student when evaluated script becomes visible
+    if (show) {
+      createNotification({
+        recipient: submission.student,
+        type: "evaluated_script",
+        title: "Evaluated Script Available",
+        message: `Your evaluated script for "${assignment.title}" is now available.`,
+        link: `/student/courses/${assignment.course}/assignments/${assignment._id}/submit`,
+      }).catch(() => {});
+
+      // Also send email
+      try {
+        const student = await User.findById(submission.student, "name email").lean();
+        if (student?.email) {
+          const evalLink = `/student/courses/${assignment.course}/assignments/${assignment._id}/submit`;
+          sendEmail(
+            student.email,
+            "Evaluated Script Available",
+            `Your evaluated script for "${assignment.title}" is now available.`,
+            { name: student.name, link: evalLink }
+          ).catch(() => {});
+        }
+      } catch (_) { /* best effort */ }
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
