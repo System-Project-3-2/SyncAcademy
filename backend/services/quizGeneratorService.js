@@ -53,10 +53,11 @@ export const generateQuiz = async (courseNo, numQuestions = 5, difficulty = "med
     throw new Error("No processed text chunks found. Material content may not have been extracted.");
   }
 
-  // 3. Select a subset of chunks (spread across materials)
-  const selectedChunks = selectChunks(chunks, numQuestions);
+  // 3. Select a diverse subset of chunks — prefer longer, more informative ones.
+  //    Cap at numQuestions + 2 to keep total Ollama calls low and avoid HTTP timeouts.
+  const selectedChunks = selectDiverseChunks(chunks, numQuestions + 2);
 
-  // 4. Generate questions one per chunk to keep each Ollama call fast
+  // 4. Generate questions one per chunk; the +2 buffer absorbs any grounding rejects
   const questions = [];
 
   for (let i = 0; i < selectedChunks.length && questions.length < numQuestions; i++) {
@@ -66,6 +67,11 @@ export const generateQuiz = async (courseNo, numQuestions = 5, difficulty = "med
       const generated = await generateQuestionsFromChunk(chunk.chunkText, 1, difficulty);
       for (const q of generated) {
         if (questions.length >= numQuestions) break;
+        // Discard questions whose key terms don't appear in the source chunk
+        if (!isQuestionGrounded(q.questionText, chunk.chunkText)) {
+          console.warn(`[QuizGen] Discarded ungrounded question: "${q.questionText.substring(0, 80)}"`);
+          continue;
+        }
         questions.push({
           ...q,
           sourceChunk: chunk.chunkText.substring(0, 200),
@@ -78,49 +84,140 @@ export const generateQuiz = async (courseNo, numQuestions = 5, difficulty = "med
   }
 
   if (!questions.length) {
-    throw new Error("Failed to generate any quiz questions. Please try again.");
+    throw new Error(
+      "Could not generate grounded questions from the available material chunks. " +
+      "Try uploading more detailed course materials or retry."
+    );
   }
 
+  // Return whatever was generated — may be fewer than numQuestions if some
+  // chunks produced no valid output, but partial results are better than failure.
   return questions;
 };
 
 /**
  * Select a diverse subset of chunks for question generation.
+ *
+ * Strategy:
+ *   1. Discard chunks shorter than MIN_CHUNK_LENGTH (too sparse to ground a question).
+ *   2. Sort each materialId bucket by length descending (longest = most informative).
+ *   3. Round-robin across materials so all uploaded files are represented.
+ *   4. Return up to `target` chunks.
  */
-function selectChunks(chunks, numQuestions) {
-  // Filter out very short chunks (less than 80 characters)
-  const usable = chunks.filter((c) => c.chunkText.length >= 80);
-  if (!usable.length) return chunks.slice(0, numQuestions);
+const MIN_CHUNK_LENGTH = 150;
 
-  // Shuffle and pick exactly numQuestions chunks (1 question per chunk)
-  const shuffled = usable.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, numQuestions);
+function selectDiverseChunks(chunks, target) {
+  const usable = chunks.filter((c) => c.chunkText.length >= MIN_CHUNK_LENGTH);
+  const pool = usable.length ? usable : chunks; // fallback: use everything
+
+  // Group by materialId and sort each bucket longest-first
+  const byMaterial = new Map();
+  for (const chunk of pool) {
+    const key = String(chunk.materialId);
+    if (!byMaterial.has(key)) byMaterial.set(key, []);
+    byMaterial.get(key).push(chunk);
+  }
+  for (const bucket of byMaterial.values()) {
+    bucket.sort((a, b) => b.chunkText.length - a.chunkText.length);
+  }
+
+  // Round-robin pick across materials
+  const queues = [...byMaterial.values()];
+  const result = [];
+  let round = 0;
+  while (result.length < target) {
+    let added = false;
+    for (const q of queues) {
+      if (result.length >= target) break;
+      if (round < q.length) { result.push(q[round]); added = true; }
+    }
+    if (!added) break;
+    round++;
+  }
+  return result;
 }
 
 /**
+ * Post-generation grounding validation.
+ *
+ * Extracts meaningful tokens from the generated question and checks what
+ * fraction of them appear verbatim in the source chunk.  A question whose
+ * key terms are absent from the chunk was almost certainly hallucinated.
+ *
+ * Threshold: ≥ 35 % of non-trivial question tokens must exist in the chunk.
+ */
+const GROUNDING_STOP_WORDS = new Set([
+  'a','an','the','is','are','was','were','be','been','being','have','has','had',
+  'do','does','did','will','would','could','should','may','might','shall','can',
+  'this','that','these','those','and','but','or','nor','for','yet','so',
+  'in','on','at','to','of','by','with','from','into','through','about',
+  'what','which','who','how','when','where','why','all','each','every',
+  'both','more','most','other','some','such','than','too','very','just',
+  'its','it','he','she','they','we','you','i','me','him','her','us','them',
+]);
+
+function isQuestionGrounded(questionText, chunkText) {
+  const tokens = questionText
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length >= 4 && !GROUNDING_STOP_WORDS.has(t));
+
+  if (tokens.length === 0) return true; // nothing to validate against — accept
+
+  const chunkLower = chunkText.toLowerCase();
+  const matchCount = tokens.filter((t) => chunkLower.includes(t)).length;
+  const ratio = matchCount / tokens.length;
+
+  return ratio >= 0.20; // at least 20 % of key terms must appear in the chunk
+  // Note: LLMs paraphrase rather than quote verbatim, so a strict threshold
+  // like 35 % rejects too many valid questions.  20 % still catches clear
+  // topic-drift hallucinations while accepting natural paraphrasing.
+}
+
+// Maximum characters of a chunk sent to the LLM (larger = more context = less hallucination)
+const CHUNK_CONTEXT_LIMIT = 1000;
+
+/**
  * Generate MCQ questions from a single text chunk using Ollama.
+ *
+ * Grounding strategy:
+ *   - The chunk is presented inside [CONTEXT START]/[CONTEXT END] delimiters.
+ *   - The system prompt explicitly forbids using outside knowledge and requires
+ *     every answer option to be traceable to the CONTEXT.
+ *   - Temperature is kept near 0 (0.1) to minimise creative/hallucinatory output.
  */
 async function generateQuestionsFromChunk(chunkText, count, difficulty) {
-  // Truncate chunk to avoid long context windows
-  const truncated = chunkText.substring(0, 600);
+  const truncated = chunkText.length > CHUNK_CONTEXT_LIMIT
+    ? chunkText.substring(0, CHUNK_CONTEXT_LIMIT)
+    : chunkText;
 
+  // ── System prompt — explicit anti-hallucination constraints ────────────────
   const systemPrompt = `You are a quiz creator. Output ONLY valid JSON — no markdown, no extra text.
-Generate ${count} multiple-choice question from the text below.
 Use this exact JSON structure:
-{"questions":[{"questionText":"question","options":["choice1","choice2","choice3","choice4"],"correctAnswer":0,"explanation":"why"}]}
-Rules:
-- difficulty: ${difficulty}
-- correctAnswer is a 0-based index (0, 1, 2, or 3)
-- Do NOT use quotation marks inside option strings or explanation
-- Keep each option under 15 words`;
+{"questions":[{"questionText":"...","options":["...","...","...","..."],"correctAnswer":0,"explanation":"..."}]}
 
-  const userPrompt = `Text:\n${truncated}`;
+CRITICAL RULES — violating any rule makes your answer WRONG:
+1. Generate ONLY questions whose answers are found DIRECTLY in the CONTEXT below.
+2. Do NOT use any knowledge from your training data. The CONTEXT is your ONLY source.
+3. Every answer option MUST come from or relate to content in the CONTEXT.
+4. The explanation MUST quote or paraphrase the CONTEXT — not general knowledge.
+5. If the CONTEXT does not contain enough information, output: {"questions":[]}
+6. difficulty: ${difficulty}
+7. correctAnswer is a 0-based index (0, 1, 2, or 3)
+8. Do NOT use quotation marks inside string values
+9. Keep each option under 12 words`;
+
+  // ── User prompt — chunk wrapped in clear delimiters ────────────────────────
+  const userPrompt =
+    `[CONTEXT START]\n${truncated}\n[CONTEXT END]\n\n` +
+    `Generate ${count} ${difficulty} multiple-choice question based ONLY on the context above.`;
 
   const rawResponse = await generateChatJSON(systemPrompt, userPrompt, {
-    temperature: 0.3,
+    temperature: 0.1,   // near-zero to suppress hallucination
     max_tokens: 800,
     num_ctx: 2048,
-    timeoutMs: 300_000, // 5 minutes per chunk
+    timeoutMs: 300_000,
   });
 
   return parseQuestionResponse(rawResponse, difficulty);
