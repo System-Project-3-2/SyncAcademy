@@ -35,6 +35,8 @@ import {
   PlayArrow as StartIcon,
   CheckCircle as CompletedIcon,
   Edit as EditIcon,
+  Schedule as ScheduleIcon,
+  EventBusy as ExpiredIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks';
@@ -207,6 +209,34 @@ const QuizList = () => {
                         color={quiz.isPublished ? 'success' : 'default'}
                       />
                     )}
+                    {/* Schedule chips — visible to both teacher and student */}
+                    {quiz.scheduledAt && quiz.scheduleStatus === 'upcoming' && (
+                      <Chip
+                        icon={<ScheduleIcon sx={{ fontSize: 14 }} />}
+                        label={`Starts ${new Date(quiz.scheduledAt).toLocaleString()}`}
+                        size="small"
+                        color="info"
+                        variant="outlined"
+                      />
+                    )}
+                    {quiz.scheduledAt && quiz.scheduleStatus === 'available' && quiz.availableUntil && (
+                      <Chip
+                        icon={<ScheduleIcon sx={{ fontSize: 14 }} />}
+                        label={`Ends ${new Date(quiz.availableUntil).toLocaleString()}`}
+                        size="small"
+                        color="warning"
+                        variant="outlined"
+                      />
+                    )}
+                    {quiz.scheduleStatus === 'expired' && (
+                      <Chip
+                        icon={<ExpiredIcon sx={{ fontSize: 14 }} />}
+                        label="Expired"
+                        size="small"
+                        color="error"
+                        variant="outlined"
+                      />
+                    )}
                     {!isTeacher && quiz.attemptStatus === 'completed' && (
                       <Chip
                         icon={<CompletedIcon />}
@@ -215,7 +245,7 @@ const QuizList = () => {
                         color={quiz.myPercentage >= 70 ? 'success' : quiz.myPercentage >= 40 ? 'warning' : 'error'}
                       />
                     )}
-                    {!isTeacher && quiz.attemptStatus === 'not_attempted' && (
+                    {!isTeacher && quiz.attemptStatus === 'not_attempted' && quiz.scheduleStatus === 'available' && (
                       <Chip label="Not Attempted" size="small" color="default" />
                     )}
                   </Box>
@@ -246,14 +276,22 @@ const QuizList = () => {
                   </Button>
                 </>
               ) : (
-                <Button
-                  size="small"
-                  variant={quiz.attemptStatus === 'completed' ? 'outlined' : 'contained'}
-                  startIcon={quiz.attemptStatus === 'completed' ? <CompletedIcon /> : <StartIcon />}
-                  onClick={() => navigate(`${basePath}/quizzes/${quiz._id}/take`)}
-                >
-                  {quiz.attemptStatus === 'completed' ? 'View Results' : 'Start Quiz'}
-                </Button>
+                quiz.scheduleStatus === 'upcoming' ? (
+                  <Button size="small" variant="outlined" disabled startIcon={<ScheduleIcon />}>
+                    Available {new Date(quiz.scheduledAt).toLocaleDateString()}
+                  </Button>
+                ) : quiz.scheduleStatus === 'expired' && quiz.attemptStatus !== 'completed' ? (
+                  <Chip label="Quiz Expired" size="small" color="error" variant="outlined" />
+                ) : (
+                  <Button
+                    size="small"
+                    variant={quiz.attemptStatus === 'completed' ? 'outlined' : 'contained'}
+                    startIcon={quiz.attemptStatus === 'completed' ? <CompletedIcon /> : <StartIcon />}
+                    onClick={() => navigate(`${basePath}/quizzes/${quiz._id}/take`)}
+                  >
+                    {quiz.attemptStatus === 'completed' ? 'View Results' : 'Start Quiz'}
+                  </Button>
+                )
               )}
             </CardActions>
           </Card>

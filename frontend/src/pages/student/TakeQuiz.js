@@ -31,6 +31,8 @@ import {
   Cancel as WrongIcon,
   Send as SubmitIcon,
   EmojiEvents as TrophyIcon,
+  Schedule as ScheduleIcon,
+  EventBusy as ExpiredIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { quizService } from '../../services';
@@ -48,12 +50,18 @@ const TakeQuiz = () => {
   const [startedAt] = useState(new Date().toISOString());
   const [timeLeft, setTimeLeft] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [questionOrder, setQuestionOrder] = useState(null);
+  const [optionOrders, setOptionOrders] = useState(null);
   const timerRef = useRef(null);
 
   const fetchQuiz = useCallback(async () => {
     try {
       const data = await quizService.getQuiz(quizId);
       setQuiz(data);
+
+      // Store randomization mapping for submission
+      if (data.questionOrder) setQuestionOrder(data.questionOrder);
+      if (data.optionOrders) setOptionOrders(data.optionOrders);
 
       // If already attempted, show results directly
       if (data.myAttempt) {
@@ -130,6 +138,8 @@ const TakeQuiz = () => {
       const data = await quizService.submitAttempt(quizId, {
         answers: answersArray,
         startedAt,
+        questionOrder,
+        optionOrders,
       });
 
       setResult(data.attempt);
@@ -145,6 +155,49 @@ const TakeQuiz = () => {
 
   if (loading) return <LoadingSpinner />;
   if (!quiz) return <Alert severity="error">Quiz not found</Alert>;
+
+  // ─── Schedule-locked views ──────────────────────────────────────────
+  if (quiz.scheduleStatus === 'upcoming') {
+    return (
+      <Box sx={{ maxWidth: 600, mx: 'auto', textAlign: 'center', mt: 8 }}>
+        <ScheduleIcon sx={{ fontSize: 64, color: 'info.main', mb: 2 }} />
+        <Typography variant="h5" fontWeight={700} gutterBottom>{quiz.title}</Typography>
+        <Typography variant="body1" color="text.secondary" mb={2}>
+          This quiz is not yet available.
+        </Typography>
+        {quiz.scheduledAt && (
+          <Chip
+            icon={<ScheduleIcon />}
+            label={`Starts on ${new Date(quiz.scheduledAt).toLocaleString()}`}
+            color="info"
+            sx={{ mb: 3, fontSize: '0.95rem', py: 1 }}
+          />
+        )}
+        <Box><Button startIcon={<BackIcon />} variant="outlined" onClick={() => navigate(-1)}>Go Back</Button></Box>
+      </Box>
+    );
+  }
+
+  if (quiz.scheduleStatus === 'expired' && !result) {
+    return (
+      <Box sx={{ maxWidth: 600, mx: 'auto', textAlign: 'center', mt: 8 }}>
+        <ExpiredIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+        <Typography variant="h5" fontWeight={700} gutterBottom>{quiz.title}</Typography>
+        <Typography variant="body1" color="text.secondary" mb={3}>
+          This quiz is no longer available.
+        </Typography>
+        {quiz.availableUntil && (
+          <Chip
+            icon={<ExpiredIcon />}
+            label={`Ended on ${new Date(quiz.availableUntil).toLocaleString()}`}
+            color="error"
+            sx={{ mb: 3 }}
+          />
+        )}
+        <Box><Button startIcon={<BackIcon />} variant="outlined" onClick={() => navigate(-1)}>Go Back</Button></Box>
+      </Box>
+    );
+  }
 
   const answeredCount = Object.keys(answers).length;
   const totalQuestions = quiz.questions?.length || 0;
