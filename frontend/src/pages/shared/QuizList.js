@@ -156,6 +156,16 @@ const QuizList = () => {
                 Generate AI Quiz
               </Button>
             )}
+            {isTeacher && (
+              <Button
+                startIcon={<EditIcon />}
+                onClick={() => navigate(`${basePath}/quizzes/create?courseId=${courseId}`)}
+                variant="contained"
+                color="secondary"
+              >
+                Create Manual Quiz
+              </Button>
+            )}
           </Box>
         }
       />
@@ -165,7 +175,7 @@ const QuizList = () => {
           title="No Quizzes Yet"
           description={
             isTeacher
-              ? 'Generate your first AI quiz from course materials.'
+              ? 'Create your first quiz manually or generate one with AI.'
               : 'No quizzes are available for this course yet.'
           }
           icon={<QuizIcon sx={{ fontSize: 64, color: 'text.disabled' }} />}

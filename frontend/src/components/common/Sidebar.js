@@ -63,6 +63,7 @@ const getNavItems = (role) => {
       { text: 'Upload Material', icon: <UploadIcon />, path: '/teacher/materials/upload' },
       { text: 'Courses', icon: <CourseIconNav />, path: '/teacher/courses' },
       { text: 'AI Quiz Generator', icon: <QuizIconNav />, path: '/teacher/quizzes/generate' },
+      { text: 'Create Quiz', icon: <QuizIconNav />, path: '/teacher/quizzes/create' },
       { text: 'Course Invitations', icon: <InviteIcon />, path: '/teacher/invitations' },
       { text: 'Events', icon: <EventIcon />, path: '/teacher/events' },
       { text: 'Notifications', icon: <NotificationsIcon />, path: '/teacher/notifications' },
