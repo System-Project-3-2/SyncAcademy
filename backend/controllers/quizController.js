@@ -47,6 +47,18 @@ const shuffleArray = (arr) => {
   return a;
 };
 
+/**
+ * djb2 hash — converts a string to a 32-bit unsigned integer seed.
+ * Used to derive a deterministic, student-specific shuffle seed.
+ */
+const hashSeed = (str) => {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = (Math.imul(33, h) ^ str.charCodeAt(i)) >>> 0;
+  }
+  return h;
+};
+
 /** Derive a student-facing schedule status from a quiz document */
 const getScheduleStatus = (quiz) => {
   const now = new Date();
@@ -353,9 +365,24 @@ export const getQuiz = async (req, res) => {
         }
 
         // Within window — shuffle questions and options (anti-cheating)
+        // Seed is deterministic per student+quiz so the same student always
+        // sees the same shuffle, while different students get different orders.
         const qCount = quizObj.questions.length;
-        const questionOrder = shuffleArray([...Array(qCount).keys()]);
-        const optionOrders = questionOrder.map(() => shuffleArray([0, 1, 2, 3]));
+        let lcgState = hashSeed(`${req.user._id}_${quiz._id}`);
+        const lcgNext = () => {
+          lcgState = (Math.imul(1664525, lcgState) + 1013904223) >>> 0;
+          return lcgState / 0x100000000;
+        };
+        const seededShuffle = (arr) => {
+          const a = [...arr];
+          for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(lcgNext() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+          }
+          return a;
+        };
+        const questionOrder = seededShuffle([...Array(qCount).keys()]);
+        const optionOrders = questionOrder.map(() => seededShuffle([0, 1, 2, 3]));
 
         quizObj.questions = questionOrder.map((origIdx, shuffledPos) => {
           const q = quizObj.questions[origIdx];

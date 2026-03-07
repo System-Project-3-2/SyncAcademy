@@ -64,8 +64,14 @@ const TakeQuiz = () => {
       if (data.optionOrders) setOptionOrders(data.optionOrders);
 
       // If already attempted, show results directly
+      // Restore the stored shuffle mappings so the results render in the same
+      // order the student experienced when they took the quiz.
       if (data.myAttempt) {
         setResult(data.myAttempt);
+        if (data.myAttempt.questionOrder?.length) {
+          setQuestionOrder(data.myAttempt.questionOrder);
+          setOptionOrders(data.myAttempt.optionOrders);
+        }
       }
 
       // Set timer if time limit exists and not yet attempted
@@ -239,32 +245,38 @@ const TakeQuiz = () => {
           </CardContent>
         </Card>
 
-        {/* Question Review */}
-        {quiz.questions?.map((q, index) => {
-          const studentAnswer = result.answers?.find((a) => a.questionIndex === index);
-          const selectedIdx = studentAnswer?.selectedAnswer;
-          const isCorrect = selectedIdx === q.correctAnswer;
+        {/* Question Review — rendered in the shuffled order the student experienced */}
+        {(questionOrder?.length ? questionOrder : quiz.questions?.map((_, i) => i) || []).map((origIdx, displayPos) => {
+          const q = quiz.questions?.[origIdx];
+          if (!q) return null;
+          const studentAnswer = result.answers?.find((a) => a.questionIndex === origIdx);
+          const selectedOrigIdx = studentAnswer?.selectedAnswer;
+          const isCorrect = selectedOrigIdx !== undefined && selectedOrigIdx === q.correctAnswer;
+          // Option display order: use stored shuffle if available, else original order
+          const optOrder = optionOrders?.[displayPos]?.length
+            ? optionOrders[displayPos]
+            : [0, 1, 2, 3];
 
           return (
-            <Card key={q._id || index} sx={{ mb: 2, borderLeft: 4, borderColor: isCorrect ? 'success.main' : selectedIdx !== undefined ? 'error.main' : 'grey.300' }}>
+            <Card key={q._id || origIdx} sx={{ mb: 2, borderLeft: 4, borderColor: isCorrect ? 'success.main' : selectedOrigIdx !== undefined ? 'error.main' : 'grey.300' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 2 }}>
-                  <Chip label={`Q${index + 1}`} size="small" color={isCorrect ? 'success' : 'error'} />
+                  <Chip label={`Q${displayPos + 1}`} size="small" color={isCorrect ? 'success' : selectedOrigIdx !== undefined ? 'error' : 'default'} />
                   <Typography variant="body1" sx={{ fontWeight: 500 }}>
                     {q.questionText}
                   </Typography>
                 </Box>
 
-                {q.options?.map((opt, oi) => {
-                  const isSelected = oi === selectedIdx;
-                  const isCorrectOpt = oi === q.correctAnswer;
+                {optOrder.map((origOptIdx) => {
+                  const isSelected = origOptIdx === selectedOrigIdx;
+                  const isCorrectOpt = origOptIdx === q.correctAnswer;
                   let bgColor = 'transparent';
                   if (isCorrectOpt) bgColor = 'success.light';
                   else if (isSelected && !isCorrectOpt) bgColor = 'error.light';
 
                   return (
                     <Box
-                      key={oi}
+                      key={origOptIdx}
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
@@ -284,7 +296,7 @@ const TakeQuiz = () => {
                         <Radio disabled size="small" />
                       )}
                       <Typography variant="body2" sx={{ fontWeight: isCorrectOpt || isSelected ? 600 : 400 }}>
-                        {opt}
+                        {q.options[origOptIdx]}
                       </Typography>
                     </Box>
                   );
