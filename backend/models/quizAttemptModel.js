@@ -52,6 +52,15 @@ const quizAttemptSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Randomization audit trail
+    questionOrder: {
+      type: [Number],
+      default: [],
+    },
+    optionOrders: {
+      type: mongoose.Schema.Types.Mixed,
+      default: [],
+    },
   },
   { timestamps: true }
 );

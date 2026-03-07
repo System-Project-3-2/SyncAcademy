@@ -23,6 +23,7 @@ const notificationSchema = new mongoose.Schema(
         "course_invite",
         "event_invite",
         "quiz_created",
+        "quiz_scheduled",
         "quiz_published",
       ],
       required: true,
