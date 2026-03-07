@@ -2,6 +2,7 @@ import express from "express";
 import {
   generateQuiz,
   createManualQuiz,
+  getMyCreatedQuizzes,
   getQuizzesByCourse,
   getQuiz,
   updateQuiz,
@@ -21,6 +22,9 @@ router.use(protect);
 
 // Student attempts (must be before /:id to avoid conflict)
 router.get("/my-attempts", authorize("student"), getMyAttempts);
+
+// Teacher: all quizzes created by me across all courses
+router.get("/my-created", authorize("teacher", "admin"), getMyCreatedQuizzes);
 
 // AI generate quiz (teacher/admin)
 router.post("/generate", authorize("teacher", "admin"), generateQuiz);

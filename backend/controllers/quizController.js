@@ -83,6 +83,15 @@ export const generateQuiz = async (req, res) => {
       .populate("createdBy", "name email avatar")
       .populate("course", "courseNo courseTitle");
 
+    // Notify enrolled students that a new quiz is available for this course
+    notifyEnrolledStudents({
+      courseId,
+      type: "quiz_published",
+      title: "New Quiz Created",
+      message: `A new quiz "${title.trim()}" has been created for ${course.courseNo}. It will be available once published.`,
+      link: `/courses/${courseId}/quizzes`,
+    }).catch(() => {});
+
     res.status(201).json(populated);
   } catch (error) {
     console.error("[QuizController] generateQuiz error:", error.message);
@@ -155,9 +164,51 @@ export const createManualQuiz = async (req, res) => {
       .populate("createdBy", "name email avatar")
       .populate("course", "courseNo courseTitle");
 
+    // Notify enrolled students that a new quiz has been created
+    notifyEnrolledStudents({
+      courseId,
+      type: "quiz_published",
+      title: "New Quiz Created",
+      message: `A new quiz "${title.trim()}" has been created. It will be available once published.`,
+      link: `/courses/${courseId}/quizzes`,
+    }).catch(() => {});
+
     res.status(201).json(populated);
   } catch (error) {
     console.error("[QuizController] createManualQuiz error:", error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ─── Get My Created Quizzes (Teacher) ───────────────────────────────────────
+
+/**
+ * Get all quizzes created by the current teacher across all their courses
+ * @route GET /api/quizzes/my-created
+ * @access Teacher, Admin
+ */
+export const getMyCreatedQuizzes = async (req, res) => {
+  try {
+    const filter = req.user.role === "admin" ? {} : { createdBy: req.user._id };
+
+    const quizzes = await Quiz.find(filter)
+      .sort({ createdAt: -1 })
+      .select("-questions")
+      .populate("course", "courseNo courseTitle")
+      .lean();
+
+    // Attach attempt count for each quiz
+    const quizIds = quizzes.map((q) => q._id);
+    const attemptCounts = await QuizAttempt.aggregate([
+      { $match: { quiz: { $in: quizIds } } },
+      { $group: { _id: "$quiz", count: { $sum: 1 } } },
+    ]);
+    const countMap = {};
+    attemptCounts.forEach((a) => { countMap[a._id.toString()] = a.count; });
+    quizzes.forEach((q) => { q.attemptCount = countMap[q._id.toString()] || 0; });
+
+    res.json(quizzes);
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };

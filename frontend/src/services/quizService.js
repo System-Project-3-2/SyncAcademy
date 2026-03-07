@@ -17,6 +17,11 @@ const quizService = {
     return response.data;
   },
 
+  getMyCreatedQuizzes: async () => {
+    const response = await api.get('/quizzes/my-created');
+    return response.data;
+  },
+
   getQuizzesByCourse: async (courseId) => {
     const response = await api.get(`/quizzes/course/${courseId}`);
     return response.data;
