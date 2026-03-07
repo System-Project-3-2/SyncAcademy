@@ -42,6 +42,7 @@ import {
   Description as ScriptIcon,
   Feedback as FeedbackIcon,
   School as EnrollmentIcon,
+  Quiz as QuizNotifIcon,
   Circle as UnreadDot,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
@@ -120,6 +121,8 @@ const Navbar = ({ onMenuClick }) => {
     evaluated_script: <ScriptIcon fontSize="small" color="primary" />,
     feedback_response: <FeedbackIcon fontSize="small" color="info" />,
     enrollment: <EnrollmentIcon fontSize="small" color="success" />,
+    quiz_created: <QuizNotifIcon fontSize="small" color="secondary" />,
+    quiz_published: <QuizNotifIcon fontSize="small" color="success" />,
   };
 
   const formatTime = (date) => {

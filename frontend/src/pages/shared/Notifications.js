@@ -29,6 +29,7 @@ import {
   Description as ScriptIcon,
   Feedback as FeedbackIcon,
   School as EnrollmentIcon,
+  Quiz as QuizNotifIcon,
   Delete as DeleteIcon,
   DoneAll as DoneAllIcon,
   DeleteSweep as ClearAllIcon,
@@ -48,6 +49,8 @@ const typeIcons = {
   evaluated_script: <ScriptIcon color="primary" />,
   feedback_response: <FeedbackIcon color="info" />,
   enrollment: <EnrollmentIcon color="success" />,
+  quiz_created: <QuizNotifIcon color="secondary" />,
+  quiz_published: <QuizNotifIcon color="success" />,
 };
 
 const Notifications = () => {

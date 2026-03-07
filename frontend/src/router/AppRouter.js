@@ -44,6 +44,7 @@ import {
   EventDetail,
   QuizGenerator,
   ManualQuizCreator,
+  TeacherQuizDashboard,
   QuizResults,
   QuizEdit,
 } from '../pages/teacher';
@@ -134,6 +135,7 @@ const AppRouter = () => {
         <Route path="events/create" element={<CreateEvent />} />
         <Route path="events/:eventId" element={<EventDetail />} />
         <Route path="courses/:courseId/quizzes" element={<QuizList />} />
+        <Route path="quizzes" element={<TeacherQuizDashboard />} />
         <Route path="quizzes/generate" element={<QuizGenerator />} />
         <Route path="quizzes/create" element={<ManualQuizCreator />} />
         <Route path="quizzes/:quizId/results" element={<QuizResults />} />
@@ -165,6 +167,7 @@ const AppRouter = () => {
         <Route path="profile" element={<Profile />} />
         <Route path="ai-tutor" element={<AITutor />} />
         <Route path="courses/:courseId/quizzes" element={<QuizList />} />
+        <Route path="quizzes" element={<TeacherQuizDashboard />} />
         <Route path="quizzes/generate" element={<QuizGenerator />} />
         <Route path="quizzes/create" element={<ManualQuizCreator />} />
         <Route path="quizzes/:quizId/results" element={<QuizResults />} />

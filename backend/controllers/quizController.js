@@ -86,7 +86,7 @@ export const generateQuiz = async (req, res) => {
     // Notify enrolled students that a new quiz is available for this course
     notifyEnrolledStudents({
       courseId,
-      type: "quiz_published",
+      type: "quiz_created",
       title: "New Quiz Created",
       message: `A new quiz "${title.trim()}" has been created for ${course.courseNo}. It will be available once published.`,
       link: `/courses/${courseId}/quizzes`,
@@ -167,7 +167,7 @@ export const createManualQuiz = async (req, res) => {
     // Notify enrolled students that a new quiz has been created
     notifyEnrolledStudents({
       courseId,
-      type: "quiz_published",
+      type: "quiz_created",
       title: "New Quiz Created",
       message: `A new quiz "${title.trim()}" has been created. It will be available once published.`,
       link: `/courses/${courseId}/quizzes`,
