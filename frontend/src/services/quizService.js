@@ -42,6 +42,11 @@ const quizService = {
     return response.data;
   },
 
+  scheduleQuiz: async (id, { scheduledAt, availableUntil }) => {
+    const response = await api.put(`/quizzes/${id}/schedule`, { scheduledAt, availableUntil });
+    return response.data;
+  },
+
   deleteQuiz: async (id) => {
     const response = await api.delete(`/quizzes/${id}`);
     return response.data;

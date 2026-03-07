@@ -122,6 +122,7 @@ const Navbar = ({ onMenuClick }) => {
     feedback_response: <FeedbackIcon fontSize="small" color="info" />,
     enrollment: <EnrollmentIcon fontSize="small" color="success" />,
     quiz_created: <QuizNotifIcon fontSize="small" color="secondary" />,
+    quiz_scheduled: <QuizNotifIcon fontSize="small" color="info" />,
     quiz_published: <QuizNotifIcon fontSize="small" color="success" />,
   };
 

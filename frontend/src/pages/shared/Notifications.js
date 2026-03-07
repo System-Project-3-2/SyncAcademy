@@ -50,6 +50,7 @@ const typeIcons = {
   feedback_response: <FeedbackIcon color="info" />,
   enrollment: <EnrollmentIcon color="success" />,
   quiz_created: <QuizNotifIcon color="secondary" />,
+  quiz_scheduled: <QuizNotifIcon color="info" />,
   quiz_published: <QuizNotifIcon color="success" />,
 };
 

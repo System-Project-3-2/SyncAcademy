@@ -7,6 +7,7 @@ import {
   getQuiz,
   updateQuiz,
   publishQuiz,
+  scheduleQuiz,
   deleteQuiz,
   submitAttempt,
   getMyAttempts,
@@ -43,6 +44,9 @@ router.put("/:id", authorize("teacher", "admin"), updateQuiz);
 
 // Publish / unpublish quiz
 router.put("/:id/publish", authorize("teacher", "admin"), publishQuiz);
+
+// Schedule quiz (set availability window)
+router.put("/:id/schedule", authorize("teacher", "admin"), scheduleQuiz);
 
 // Delete quiz + attempts
 router.delete("/:id", authorize("teacher", "admin"), deleteQuiz);
