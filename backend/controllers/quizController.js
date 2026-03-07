@@ -35,6 +35,26 @@ const canAccessCourse = async (userId, courseId, userRole) => {
   return !!enrollment;
 };
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Fisher-Yates in-place shuffle — returns a NEW shuffled copy */
+const shuffleArray = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+/** Derive a student-facing schedule status from a quiz document */
+const getScheduleStatus = (quiz) => {
+  const now = new Date();
+  if (quiz.scheduledAt && now < new Date(quiz.scheduledAt)) return "upcoming";
+  if (quiz.availableUntil && now > new Date(quiz.availableUntil)) return "expired";
+  return "available";
+};
+
 // ─── Generate Quiz (AI) ──────────────────────────────────────────────────────
 
 /**
@@ -207,6 +227,9 @@ export const getMyCreatedQuizzes = async (req, res) => {
     attemptCounts.forEach((a) => { countMap[a._id.toString()] = a.count; });
     quizzes.forEach((q) => { q.attemptCount = countMap[q._id.toString()] || 0; });
 
+    // Add scheduleStatus for dashboard display
+    quizzes.forEach((q) => { q.scheduleStatus = getScheduleStatus(q); });
+
     res.json(quizzes);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -255,7 +278,9 @@ export const getQuizzesByCourse = async (req, res) => {
         attemptMap[a.quiz.toString()] = a;
       });
 
+      const now = new Date();
       quizzes.forEach((q) => {
+        q.scheduleStatus = getScheduleStatus(q);
         const attempt = attemptMap[q._id.toString()];
         if (attempt) {
           q.attemptStatus = "completed";
@@ -303,7 +328,7 @@ export const getQuiz = async (req, res) => {
 
     const quizObj = quiz.toObject();
 
-    // For students: check if they already attempted
+    // For students: enforce schedule window and randomize presentation
     if (req.user.role === "student") {
       const attempt = await QuizAttempt.findOne({
         quiz: quiz._id,
@@ -311,16 +336,40 @@ export const getQuiz = async (req, res) => {
       }).lean();
 
       if (attempt) {
-        // Already attempted — show results with answers
+        // Already attempted — show results with answers (ignore schedule window)
         quizObj.myAttempt = attempt;
       } else {
-        // Not yet attempted — hide correct answers and explanations
-        quizObj.questions = quizObj.questions.map((q) => ({
-          _id: q._id,
-          questionText: q.questionText,
-          options: q.options,
-          difficulty: q.difficulty,
-        }));
+        // Not yet attempted — enforce schedule window first
+        const now = new Date();
+        if (quiz.scheduledAt && now < quiz.scheduledAt) {
+          quizObj.questions = [];
+          quizObj.scheduleStatus = "upcoming";
+          return res.json(quizObj);
+        }
+        if (quiz.availableUntil && now > quiz.availableUntil) {
+          quizObj.questions = [];
+          quizObj.scheduleStatus = "expired";
+          return res.json(quizObj);
+        }
+
+        // Within window — shuffle questions and options (anti-cheating)
+        const qCount = quizObj.questions.length;
+        const questionOrder = shuffleArray([...Array(qCount).keys()]);
+        const optionOrders = questionOrder.map(() => shuffleArray([0, 1, 2, 3]));
+
+        quizObj.questions = questionOrder.map((origIdx, shuffledPos) => {
+          const q = quizObj.questions[origIdx];
+          const optOrder = optionOrders[shuffledPos];
+          return {
+            _id: q._id,
+            questionText: q.questionText,
+            difficulty: q.difficulty,
+            options: optOrder.map((origOpt) => q.options[origOpt]),
+          };
+        });
+        quizObj.questionOrder = questionOrder;
+        quizObj.optionOrders = optionOrders;
+        quizObj.scheduleStatus = "available";
       }
     }
 
@@ -349,11 +398,13 @@ export const updateQuiz = async (req, res) => {
       return res.status(403).json({ message: "You can only edit quizzes in your own courses" });
     }
 
-    const { title, description, questions, timeLimit } = req.body;
+    const { title, description, questions, timeLimit, scheduledAt, availableUntil } = req.body;
 
     if (title) quiz.title = title.trim();
     if (description !== undefined) quiz.description = description.trim();
     if (timeLimit !== undefined) quiz.timeLimit = timeLimit ? Number(timeLimit) : null;
+    if (scheduledAt !== undefined) quiz.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+    if (availableUntil !== undefined) quiz.availableUntil = availableUntil ? new Date(availableUntil) : null;
     if (questions && Array.isArray(questions)) {
       quiz.questions = questions;
       quiz.totalQuestions = questions.length;
@@ -406,6 +457,66 @@ export const publishQuiz = async (req, res) => {
     }
 
     res.json({ message: quiz.isPublished ? "Quiz published" : "Quiz unpublished", quiz });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ─── Schedule Quiz ────────────────────────────────────────────────────────────
+
+/**
+ * Set or update the availability window for a quiz.
+ * Auto-publishes the quiz if a scheduledAt is provided and the quiz is still a draft.
+ * Sends a quiz_scheduled notification to enrolled students.
+ * @route PUT /api/quizzes/:id/schedule
+ * @access Teacher (own course), Admin
+ */
+export const scheduleQuiz = async (req, res) => {
+  try {
+    const quiz = await Quiz.findById(req.params.id).populate("course", "courseNo courseTitle");
+    if (!quiz) return res.status(404).json({ message: "Quiz not found" });
+
+    const canManage = await canManageCourse(req.user._id, quiz.course._id, req.user.role);
+    if (!canManage) return res.status(403).json({ message: "You can only schedule your own quizzes" });
+
+    const { scheduledAt, availableUntil } = req.body;
+
+    if (scheduledAt && isNaN(new Date(scheduledAt).getTime())) {
+      return res.status(400).json({ message: "Invalid scheduledAt date" });
+    }
+    if (availableUntil && isNaN(new Date(availableUntil).getTime())) {
+      return res.status(400).json({ message: "Invalid availableUntil date" });
+    }
+    if (scheduledAt && availableUntil && new Date(scheduledAt) >= new Date(availableUntil)) {
+      return res.status(400).json({ message: "End time must be after start time" });
+    }
+
+    quiz.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+    quiz.availableUntil = availableUntil ? new Date(availableUntil) : null;
+
+    // Auto-publish when scheduling so students can see the upcoming quiz in their list
+    if (scheduledAt && !quiz.isPublished) {
+      quiz.isPublished = true;
+    }
+
+    await quiz.save();
+
+    // Notify enrolled students about the scheduled quiz
+    if (scheduledAt) {
+      const schedDate = new Date(scheduledAt).toLocaleString("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+      notifyEnrolledStudents({
+        courseId: quiz.course._id,
+        type: "quiz_scheduled",
+        title: "Quiz Scheduled",
+        message: `"${quiz.title}" has been scheduled for ${schedDate} in ${quiz.course.courseNo}.`,
+        link: `/courses/${quiz.course._id}/quizzes`,
+      }).catch(() => {});
+    }
+
+    res.json({ message: "Quiz schedule updated", quiz });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -472,24 +583,49 @@ export const submitAttempt = async (req, res) => {
       return res.status(400).json({ message: "You have already attempted this quiz", attempt: existingAttempt });
     }
 
-    const { answers, startedAt } = req.body;
+    // Enforce schedule window
+    const nowCheck = new Date();
+    if (quiz.scheduledAt && nowCheck < quiz.scheduledAt) {
+      return res.status(400).json({ message: "This quiz is not yet available" });
+    }
+    if (quiz.availableUntil && nowCheck > quiz.availableUntil) {
+      return res.status(400).json({ message: "This quiz is no longer available" });
+    }
+
+    const { answers, startedAt, questionOrder, optionOrders } = req.body;
     if (!answers || !Array.isArray(answers)) {
       return res.status(400).json({ message: "answers array is required" });
     }
 
-    // Auto-grade
+    // Auto-grade (supports randomized quizzes)
     let score = 0;
     const totalMarks = quiz.questions.length;
+    const hasRandomization =
+      Array.isArray(questionOrder) && questionOrder.length === totalMarks &&
+      Array.isArray(optionOrders) && optionOrders.length === totalMarks;
 
-    const gradedAnswers = answers.map((a) => {
-      const qIndex = Number(a.questionIndex);
-      const selected = Number(a.selectedAnswer);
-      const question = quiz.questions[qIndex];
-      if (question && question.correctAnswer === selected) {
-        score++;
-      }
-      return { questionIndex: qIndex, selectedAnswer: selected };
-    });
+    let gradedAnswers;
+    if (hasRandomization) {
+      gradedAnswers = answers.map((a) => {
+        const shuffledPos = Number(a.questionIndex);
+        const shuffledOpt = Number(a.selectedAnswer);
+        const origQIdx = questionOrder[shuffledPos];
+        const origOptIdx = (optionOrders[shuffledPos] || [])[shuffledOpt];
+        if (origQIdx !== undefined && origOptIdx !== undefined) {
+          const question = quiz.questions[origQIdx];
+          if (question && question.correctAnswer === origOptIdx) score++;
+        }
+        return { questionIndex: origQIdx ?? shuffledPos, selectedAnswer: origOptIdx ?? shuffledOpt };
+      });
+    } else {
+      gradedAnswers = answers.map((a) => {
+        const qIndex = Number(a.questionIndex);
+        const selected = Number(a.selectedAnswer);
+        const question = quiz.questions[qIndex];
+        if (question && question.correctAnswer === selected) score++;
+        return { questionIndex: qIndex, selectedAnswer: selected };
+      });
+    }
 
     const percentage = totalMarks > 0 ? Math.round((score / totalMarks) * 100) : 0;
     const now = new Date();
@@ -506,6 +642,8 @@ export const submitAttempt = async (req, res) => {
       startedAt: started,
       completedAt: now,
       timeTaken: Math.max(timeTaken, 0),
+      questionOrder: hasRandomization ? questionOrder : [],
+      optionOrders: hasRandomization ? optionOrders : [],
     });
 
     // Return full quiz with answers for review
