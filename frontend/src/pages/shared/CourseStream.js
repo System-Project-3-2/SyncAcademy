@@ -77,7 +77,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks';
 import { announcementService, discussionService } from '../../services';
 import { LoadingSpinner } from '../../components';
-import { Assignment as AssignmentNavIcon } from '@mui/icons-material';
+import { Assignment as AssignmentNavIcon, Quiz as QuizNavIcon } from '@mui/icons-material';
 
 // ─── Utility helpers ─────────────────────────────────────────────────────────
 
@@ -1857,6 +1857,15 @@ const CourseStream = () => {
           onClick={() => navigate(`/${user?.role}/courses/${courseId}/assignments`)}
         >
           Assignments
+        </Button>
+        <Button
+          startIcon={<QuizNavIcon />}
+          variant="outlined"
+          size="small"
+          sx={{ ml: 1, textTransform: 'none', whiteSpace: 'nowrap' }}
+          onClick={() => navigate(`/${user?.role}/courses/${courseId}/quizzes`)}
+        >
+          Quizzes
         </Button>
       </Box>
 

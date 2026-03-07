@@ -36,6 +36,7 @@ import {
   Close as CloseIcon,
   LoginOutlined as JoinIcon,
   CalendarToday as DateIcon,
+  Quiz as QuizIcon,
   Forum as StreamIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
@@ -286,6 +287,15 @@ const MyCourses = () => {
                       sx={{ borderRadius: 2, fontWeight: 600 }}
                     >
                       Notice
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<QuizIcon />}
+                      onClick={() => navigate(`/student/courses/${course._id}/quizzes`)}
+                      sx={{ borderRadius: 2, fontWeight: 600 }}
+                    >
+                      Quizzes
                     </Button>
                   </Box>
                   <Tooltip title="Unenroll from course">
