@@ -1,6 +1,7 @@
 import express from "express";
 import {
   generateQuiz,
+  createManualQuiz,
   getQuizzesByCourse,
   getQuiz,
   updateQuiz,
@@ -23,6 +24,9 @@ router.get("/my-attempts", authorize("student"), getMyAttempts);
 
 // AI generate quiz (teacher/admin)
 router.post("/generate", authorize("teacher", "admin"), generateQuiz);
+
+// Manual quiz creation (teacher/admin)
+router.post("/manual", authorize("teacher", "admin"), createManualQuiz);
 
 // List quizzes for a course
 router.get("/course/:courseId", getQuizzesByCourse);

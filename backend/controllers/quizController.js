@@ -90,6 +90,78 @@ export const generateQuiz = async (req, res) => {
   }
 };
 
+// ─── Create Manual Quiz ──────────────────────────────────────────────────────
+
+/**
+ * Create a quiz manually with teacher-provided questions
+ * @route POST /api/quizzes/manual
+ * @access Teacher (own course), Admin
+ */
+export const createManualQuiz = async (req, res) => {
+  try {
+    const { courseId, title, description, questions, timeLimit } = req.body;
+
+    if (!courseId || !title) {
+      return res.status(400).json({ message: "courseId and title are required" });
+    }
+
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ message: "At least one question is required" });
+    }
+
+    const canManage = await canManageCourse(req.user._id, courseId, req.user.role);
+    if (!canManage) {
+      return res.status(403).json({ message: "You can only create quizzes for your own courses" });
+    }
+
+    // Validate each question
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!q.questionText || !q.questionText.trim()) {
+        return res.status(400).json({ message: `Question ${i + 1} text is required` });
+      }
+      if (!Array.isArray(q.options) || q.options.length !== 4) {
+        return res.status(400).json({ message: `Question ${i + 1} must have exactly 4 options` });
+      }
+      if (q.options.some((o) => !o || !o.trim())) {
+        return res.status(400).json({ message: `All options in question ${i + 1} must be filled` });
+      }
+      const ca = Number(q.correctAnswer);
+      if (isNaN(ca) || ca < 0 || ca > 3) {
+        return res.status(400).json({ message: `Question ${i + 1} must have a valid correct answer (0-3)` });
+      }
+    }
+
+    const sanitizedQuestions = questions.map((q) => ({
+      questionText: q.questionText.trim(),
+      options: q.options.map((o) => o.trim()),
+      correctAnswer: Number(q.correctAnswer),
+      explanation: q.explanation ? q.explanation.trim() : "",
+      difficulty: ["easy", "medium", "hard"].includes(q.difficulty) ? q.difficulty : "medium",
+    }));
+
+    const quiz = await Quiz.create({
+      course: courseId,
+      createdBy: req.user._id,
+      title: title.trim(),
+      description: description ? description.trim() : "",
+      questions: sanitizedQuestions,
+      isPublished: false,
+      timeLimit: timeLimit ? Number(timeLimit) : null,
+      totalQuestions: sanitizedQuestions.length,
+    });
+
+    const populated = await Quiz.findById(quiz._id)
+      .populate("createdBy", "name email avatar")
+      .populate("course", "courseNo courseTitle");
+
+    res.status(201).json(populated);
+  } catch (error) {
+    console.error("[QuizController] createManualQuiz error:", error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // ─── Get Quizzes by Course ───────────────────────────────────────────────────
 
 /**
