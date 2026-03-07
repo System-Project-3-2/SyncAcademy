@@ -34,6 +34,7 @@ import {
   ExpandMore as ExpandMoreIcon,
   CheckCircle as CorrectIcon,
   Cancel as WrongIcon,
+  Schedule as ScheduleIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { quizService } from '../../services';
@@ -47,6 +48,11 @@ const QuizEdit = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+
+  // Schedule state
+  const [schedStart, setSchedStart] = useState('');
+  const [schedEnd, setSchedEnd] = useState('');
+  const [scheduling, setScheduling] = useState(false);
 
   // Edit form
   const [title, setTitle] = useState('');
@@ -64,6 +70,8 @@ const QuizEdit = () => {
       setTitle(data.title || '');
       setDescription(data.description || '');
       setTimeLimit(data.timeLimit || '');
+      setSchedStart(data.scheduledAt ? new Date(data.scheduledAt).toISOString().slice(0, 16) : '');
+      setSchedEnd(data.availableUntil ? new Date(data.availableUntil).toISOString().slice(0, 16) : '');
     } catch (err) {
       toast.error('Failed to load quiz');
     } finally {
@@ -153,6 +161,22 @@ const QuizEdit = () => {
     }
   };
 
+  const handleSaveSchedule = async () => {
+    try {
+      setScheduling(true);
+      await quizService.scheduleQuiz(quizId, {
+        scheduledAt: schedStart || null,
+        availableUntil: schedEnd || null,
+      });
+      toast.success('Schedule saved — students notified!');
+      fetchQuiz();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save schedule');
+    } finally {
+      setScheduling(false);
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
   if (!quiz) return <Alert severity="error">Quiz not found</Alert>;
 
@@ -195,6 +219,46 @@ const QuizEdit = () => {
           {saving ? 'Saving...' : 'Save Details'}
         </Button>
       </Box>
+
+      <Divider sx={{ my: 2 }} />
+
+      {/* Scheduling Section */}
+      <Typography variant="h6" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <ScheduleIcon color="info" fontSize="small" /> Schedule
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Optionally restrict when students can access this quiz. Setting a start time auto-publishes the quiz.
+      </Typography>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 2 }}>
+        <TextField
+          label="Start date &amp; time"
+          type="datetime-local"
+          value={schedStart}
+          onChange={(e) => setSchedStart(e.target.value)}
+          fullWidth
+          InputLabelProps={{ shrink: true }}
+          helperText="Leave blank for immediate access"
+        />
+        <TextField
+          label="End date &amp; time (optional)"
+          type="datetime-local"
+          value={schedEnd}
+          onChange={(e) => setSchedEnd(e.target.value)}
+          fullWidth
+          InputLabelProps={{ shrink: true }}
+          helperText="Leave blank for no end time"
+        />
+      </Box>
+      <Button
+        startIcon={<ScheduleIcon />}
+        onClick={handleSaveSchedule}
+        variant="outlined"
+        color="info"
+        disabled={scheduling}
+        sx={{ mb: 3 }}
+      >
+        {scheduling ? 'Saving...' : 'Save Schedule'}
+      </Button>
 
       <Divider sx={{ my: 2 }} />
       <Typography variant="h6" sx={{ mb: 2 }}>Questions ({quiz.questions?.length || 0})</Typography>
