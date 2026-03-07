@@ -37,6 +37,8 @@ import {
   Add as AddIcon,
   Search as SearchIcon,
   PeopleAlt as AttemptIcon,
+  Schedule as ScheduleIcon,
+  EventBusy as ExpiredIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks';
@@ -59,6 +61,12 @@ const TeacherQuizDashboard = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Schedule dialog
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [schedStart, setSchedStart] = useState('');
+  const [schedEnd, setSchedEnd] = useState('');
+  const [scheduling, setScheduling] = useState(false);
+
   const basePath = `/${user?.role}`;
 
   const fetchQuizzes = useCallback(async () => {
@@ -79,6 +87,32 @@ const TeacherQuizDashboard = () => {
 
   const handleMenuOpen = (e, quiz) => { setMenuAnchor(e.currentTarget); setMenuQuiz(quiz); };
   const handleMenuClose = () => { setMenuAnchor(null); setMenuQuiz(null); };
+
+  const openScheduleDialog = (quiz) => {
+    setMenuQuiz(quiz);
+    setSchedStart(quiz.scheduledAt ? new Date(quiz.scheduledAt).toISOString().slice(0, 16) : '');
+    setSchedEnd(quiz.availableUntil ? new Date(quiz.availableUntil).toISOString().slice(0, 16) : '');
+    setScheduleOpen(true);
+    setMenuAnchor(null);
+  };
+
+  const handleSchedule = async () => {
+    if (!menuQuiz) return;
+    try {
+      setScheduling(true);
+      await quizService.scheduleQuiz(menuQuiz._id, {
+        scheduledAt: schedStart || null,
+        availableUntil: schedEnd || null,
+      });
+      toast.success('Schedule saved — students will be notified!');
+      setScheduleOpen(false);
+      fetchQuizzes();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update schedule');
+    } finally {
+      setScheduling(false);
+    }
+  };
 
   const handlePublishToggle = async () => {
     if (!menuQuiz) return;
@@ -217,6 +251,34 @@ const TeacherQuizDashboard = () => {
                       variant="outlined"
                       color={quiz.attemptCount > 0 ? 'info' : 'default'}
                     />
+                    {/* Schedule chips */}
+                    {quiz.scheduledAt && quiz.scheduleStatus === 'upcoming' && (
+                      <Chip
+                        icon={<ScheduleIcon sx={{ fontSize: 14 }} />}
+                        label={`Starts ${new Date(quiz.scheduledAt).toLocaleDateString()}`}
+                        size="small"
+                        color="info"
+                        variant="outlined"
+                      />
+                    )}
+                    {quiz.scheduledAt && quiz.scheduleStatus === 'available' && quiz.availableUntil && (
+                      <Chip
+                        icon={<ScheduleIcon sx={{ fontSize: 14 }} />}
+                        label={`Ends ${new Date(quiz.availableUntil).toLocaleString()}`}
+                        size="small"
+                        color="warning"
+                        variant="outlined"
+                      />
+                    )}
+                    {quiz.scheduleStatus === 'expired' && (
+                      <Chip
+                        icon={<ExpiredIcon sx={{ fontSize: 14 }} />}
+                        label="Expired"
+                        size="small"
+                        color="error"
+                        variant="outlined"
+                      />
+                    )}
                     <Chip
                       label={new Date(quiz.createdAt).toLocaleDateString()}
                       size="small"
@@ -274,6 +336,10 @@ const TeacherQuizDashboard = () => {
           </ListItemIcon>
           <ListItemText>{menuQuiz?.isPublished ? 'Unpublish' : 'Publish'}</ListItemText>
         </MenuItem>
+        <MenuItem onClick={() => openScheduleDialog(menuQuiz)}>
+          <ListItemIcon><ScheduleIcon /></ListItemIcon>
+          <ListItemText>Schedule</ListItemText>
+        </MenuItem>
         <MenuItem onClick={() => { navigate(`${basePath}/quizzes/${menuQuiz?._id}/results`); handleMenuClose(); }}>
           <ListItemIcon><ResultsIcon /></ListItemIcon>
           <ListItemText>View Results</ListItemText>
@@ -300,6 +366,62 @@ const TeacherQuizDashboard = () => {
           <Button onClick={() => { setDeleteOpen(false); handleMenuClose(); }}>Cancel</Button>
           <Button onClick={handleDelete} color="error" variant="contained" disabled={deleting}>
             {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Schedule Dialog */}
+      <Dialog open={scheduleOpen} onClose={() => setScheduleOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <ScheduleIcon color="info" />
+          Schedule Quiz
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Set when &quot;{menuQuiz?.title}&quot; becomes available to students.
+            Setting a start time will auto-publish the quiz.
+          </Typography>
+          <TextField
+            label="Start date &amp; time"
+            type="datetime-local"
+            value={schedStart}
+            onChange={(e) => setSchedStart(e.target.value)}
+            fullWidth
+            sx={{ mb: 2 }}
+            InputLabelProps={{ shrink: true }}
+            helperText="Leave blank to make it available immediately on publish"
+          />
+          <TextField
+            label="End date &amp; time (optional)"
+            type="datetime-local"
+            value={schedEnd}
+            onChange={(e) => setSchedEnd(e.target.value)}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            helperText="Leave blank for no end time"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="text"
+            color="error"
+            onClick={() => {
+              setSchedStart('');
+              setSchedEnd('');
+              handleSchedule();
+            }}
+          >
+            Clear Schedule
+          </Button>
+          <Button onClick={() => setScheduleOpen(false)}>Cancel</Button>
+          <Button
+            onClick={handleSchedule}
+            variant="contained"
+            color="info"
+            disabled={scheduling}
+            startIcon={<ScheduleIcon />}
+          >
+            {scheduling ? 'Saving...' : 'Save Schedule'}
           </Button>
         </DialogActions>
       </Dialog>
