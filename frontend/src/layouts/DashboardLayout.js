@@ -4,12 +4,15 @@
  * Includes dark mode support and smooth transitions
  */
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Box, Toolbar } from '@mui/material';
+import { AnimatePresence } from 'framer-motion';
 import { Navbar, Sidebar } from '../components';
+import PageTransition from '../components/common/PageTransition';
 
 const DashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -42,7 +45,11 @@ const DashboardLayout = () => {
         }}
       >
         <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }} />
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <PageTransition key={location.pathname}>
+            <Outlet />
+          </PageTransition>
+        </AnimatePresence>
       </Box>
     </Box>
   );

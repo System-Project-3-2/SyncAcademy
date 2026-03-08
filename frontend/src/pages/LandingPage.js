@@ -47,6 +47,8 @@ import {
 } from '@mui/icons-material';
 import { useTheme as useAppTheme } from '../hooks/useTheme';
 import { ThemeToggleButton } from '../components/common/ThemeToggle';
+import { motion } from 'framer-motion';
+import { revealVariants } from '../utils/motion';
 
 // ══════════════════════════════════════════════════════════════════════
 // HEADER / NAVIGATION
@@ -281,6 +283,9 @@ const HeroSection = () => {
     >
       {/* Background decorations */}
       <Box
+        component={motion.div}
+        animate={{ y: [0, -20, 0], scale: [1, 1.05, 1] }}
+        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
         sx={{
           position: 'absolute',
           top: '10%',
@@ -293,6 +298,9 @@ const HeroSection = () => {
         }}
       />
       <Box
+        component={motion.div}
+        animate={{ y: [0, 15, 0], scale: [1, 1.08, 1] }}
+        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
         sx={{
           position: 'absolute',
           bottom: '10%',
@@ -308,7 +316,7 @@ const HeroSection = () => {
       <Container maxWidth={false} sx={{ maxWidth: 1920, mx: 'auto' }}>
         <Grid container spacing={4} alignItems="center">
           <Grid item xs={12} md={6}>
-            <Box sx={{ color: 'white' }}>
+            <Box component={motion.div} initial={{ opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }} sx={{ color: 'white' }}>
               <Typography
                 variant="overline"
                 sx={{
@@ -429,6 +437,10 @@ const HeroSection = () => {
 
           <Grid item xs={12} md={6}>
             <Box
+              component={motion.div}
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
               sx={{
                 display: 'flex',
                 justifyContent: 'center',
@@ -630,7 +642,14 @@ const FeaturesSection = () => {
       }}
     >
       <Container maxWidth={false} sx={{ maxWidth: 1920, mx: 'auto' }}>
-        <Box sx={{ textAlign: 'center', mb: 8 }}>
+        <Box 
+          component={motion.div}
+          variants={revealVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.3 }}
+          sx={{ textAlign: 'center', mb: 8 }}
+        >
           <Typography
             variant="overline"
             sx={{
@@ -667,6 +686,13 @@ const FeaturesSection = () => {
         <Grid container spacing={3}>
           {features.map((feature, index) => (
             <Grid item xs={12} sm={6} md={4} key={feature.title}>
+              <motion.div
+                variants={revealVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ delay: index * 0.1 }}
+              >
               <Paper
                 elevation={0}
                 sx={{
@@ -708,6 +734,7 @@ const FeaturesSection = () => {
                   {feature.description}
                 </Typography>
               </Paper>
+              </motion.div>
             </Grid>
           ))}
         </Grid>
@@ -767,7 +794,14 @@ const HowItWorksSection = () => {
       }}
     >
       <Container maxWidth={false} sx={{ maxWidth: 1920, mx: 'auto' }}>
-        <Box sx={{ textAlign: 'center', mb: 8 }}>
+        <Box 
+          component={motion.div}
+          variants={revealVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.3 }}
+          sx={{ textAlign: 'center', mb: 8 }}
+        >
           <Typography
             variant="overline"
             sx={{
@@ -802,8 +836,15 @@ const HowItWorksSection = () => {
         </Box>
 
         <Grid container spacing={4}>
-          {roles.map((item) => (
+          {roles.map((item, index) => (
             <Grid item xs={12} md={4} key={item.role}>
+              <motion.div
+                variants={revealVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ delay: index * 0.15 }}
+              >
               <Paper
                 elevation={0}
                 sx={{
@@ -872,6 +913,7 @@ const HowItWorksSection = () => {
                   ))}
                 </Box>
               </Paper>
+              </motion.div>
             </Grid>
           ))}
         </Grid>
@@ -921,6 +963,12 @@ const BenefitsSection = () => {
       <Container maxWidth={false} sx={{ maxWidth: 1920, mx: 'auto' }}>
         <Grid container spacing={6} alignItems="center">
           <Grid item xs={12} md={5}>
+            <motion.div
+              variants={revealVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.3 }}
+            >
             <Typography
               variant="overline"
               sx={{
@@ -962,12 +1010,20 @@ const BenefitsSection = () => {
             >
               Join Now
             </Button>
+            </motion.div>
           </Grid>
 
           <Grid item xs={12} md={7}>
             <Grid container spacing={2}>
               {benefits.map((benefit, index) => (
                 <Grid item xs={12} sm={6} key={benefit.title}>
+                  <motion.div
+                    variants={revealVariants}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, amount: 0.2 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
                   <Paper
                     elevation={0}
                     sx={{
@@ -1008,6 +1064,7 @@ const BenefitsSection = () => {
                       </Typography>
                     </Box>
                   </Paper>
+                  </motion.div>
                 </Grid>
               ))}
             </Grid>
@@ -1049,7 +1106,14 @@ const CTASection = () => {
       />
 
       <Container maxWidth={false} sx={{ maxWidth: 1920, mx: 'auto' }}>
-        <Box sx={{ textAlign: 'center', color: 'white', position: 'relative' }}>
+        <Box 
+          component={motion.div}
+          variants={revealVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.3 }}
+          sx={{ textAlign: 'center', color: 'white', position: 'relative' }}
+        >
           <Typography
             variant="h3"
             sx={{

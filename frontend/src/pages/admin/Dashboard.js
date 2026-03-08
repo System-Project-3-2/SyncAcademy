@@ -19,6 +19,8 @@ import {
 import { PageHeader, StatCard, LoadingSpinner, EmptyState } from '../../components';
 import { useAuth } from '../../hooks';
 import { feedbackService, statsService } from '../../services';
+import { motion } from 'framer-motion';
+import { staggerContainer, cardVariants } from '../../utils/motion';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -69,7 +71,7 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <Box className="fade-in">
+    <Box>
       <PageHeader
         title={`Welcome back, ${user?.name?.split(' ')[0]}! 👋`}
         subtitle="System Administration Dashboard"
@@ -92,8 +94,8 @@ const AdminDashboard = () => {
           User Overview
         </Typography>
       </Box>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Grid container spacing={3} sx={{ mb: 4 }} component={motion.div} variants={staggerContainer()} initial="initial" animate="animate">
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Total Users"
             value={stats.users?.total || 0}
@@ -102,7 +104,7 @@ const AdminDashboard = () => {
             onClick={() => navigate('/admin/users')}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Students"
             value={stats.users?.students || 0}
@@ -111,7 +113,7 @@ const AdminDashboard = () => {
             onClick={() => navigate('/admin/users')}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Teachers"
             value={stats.users?.teachers || 0}
@@ -120,7 +122,7 @@ const AdminDashboard = () => {
             onClick={() => navigate('/admin/users')}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Verified Users"
             value={stats.users?.verified || 0}
@@ -138,8 +140,8 @@ const AdminDashboard = () => {
           Feedback Overview
         </Typography>
       </Box>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Grid container spacing={3} sx={{ mb: 4 }} component={motion.div} variants={staggerContainer(0.08)} initial="initial" animate="animate">
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Total Feedbacks"
             value={stats.feedbacks?.total || 0}
@@ -148,7 +150,7 @@ const AdminDashboard = () => {
             onClick={() => navigate('/admin/feedbacks')}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Pending"
             value={stats.feedbacks?.pending || 0}
@@ -157,7 +159,7 @@ const AdminDashboard = () => {
             onClick={() => navigate('/admin/feedbacks')}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Resolved"
             value={stats.feedbacks?.resolved || 0}
@@ -165,7 +167,7 @@ const AdminDashboard = () => {
             color="success.main"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           {/* Resolution Rate Card with progress bar */}
           <Paper
             elevation={0}
