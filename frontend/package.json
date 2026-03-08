@@ -13,6 +13,7 @@
     "@testing-library/user-event": "^13.5.0",
     "ajv": "^8.18.0",
     "axios": "^1.13.2",
+    "framer-motion": "^12.35.1",
     "jspdf": "^4.2.0",
     "pdfjs-dist": "^5.5.207",
     "react": "^18.2.0",
