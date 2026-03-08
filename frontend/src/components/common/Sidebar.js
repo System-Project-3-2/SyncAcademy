@@ -140,13 +140,36 @@ const Sidebar = ({ open, onClose }) => {
 
   const sharedItemSx = {
     mx: 1,
-    borderRadius: 2,
+    borderRadius: 2.5,
     mb: 0.5,
+    position: 'relative',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      backgroundColor: 'action.hover',
+    },
     '&.Mui-selected': {
-      backgroundColor: 'primary.main',
-      color: 'white',
-      '& .MuiListItemIcon-root': { color: 'white' },
-      '&:hover': { backgroundColor: 'primary.dark' },
+      backgroundColor: theme.palette.mode === 'dark' 
+        ? 'rgba(59, 130, 246, 0.12)' 
+        : 'rgba(59, 130, 246, 0.08)',
+      color: 'primary.main',
+      fontWeight: 600,
+      '& .MuiListItemIcon-root': { color: 'primary.main' },
+      '& .MuiListItemText-primary': { fontWeight: 600 },
+      '&:hover': { 
+        backgroundColor: theme.palette.mode === 'dark'
+          ? 'rgba(59, 130, 246, 0.18)'
+          : 'rgba(59, 130, 246, 0.12)',
+      },
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        left: -8,
+        top: '20%',
+        height: '60%',
+        width: 4,
+        borderRadius: 4,
+        backgroundColor: 'primary.main',
+      },
     },
   };
 

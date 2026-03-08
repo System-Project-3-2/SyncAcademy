@@ -20,3 +20,4 @@ export {
 export { default as FilePreviewDialog } from './FilePreviewDialog';
 export { default as PaginationControl } from './PaginationControl';
 export { default as PdfAnnotator } from './PdfAnnotator';
+export { default as PageTransition } from './PageTransition';

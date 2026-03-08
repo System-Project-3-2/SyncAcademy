@@ -87,7 +87,7 @@ const createAppTheme = (isDark) => createTheme({
     h6: { fontWeight: 600 },
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: 12,
   },
   components: {
     MuiCssBaseline: {
@@ -102,8 +102,8 @@ const createAppTheme = (isDark) => createTheme({
         root: {
           textTransform: 'none',
           fontWeight: 600,
-          borderRadius: 8,
-          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          borderRadius: 10,
+          transition: 'all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
         },
         contained: {
           boxShadow: 'none',
@@ -111,14 +111,20 @@ const createAppTheme = (isDark) => createTheme({
             boxShadow: isDark 
               ? '0 4px 14px rgba(59, 130, 246, 0.25)' 
               : '0 4px 14px rgba(59, 130, 246, 0.3)',
+            transform: 'translateY(-1px)',
           },
+          '&:active': { transform: 'translateY(0)' },
+        },
+        outlined: {
+          '&:hover': { transform: 'translateY(-1px)' },
+          '&:active': { transform: 'translateY(0)' },
         },
       },
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
+          borderRadius: 16,
           transition: 'background-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease',
         },
       },
@@ -126,7 +132,9 @@ const createAppTheme = (isDark) => createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          backgroundImage: 'none',
+          backgroundImage: isDark 
+            ? 'linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.02))' 
+            : 'none',
           transition: 'background-color 0.3s ease, border-color 0.3s ease',
         },
       },
@@ -135,8 +143,8 @@ const createAppTheme = (isDark) => createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: 10,
-            transition: 'box-shadow 0.2s ease',
+            borderRadius: 12,
+            transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
             '&.Mui-focused': {
               boxShadow: isDark 
                 ? '0 0 0 3px rgba(96, 165, 250, 0.15)' 
@@ -171,13 +179,14 @@ const createAppTheme = (isDark) => createTheme({
       styleOverrides: {
         root: {
           fontWeight: 600,
+          borderRadius: 8,
         },
       },
     },
     MuiDialog: {
       styleOverrides: {
         paper: {
-          borderRadius: 16,
+          borderRadius: 20,
           border: isDark ? '1px solid #334155' : 'none',
         },
       },
@@ -187,6 +196,42 @@ const createAppTheme = (isDark) => createTheme({
         root: {
           textTransform: 'none',
           fontWeight: 600,
+        },
+      },
+    },
+    MuiTableRow: {
+      styleOverrides: {
+        root: {
+          transition: 'background-color 0.15s ease',
+          '&:hover': {
+            backgroundColor: isDark 
+              ? 'rgba(59, 130, 246, 0.06)'
+              : 'rgba(59, 130, 246, 0.03)',
+          },
+        },
+      },
+    },
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 10,
+          transition: 'all 0.15s ease',
+        },
+      },
+    },
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: {
+          borderRadius: 8,
+          fontWeight: 500,
+          fontSize: '0.75rem',
+        },
+      },
+    },
+    MuiAlert: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
         },
       },
     },
@@ -200,10 +245,14 @@ const getToastOptions = (isDark) => ({
   duration: 4000,
   position: 'top-right',
   style: {
-    borderRadius: '10px',
-    background: isDark ? '#1e293b' : '#333',
+    borderRadius: '14px',
+    background: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(15, 23, 42, 0.92)',
     color: '#fff',
-    border: isDark ? '1px solid #334155' : 'none',
+    border: isDark ? '1px solid rgba(51, 65, 85, 0.6)' : 'none',
+    backdropFilter: 'blur(12px)',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+    fontWeight: 500,
+    padding: '12px 16px',
   },
   success: {
     iconTheme: {
