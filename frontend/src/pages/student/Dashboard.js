@@ -20,6 +20,8 @@ import {
 import { PageHeader, StatCard, LoadingSpinner, EmptyState } from '../../components';
 import { useAuth } from '../../hooks';
 import { feedbackService, statsService } from '../../services';
+import { motion } from 'framer-motion';
+import { staggerContainer, cardVariants } from '../../utils/motion';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -68,7 +70,7 @@ const StudentDashboard = () => {
   ];
 
   return (
-    <Box className="fade-in">
+    <Box>
       <PageHeader
         title={`Welcome back, ${user?.name?.split(' ')[0]}! `}
         subtitle="Here's an overview of your academic activities"
@@ -85,8 +87,8 @@ const StudentDashboard = () => {
       />
 
       {/* Stats Grid */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Grid container spacing={3} sx={{ mb: 4 }} component={motion.div} variants={staggerContainer()} initial="initial" animate="animate">
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Enrolled Courses"
             value={stats.enrollments?.enrolledCourses || 0}
@@ -96,7 +98,7 @@ const StudentDashboard = () => {
             subtitle="Active enrollments"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Total Materials"
             value={stats.materials?.total || 0}
@@ -106,7 +108,7 @@ const StudentDashboard = () => {
             subtitle={`${stats.materials?.recentlyAdded || 0} added this week`}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="My Feedbacks"
             value={stats.feedbacks?.total || 0}
@@ -115,7 +117,7 @@ const StudentDashboard = () => {
             onClick={() => navigate('/student/feedbacks')}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Pending"
             value={stats.feedbacks?.pending || 0}
@@ -124,7 +126,7 @@ const StudentDashboard = () => {
             subtitle="Awaiting response"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Resolved"
             value={stats.feedbacks?.resolved || 0}

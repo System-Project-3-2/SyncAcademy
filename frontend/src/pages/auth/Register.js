@@ -30,6 +30,7 @@ import {
   Pin as PinIcon,
   Badge as BadgeIcon,
 } from '@mui/icons-material';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks';
 import { useTheme } from '../../hooks/useTheme';
@@ -136,9 +137,41 @@ const Register = () => {
           : 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%)',
         transition: 'background 0.3s ease',
         position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      {/* Theme Toggle - Fixed position in top right */}
+      {/* Floating decorative shapes */}
+      <Box
+        component={motion.div}
+        animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+        sx={{
+          position: 'absolute',
+          top: '10%',
+          right: '8%',
+          width: 140,
+          height: 140,
+          borderRadius: '30%',
+          background: 'rgba(255,255,255,0.06)',
+          backdropFilter: 'blur(4px)',
+        }}
+      />
+      <Box
+        component={motion.div}
+        animate={{ y: [0, 15, 0], rotate: [0, -8, 0] }}
+        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        sx={{
+          position: 'absolute',
+          bottom: '10%',
+          left: '6%',
+          width: 100,
+          height: 100,
+          borderRadius: '50%',
+          background: 'rgba(255,255,255,0.04)',
+        }}
+      />
+
+      {/* Theme Toggle */}
       <Box
         sx={{
           position: 'absolute',
@@ -159,15 +192,25 @@ const Register = () => {
       </Box>
 
       <Container maxWidth="sm">
-        <Paper
-          elevation={10}
-          sx={{
-            p: 4,
-            borderRadius: 3,
-            bgcolor: 'background.paper',
-            transition: 'background-color 0.3s ease',
-          }}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
         >
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 3, sm: 5 },
+              borderRadius: 4,
+              bgcolor: 'background.paper',
+              transition: 'background-color 0.3s ease',
+              border: '1px solid',
+              borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+              boxShadow: isDark 
+                ? '0 20px 60px rgba(0,0,0,0.5)' 
+                : '0 20px 60px rgba(0,0,0,0.12)',
+            }}
+          >
           {/* Logo */}
           <Box sx={{ textAlign: 'center', mb: 3 }}>
             <Box
@@ -396,6 +439,7 @@ const Register = () => {
             </Box>
           )}
         </Paper>
+        </motion.div>
       </Container>
     </Box>
   );

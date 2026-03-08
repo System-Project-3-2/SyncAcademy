@@ -18,6 +18,8 @@ import {
 import { PageHeader, StatCard, LoadingSpinner, EmptyState } from '../../components';
 import { useAuth } from '../../hooks';
 import { feedbackService, statsService } from '../../services';
+import { motion } from 'framer-motion';
+import { staggerContainer, cardVariants } from '../../utils/motion';
 
 const TeacherDashboard = () => {
   const navigate = useNavigate();
@@ -65,7 +67,7 @@ const TeacherDashboard = () => {
   ];
 
   return (
-    <Box className="fade-in">
+    <Box>
       <PageHeader
         title={`Welcome back, ${user?.name?.split(' ')[0]}! 👋`}
         subtitle="Manage materials and student feedbacks"
@@ -82,8 +84,8 @@ const TeacherDashboard = () => {
       />
 
       {/* Stats Grid */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Grid container spacing={3} sx={{ mb: 4 }} component={motion.div} variants={staggerContainer()} initial="initial" animate="animate">
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="My Materials"
             value={stats.materials?.total || 0}
@@ -93,7 +95,7 @@ const TeacherDashboard = () => {
             subtitle={`${stats.materials?.recentlyAdded || 0} this month`}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Total Feedbacks"
             value={stats.feedbacks?.total || 0}
@@ -102,7 +104,7 @@ const TeacherDashboard = () => {
             onClick={() => navigate('/teacher/feedbacks')}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Pending"
             value={stats.feedbacks?.pending || 0}
@@ -112,7 +114,7 @@ const TeacherDashboard = () => {
             onClick={() => navigate('/teacher/feedbacks')}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={3} component={motion.div} variants={cardVariants}>
           <StatCard
             title="Responded"
             value={stats.feedbacks?.respondedByYou || 0}
