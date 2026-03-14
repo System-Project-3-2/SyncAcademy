@@ -6,6 +6,7 @@ import {
   getSearchSuggestions,
 } from "../controllers/searchController.js";
 import { protect } from "../middleware/authMiddleware.js";
+import { cacheGet } from "../middleware/cacheMiddleware.js";
 
 const router = express.Router();
 
@@ -15,10 +16,10 @@ router.use(protect);
 router.post("/", semanticSearch);
 
 // Search history
-router.get("/history", getSearchHistory);
+router.get("/history", cacheGet({ ttl: 30 }), getSearchHistory);
 router.delete("/history", clearSearchHistory);
 
 // Autocomplete suggestions
-router.get("/suggestions", getSearchSuggestions);
+router.get("/suggestions", cacheGet({ ttl: 30 }), getSearchSuggestions);
 
 export default router;

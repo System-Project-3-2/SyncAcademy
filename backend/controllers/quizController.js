@@ -8,6 +8,10 @@ import Course from "../models/courseModel.js";
 import Enrollment from "../models/enrollmentModel.js";
 import { generateQuiz as generateQuizFromMaterials } from "../services/quizGeneratorService.js";
 import { notifyEnrolledStudents } from "../utils/notificationHelper.js";
+import JobStatus from "../models/jobStatusModel.js";
+import { enqueueQuizGenerationJob } from "../queues/jobProducer.js";
+import { QUEUE_NAMES } from "../queues/queueNames.js";
+import { withDistributedLock } from "../middleware/idempotencyMiddleware.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -96,10 +100,40 @@ export const generateQuiz = async (req, res) => {
     const count = Math.min(Math.max(Number(numQuestions) || 5, 1), 20);
     const diff = ["easy", "medium", "hard"].includes(difficulty) ? difficulty : "medium";
 
-    // Generate questions using AI
+    const useAsyncQuizGeneration = process.env.ENABLE_ASYNC_QUIZ_GENERATION !== "false";
+
+    if (useAsyncQuizGeneration) {
+      const jobId = `quiz-gen-${req.user._id}-${Date.now()}`;
+      const payload = {
+        jobId,
+        courseId,
+        title,
+        description,
+        numQuestions: count,
+        difficulty: diff,
+        timeLimit,
+        materialId: materialId || null,
+        createdBy: req.user._id,
+      };
+
+      await JobStatus.create({
+        jobId,
+        queue: QUEUE_NAMES.QUIZ_GENERATION,
+        state: "queued",
+        payload,
+        requestedBy: req.user._id,
+      });
+      await enqueueQuizGenerationJob(payload);
+
+      return res.status(202).json({
+        message: "Quiz generation has been queued",
+        jobId,
+        queue: QUEUE_NAMES.QUIZ_GENERATION,
+      });
+    }
+
     const questions = await generateQuizFromMaterials(course.courseNo, count, diff, materialId || null, courseId);
 
-    // Create quiz (unpublished so teacher can review)
     const quiz = await Quiz.create({
       course: courseId,
       createdBy: req.user._id,
@@ -115,7 +149,6 @@ export const generateQuiz = async (req, res) => {
       .populate("createdBy", "name email avatar")
       .populate("course", "courseNo courseTitle");
 
-    // Notify enrolled students that a new quiz is available for this course
     notifyEnrolledStudents({
       courseId,
       type: "quiz_created",
@@ -659,19 +692,23 @@ export const submitAttempt = async (req, res) => {
     const started = startedAt ? new Date(startedAt) : now;
     const timeTaken = Math.round((now - started) / 1000);
 
-    const attempt = await QuizAttempt.create({
-      quiz: quiz._id,
-      student: req.user._id,
-      answers: gradedAnswers,
-      score,
-      totalMarks,
-      percentage,
-      startedAt: started,
-      completedAt: now,
-      timeTaken: Math.max(timeTaken, 0),
-      questionOrder: hasRandomization ? questionOrder : [],
-      optionOrders: hasRandomization ? optionOrders : [],
-    });
+    const attempt = await withDistributedLock(
+      `lock:quiz-attempt:${quiz._id}:student:${req.user._id}`,
+      10000,
+      async () => QuizAttempt.create({
+        quiz: quiz._id,
+        student: req.user._id,
+        answers: gradedAnswers,
+        score,
+        totalMarks,
+        percentage,
+        startedAt: started,
+        completedAt: now,
+        timeTaken: Math.max(timeTaken, 0),
+        questionOrder: hasRandomization ? questionOrder : [],
+        optionOrders: hasRandomization ? optionOrders : [],
+      })
+    );
 
     // Return full quiz with answers for review
     const fullQuiz = quiz.toObject();
@@ -681,6 +718,9 @@ export const submitAttempt = async (req, res) => {
       quiz: fullQuiz,
     });
   } catch (error) {
+    if (error.code === "LOCK_NOT_ACQUIRED") {
+      return res.status(429).json({ message: error.message });
+    }
     if (error.code === 11000) {
       return res.status(400).json({ message: "You have already attempted this quiz" });
     }
@@ -697,7 +737,13 @@ export const submitAttempt = async (req, res) => {
  */
 export const getMyAttempts = async (req, res) => {
   try {
-    const attempts = await QuizAttempt.find({ student: req.user._id })
+    const { page = 1, limit = 20 } = req.query;
+    const pageNum = Math.max(1, Number(page));
+    const limitNum = Math.min(100, Math.max(1, Number(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [attempts, total] = await Promise.all([
+      QuizAttempt.find({ student: req.user._id })
       .sort({ completedAt: -1 })
       .populate({
         path: "quiz",
@@ -707,9 +753,21 @@ export const getMyAttempts = async (req, res) => {
           { path: "createdBy", select: "name" },
         ],
       })
-      .lean();
+      .skip(skip)
+      .limit(limitNum)
+      .lean(),
+      QuizAttempt.countDocuments({ student: req.user._id }),
+    ]);
 
-    res.json(attempts);
+    res.json({
+      data: attempts,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

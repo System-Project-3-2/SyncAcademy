@@ -13,6 +13,10 @@ import { embedText } from "../services/embeddingServices.js";
 import cloudinary from "../config/cloudinary.js";
 import Course from "../models/courseModel.js";
 import { notifyEnrolledStudents } from "../utils/notificationHelper.js";
+import JobStatus from "../models/jobStatusModel.js";
+import { enqueueDocumentParsingJob } from "../queues/jobProducer.js";
+import { QUEUE_NAMES } from "../queues/queueNames.js";
+import { cacheInvalidateByPrefix } from "../middleware/cacheMiddleware.js";
 
 import path from "path";
 
@@ -26,16 +30,8 @@ export const uploadMaterial = async (req, res) => {
       return res.status(400).json({ message: "File missing" });
     }
 
-    let textContent = "";
     const ext = path.extname(file.originalname).toLowerCase();
-
-    if (ext === ".pdf") {
-      textContent = await extractPdfText(file.path);
-    } else if (ext === ".docx") {
-      textContent = await extractDocText(file.path);
-    } else if (ext === ".pptx") {
-      textContent = await extractPptx(file.path);
-    } else {
+    if (![".pdf", ".docx", ".pptx"].includes(ext)) {
       return res.status(400).json({ message: "Unsupported file type" });
     }
 
@@ -51,22 +47,64 @@ export const uploadMaterial = async (req, res) => {
       type,
       fileUrl,
       originalFileName: file.originalname,
-      textContent,
+      textContent: "",
       uploadedBy: req.user._id,
     };
 
     const newMaterial = await Material.create(material);
-    const chunks = chunkText(textContent, 600); // chunkify the text
-    for (const chunk of chunks) {
-      const embedding = await embedText(chunk);
-      await MaterialChunk.create({
+
+    const useAsyncMaterialProcessing = process.env.ENABLE_ASYNC_MATERIAL_PROCESSING !== "false";
+    let jobId = null;
+
+    if (useAsyncMaterialProcessing) {
+      jobId = `material-parse-${newMaterial._id}-${Date.now()}`;
+      const payload = {
+        jobId,
         materialId: newMaterial._id,
-        chunkText: chunk,
-        embedding,
+        filePath: file.path,
+        originalFileName: file.originalname,
+        generateEmbeddings: true,
+      };
+
+      await JobStatus.create({
+        jobId,
+        queue: QUEUE_NAMES.DOCUMENT_PARSING,
+        state: "queued",
+        payload,
+        requestedBy: req.user._id,
       });
+
+      await enqueueDocumentParsingJob(payload);
+    } else {
+      let textContent = "";
+      if (ext === ".pdf") {
+        textContent = await extractPdfText(file.path);
+      } else if (ext === ".docx") {
+        textContent = await extractDocText(file.path);
+      } else if (ext === ".pptx") {
+        textContent = await extractPptx(file.path);
+      }
+
+      await Material.findByIdAndUpdate(newMaterial._id, { textContent });
+      const chunks = chunkText(textContent, 600);
+      const docs = [];
+      for (const chunk of chunks) {
+        const embedding = await embedText(chunk);
+        docs.push({ materialId: newMaterial._id, chunkText: chunk, embedding });
+      }
+      if (docs.length) {
+        await MaterialChunk.insertMany(docs);
+      }
     }
 
-    res.status(201).json(newMaterial);
+    await cacheInvalidateByPrefix("api:");
+
+    res.status(useAsyncMaterialProcessing ? 202 : 201).json({
+      material: newMaterial,
+      processing: useAsyncMaterialProcessing
+        ? { status: "queued", jobId, queue: QUEUE_NAMES.DOCUMENT_PARSING }
+        : { status: "completed" },
+    });
 
     // Non-blocking: notify enrolled students
     try {
@@ -206,6 +244,7 @@ export const updateMaterial = async (req, res) => {
     if (type) material.type = type;
 
     const updatedMaterial = await material.save();
+    await cacheInvalidateByPrefix("api:");
 
     res.status(200).json(updatedMaterial);
   } catch (error) {
@@ -240,6 +279,8 @@ export const deleteMaterial = async (req, res) => {
     } catch (cloudErr) {
       console.error("Cloudinary delete failed (non-blocking):", cloudErr.message);
     }
+
+    await cacheInvalidateByPrefix("api:");
 
     res.status(200).json({ message: "Material deleted successfully" });
   } catch (error) {
