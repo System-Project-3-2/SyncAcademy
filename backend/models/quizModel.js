@@ -84,6 +84,9 @@ const quizSchema = new mongoose.Schema(
 );
 
 quizSchema.index({ course: 1, createdAt: -1 });
+quizSchema.index({ createdBy: 1, createdAt: -1 });
+quizSchema.index({ course: 1, isPublished: 1, createdAt: -1 });
+quizSchema.index({ scheduledAt: 1, availableUntil: 1 });
 
 const Quiz = mongoose.model("Quiz", quizSchema);
 

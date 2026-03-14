@@ -5,6 +5,8 @@
 import ChatSession from "../models/chatSessionModel.js";
 import { ragChat } from "../services/ragService.js";
 import { checkOllamaHealth } from "../services/ollamaService.js";
+import { isCircuitOpen, recordFailure, recordSuccess } from "../services/circuitBreaker.js";
+import { retryWithBackoff, withTimeout } from "../utils/asyncResilience.js";
 
 /**
  * POST /api/chat
@@ -12,6 +14,12 @@ import { checkOllamaHealth } from "../services/ollamaService.js";
  */
 export const sendMessage = async (req, res) => {
   try {
+        if (isCircuitOpen()) {
+          return res.status(503).json({
+            message: "AI service is temporarily overloaded. Please try again shortly.",
+          });
+        }
+
     const { message, sessionId, filters } = req.body;
     const userId = req.user._id;
 
@@ -40,7 +48,19 @@ export const sendMessage = async (req, res) => {
     }));
 
     // Run RAG pipeline
-    const { answer, sources, metadata } = await ragChat(message.trim(), chatHistory, filters);
+    const ragTimeoutMs = Number(process.env.RAG_TIMEOUT_MS || 20000);
+    const ragRetries = Number(process.env.RAG_RETRIES || 1);
+
+    const { answer, sources, metadata } = await retryWithBackoff(
+      () => withTimeout(
+        ragChat(message.trim(), chatHistory, filters),
+        ragTimeoutMs,
+        "RAG processing timed out"
+      ),
+      ragRetries,
+      400
+    );
+    recordSuccess();
 
     // Guard: ensure content is never empty (Mongoose requires it)
     const safeAnswer = (answer || "").trim() || "I was unable to generate a response. Please try again.";
@@ -75,6 +95,7 @@ export const sendMessage = async (req, res) => {
       },
     });
   } catch (error) {
+    recordFailure();
     console.error("Chat error:", error.message);
 
     // Provide a user-friendly error if Ollama is down

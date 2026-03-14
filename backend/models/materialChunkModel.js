@@ -20,6 +20,8 @@ const materialChunkSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+materialChunkSchema.index({ materialId: 1, createdAt: -1 });
+
 const MaterialChunk = mongoose.model("MaterialChunk", materialChunkSchema);
 
 export default MaterialChunk;

@@ -4,6 +4,7 @@ import Enrollment from "../models/enrollmentModel.js";
 import SearchHistory from "../models/searchHistoryModel.js";
 import { embedText } from "../services/embeddingServices.js";
 import { cosineSimilarity } from "../utils/cosineSimilarity.js";
+import { getRedis } from "../config/redis.js";
 
 // ==================== Search Configuration ====================
 const SEARCH_CONFIG = {
@@ -43,6 +44,16 @@ const validateQuery = (query) => {
 export const semanticSearch = async (req, res) => {
   try {
     const { query, courseNo, type } = req.body;
+
+    const redis = getRedis();
+    const cacheTtl = Number(process.env.SEARCH_CACHE_TTL_SECONDS || 30);
+    const cacheKey = `search:${req.user._id}:${(query || "").trim()}:${courseNo || "all"}:${type || "all"}`;
+    if (process.env.ENABLE_API_CACHE === "true" && redis.status === "ready") {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return res.json(JSON.parse(cached));
+      }
+    }
 
     if (!query) {
       return res.status(400).json({ message: "Query is required" });
@@ -156,6 +167,10 @@ export const semanticSearch = async (req, res) => {
       await SearchHistory.create(historyEntry);
     } catch (historyError) {
       console.warn("[INFO] Search history save skipped:", historyError.message);
+    }
+
+    if (process.env.ENABLE_API_CACHE === "true" && redis.status === "ready") {
+      await redis.setex(cacheKey, cacheTtl, JSON.stringify(results));
     }
 
     res.json(results);

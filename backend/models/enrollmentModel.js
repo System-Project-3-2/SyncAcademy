@@ -31,6 +31,8 @@ const enrollmentSchema = new mongoose.Schema(
 
 // A student can only enroll in a course once
 enrollmentSchema.index({ student: 1, course: 1 }, { unique: true });
+enrollmentSchema.index({ student: 1, status: 1, enrolledAt: -1 });
+enrollmentSchema.index({ course: 1, status: 1, enrolledAt: -1 });
 
 const Enrollment = mongoose.model("Enrollment", enrollmentSchema);
 

@@ -18,6 +18,12 @@ const materialSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+materialSchema.index({ uploadedBy: 1, createdAt: -1 });
+materialSchema.index({ courseNo: 1, createdAt: -1 });
+materialSchema.index({ type: 1, createdAt: -1 });
+materialSchema.index({ title: "text", courseTitle: "text", courseNo: "text" });
+
 const Material = mongoose.model("Material", materialSchema);
 
 export default Material;

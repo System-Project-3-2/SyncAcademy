@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: lms-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    container_name: lms-redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: lms-backend
+    env_file:
+      - ../backend/.env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - ENABLE_API_CACHE=true
+      - RATE_LIMIT_USE_REDIS=true
+      - ENABLE_ASYNC_QUIZ_GENERATION=true
+      - ENABLE_ASYNC_MATERIAL_PROCESSING=true
+      - ENABLE_ASYNC_NOTIFICATION_FANOUT=true
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb
+      - redis
+
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.worker
+    container_name: lms-worker
+    env_file:
+      - ../backend/.env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - ENABLE_ASYNC_QUIZ_GENERATION=true
+      - ENABLE_ASYNC_MATERIAL_PROCESSING=true
+      - ENABLE_ASYNC_NOTIFICATION_FANOUT=true
+    depends_on:
+      - mongodb
+      - redis
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: lms-prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: lms-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+
+volumes:
+  mongo_data:

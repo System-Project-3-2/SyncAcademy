@@ -58,6 +58,9 @@ const chatSessionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+chatSessionSchema.index({ user: 1, updatedAt: -1 });
+chatSessionSchema.index({ user: 1, isActive: 1, updatedAt: -1 });
+
 // Auto-generate title from first user message
 chatSessionSchema.pre("save", async function () {
   if (this.isNew && this.messages.length > 0) {

@@ -53,6 +53,9 @@ const courseSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+courseSchema.index({ createdBy: 1, createdAt: -1 });
+courseSchema.index({ coTeachers: 1, createdAt: -1 });
+
 const Course = mongoose.model("Course", courseSchema);
 
 export { generateCourseCode };
