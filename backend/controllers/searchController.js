@@ -8,10 +8,44 @@ import { cosineSimilarity } from "../utils/cosineSimilarity.js";
 // ==================== Search Configuration ====================
 const SEARCH_CONFIG = {
   MIN_QUERY_LENGTH: 3,            // Minimum characters for a valid query
-  MIN_SIMILARITY_THRESHOLD: 0.35, // Minimum cosine similarity to include a result
+  MIN_SIMILARITY_THRESHOLD: Number(process.env.SEARCH_MIN_SIMILARITY_THRESHOLD || 0.4),
+  MIN_HYBRID_SCORE_THRESHOLD: Number(process.env.SEARCH_MIN_HYBRID_THRESHOLD || 0.42),
+  MIN_TOKEN_OVERLAP_RATIO: Number(process.env.SEARCH_MIN_TOKEN_OVERLAP_RATIO || 0.08),
+  MIN_SHORT_QUERY_TOKEN_OVERLAP_RATIO: Number(process.env.SEARCH_MIN_SHORT_QUERY_TOKEN_OVERLAP_RATIO || 0.34),
+  SHORT_QUERY_TOKEN_LIMIT: Number(process.env.SEARCH_SHORT_QUERY_TOKEN_LIMIT || 3),
+  MIN_MEANINGFUL_WORDS: 2,
+  MAX_NON_ALNUM_RATIO: 0.45,
+  MIN_TOP_SCORE_FOR_VALID_RESULTS: Number(process.env.SEARCH_MIN_TOP_SCORE || 0.45),
   MAX_CHUNKS_TO_CONSIDER: 50,     // Top N scored chunks to consider before grouping
   MAX_MATCHES_PER_MATERIAL: 5,    // Max matched text snippets per material
   MAX_RESULTS: 20,                // Max materials in final results
+};
+
+const STOP_WORDS = new Set([
+  "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "how", "in", "is", "it", "of", "on", "or", "that", "the", "this", "to", "was", "were", "what", "when", "where", "which", "with", "why", "your", "you",
+]);
+
+const tokenize = (text) => {
+  if (!text) return [];
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .map((w) => w.trim())
+    .filter((w) => w.length >= 2 && !STOP_WORDS.has(w));
+};
+
+const calculateTokenOverlapRatio = (queryTokens, text) => {
+  if (!queryTokens.length || !text) return 0;
+  const querySet = new Set(queryTokens);
+  const textSet = new Set(tokenize(text));
+  if (!textSet.size) return 0;
+
+  let overlapCount = 0;
+  for (const token of querySet) {
+    if (textSet.has(token)) overlapCount += 1;
+  }
+  return overlapCount / querySet.size;
 };
 
 /**
@@ -28,12 +62,28 @@ const validateQuery = (query) => {
     };
   }
 
-  // Check for gibberish — query should contain at least one real word (2+ alpha chars)
   const words = trimmed.split(/\s+/).filter((w) => /[a-zA-Z]{2,}/.test(w));
-  if (words.length === 0) {
+  if (words.length < SEARCH_CONFIG.MIN_MEANINGFUL_WORDS) {
     return {
       valid: false,
-      message: "Please enter a meaningful search query with real words",
+      message: "Please enter a meaningful query with at least two real words",
+    };
+  }
+
+  const nonAlnumChars = (trimmed.match(/[^a-zA-Z0-9\s]/g) || []).length;
+  const nonAlnumRatio = trimmed.length ? nonAlnumChars / trimmed.length : 1;
+  if (nonAlnumRatio > SEARCH_CONFIG.MAX_NON_ALNUM_RATIO) {
+    return {
+      valid: false,
+      message: "Query appears invalid. Please use meaningful words related to your course materials.",
+    };
+  }
+
+  const uniqueAlphaNum = new Set(trimmed.toLowerCase().replace(/[^a-z0-9]/g, "")).size;
+  if (uniqueAlphaNum <= 2) {
+    return {
+      valid: false,
+      message: "Query appears repetitive or nonsensical. Try a clearer question or topic.",
     };
   }
 
@@ -54,7 +104,9 @@ export const semanticSearch = async (req, res) => {
       return res.status(400).json({ message: validation.message });
     }
 
-    const queryEmbedding = await embedText(query.trim());
+    const normalizedQuery = query.trim();
+    const queryEmbedding = await embedText(normalizedQuery);
+    const queryTokens = tokenize(normalizedQuery);
 
     // Build material filter
     const materialFilter = {};
@@ -84,25 +136,58 @@ export const semanticSearch = async (req, res) => {
     // Remove unmatched materials
     const validChunks = chunks.filter((c) => c.materialId);
 
-    const scored = validChunks.map((chunk) => ({
-      materialId: chunk.materialId._id.toString(), //material ID as string
-      title: chunk.materialId.title,
-      courseTitle: chunk.materialId.courseTitle,
-      courseNo: chunk.materialId.courseNo,
-      type: chunk.materialId.type,
-      fileUrl: chunk.materialId.fileUrl,
-      originalFileName: chunk.materialId.originalFileName,
-      text: chunk.chunkText,
-      score: cosineSimilarity(queryEmbedding, chunk.embedding),
-    }));
+    const scored = validChunks.map((chunk) => {
+      const semanticScore = cosineSimilarity(queryEmbedding, chunk.embedding);
+      const lexicalSignal = calculateTokenOverlapRatio(
+        queryTokens,
+        `${chunk.materialId.title || ""} ${chunk.materialId.courseTitle || ""} ${chunk.chunkText || ""}`
+      );
+      const hybridScore = semanticScore * 0.8 + lexicalSignal * 0.2;
 
-    // Filter out chunks below the minimum similarity threshold
+      return {
+        materialId: chunk.materialId._id.toString(),
+        title: chunk.materialId.title,
+        courseTitle: chunk.materialId.courseTitle,
+        courseNo: chunk.materialId.courseNo,
+        type: chunk.materialId.type,
+        fileUrl: chunk.materialId.fileUrl,
+        originalFileName: chunk.materialId.originalFileName,
+        text: chunk.chunkText,
+        score: semanticScore,
+        lexicalSignal,
+        hybridScore,
+      };
+    });
+
+    const isShortQuery = queryTokens.length <= SEARCH_CONFIG.SHORT_QUERY_TOKEN_LIMIT;
+
+    // Hybrid confidence gate:
+    // - short queries must have explicit lexical anchor (prevents off-topic semantic drift)
+    // - longer queries use hybrid confidence with lexical signal
     const relevantScored = scored.filter(
-      (item) => item.score >= SEARCH_CONFIG.MIN_SIMILARITY_THRESHOLD
+      (item) => {
+        if (item.score < SEARCH_CONFIG.MIN_SIMILARITY_THRESHOLD) {
+          return false;
+        }
+
+        if (isShortQuery) {
+          return item.lexicalSignal >= SEARCH_CONFIG.MIN_SHORT_QUERY_TOKEN_OVERLAP_RATIO;
+        }
+
+        return (
+          item.hybridScore >= SEARCH_CONFIG.MIN_HYBRID_SCORE_THRESHOLD &&
+          item.lexicalSignal >= SEARCH_CONFIG.MIN_TOKEN_OVERLAP_RATIO
+        );
+      }
     );
 
     // Sort by score descending
     relevantScored.sort((a, b) => b.score - a.score);
+
+    // If the best candidate confidence is too weak, treat as out-of-domain/noise.
+    if (!relevantScored.length || relevantScored[0].score < SEARCH_CONFIG.MIN_TOP_SCORE_FOR_VALID_RESULTS) {
+      return res.json([]);
+    }
 
     // Take top N chunks for grouping
     const topChunks = relevantScored.slice(0, SEARCH_CONFIG.MAX_CHUNKS_TO_CONSIDER);

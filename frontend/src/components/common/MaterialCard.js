@@ -3,7 +3,7 @@
  * Displays a search result material with matched content
  * Includes dark mode support, preview, and relevance score
  */
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -14,10 +14,14 @@ import {
   Collapse,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   LinearProgress,
   useTheme,
   alpha,
+  Dialog,
+  DialogContent,
+  IconButton,
 } from '@mui/material';
 import {
   Description as DocumentIcon,
@@ -26,6 +30,7 @@ import {
   ExpandMore as ExpandMoreIcon,
   School as CourseIcon,
   Category as TypeIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 
 const MaterialCard = ({
@@ -42,6 +47,17 @@ const MaterialCard = ({
   const course = material.courseNo || material.course || '';
   const courseTitle = material.courseTitle || '';
   const relevance = material.relevanceScore;
+  const [selectedMatch, setSelectedMatch] = useState(null);
+
+  const getMatchText = (match) => {
+    if (typeof match === 'string') return match;
+    if (!match || typeof match !== 'object') return '';
+    return match.fullContent || match.content || match.text || match.snippet || '';
+  };
+
+  const openMatchDetail = (match) => {
+    setSelectedMatch(getMatchText(match));
+  };
 
   const handleDownload = async () => {
     const url = material.fileUrl;
@@ -225,27 +241,61 @@ const MaterialCard = ({
                 <List dense disablePadding>
                   {material.matches.map((match, index) => (
                     <ListItem key={index} sx={{ px: 0 }}>
-                      <ListItemText
-                        primary={
-                          <Typography
-                            variant="body2"
-                            color="text.primary"
-                            sx={{
-                              whiteSpace: 'pre-wrap',
-                              bgcolor: isDark 
-                                ? alpha(theme.palette.background.paper, 0.8)
-                                : alpha(theme.palette.grey[100], 0.5),
-                              p: 1.5,
-                              borderRadius: 1,
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              transition: 'background-color 0.3s ease',
-                            }}
-                          >
-                            ...{match}...
-                          </Typography>
-                        }
-                      />
+                      <ListItemButton
+                        onClick={() => openMatchDetail(match)}
+                        sx={{
+                          px: 0,
+                          borderRadius: 1,
+                          alignItems: 'stretch',
+                          '&:hover .match-chunk': {
+                            borderColor: 'primary.main',
+                            bgcolor: isDark
+                              ? alpha(theme.palette.primary.main, 0.14)
+                              : alpha(theme.palette.primary.main, 0.06),
+                          },
+                        }}
+                      >
+                        <ListItemText
+                          primary={
+                            <Box
+                              className="match-chunk"
+                              sx={{
+                                bgcolor: isDark
+                                  ? alpha(theme.palette.background.paper, 0.8)
+                                  : alpha(theme.palette.grey[100], 0.5),
+                                p: 1.5,
+                                borderRadius: 1,
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                transition: 'all 0.2s ease',
+                                cursor: 'pointer',
+                                width: '100%',
+                              }}
+                            >
+                              <Typography
+                                variant="body2"
+                                color="text.primary"
+                                sx={{
+                                  whiteSpace: 'pre-wrap',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                ...{getMatchText(match)}...
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="primary"
+                                sx={{ display: 'block', mt: 0.75, fontWeight: 500 }}
+                              >
+                                Click to open full chunk
+                              </Typography>
+                            </Box>
+                          }
+                        />
+                      </ListItemButton>
                     </ListItem>
                   ))}
                 </List>
@@ -254,6 +304,60 @@ const MaterialCard = ({
           </>
         )}
       </CardContent>
+
+      {/* Full chunk page-style view */}
+      <Dialog
+        open={Boolean(selectedMatch)}
+        onClose={() => setSelectedMatch(null)}
+        fullScreen
+        PaperProps={{
+          sx: {
+            bgcolor: theme.palette.mode === 'dark' ? theme.palette.background.default : '#fff',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            px: { xs: 2, md: 4 },
+            py: 1.5,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.95) : '#fff',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            Relevant Result
+          </Typography>
+          <IconButton onClick={() => setSelectedMatch(null)} aria-label="Close full chunk view">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        <DialogContent sx={{ px: { xs: 2, md: 4 }, py: { xs: 3, md: 4 } }}>
+          <Box
+            sx={{
+              maxWidth: 980,
+              mx: 'auto',
+              p: { xs: 2, md: 4 },
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.9) : '#fff',
+            }}
+          >
+            <Typography variant="body1" color="text.primary" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>
+              {selectedMatch}
+            </Typography>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

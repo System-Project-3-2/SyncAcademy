@@ -179,7 +179,7 @@ const SearchMaterials = () => {
       setCurrentPage(1); // Reset to first page on new search
       
       if (data.length === 0) {
-        toast('No relevant materials found. Try rephrasing your query or using different keywords.', {
+        toast('No relevant results found. Try refining your query with course-related terms.', {
           icon: '🔍',
           duration: 4000,
         });
@@ -465,8 +465,8 @@ const SearchMaterials = () => {
           </Box>
         ) : (
           <EmptyState
-            title="No relevant materials found"
-            description="Try using different keywords, broader terms, or check your course filters. Example: instead of 'BFS', try 'breadth first search algorithm'."
+            title="No relevant results found"
+            description="Try refining your query with clearer course-related terms, broader phrases, or adjusted filters. Example: instead of 'BFS', try 'breadth first search algorithm'."
             icon={<SearchIcon sx={{ fontSize: 64 }} />}
           />
         )
