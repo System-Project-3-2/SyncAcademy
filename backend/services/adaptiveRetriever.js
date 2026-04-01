@@ -28,6 +28,23 @@ const RETRIEVAL_CONFIG = {
   complex:  { topK: 8, threshold: 0.35, noContextThreshold: 0.30 },
 };
 
+const loadCandidateChunks = async (filters = {}) => {
+  const materialFilter = {};
+  if (filters.courseNo) materialFilter.courseNo = filters.courseNo;
+  if (filters.type) materialFilter.type = filters.type;
+
+  const chunks = await MaterialChunk.find()
+    .populate({
+      path: 'materialId',
+      match: Object.keys(materialFilter).length > 0 ? materialFilter : undefined,
+      select: 'courseTitle courseNo type fileUrl',
+    })
+    .select('materialId chunkText embedding')
+    .lean();
+
+  return chunks.filter((c) => c.materialId);
+};
+
 // ── Low-Level Retriever ────────────────────────────────────────────────────────
 
 /**
@@ -38,27 +55,16 @@ const RETRIEVAL_CONFIG = {
  * @param   {object}   filters         - optional {courseNo, type}
  * @returns {Array}    scored chunk objects, unsorted
  */
-const scoreAllChunks = async (queryEmbedding, filters = {}) => {
-  const materialFilter = {};
-  if (filters.courseNo) materialFilter.courseNo = filters.courseNo;
-  if (filters.type)     materialFilter.type     = filters.type;
-
-  const chunks = await MaterialChunk.find().populate({
-    path: 'materialId',
-    match: Object.keys(materialFilter).length > 0 ? materialFilter : undefined,
-  });
-
-  return chunks
-    .filter((c) => c.materialId !== null) // remove chunks whose material was filtered out
-    .map((chunk) => ({
-      materialId:  chunk.materialId._id.toString(),
-      courseTitle: chunk.materialId.courseTitle,
-      courseNo:    chunk.materialId.courseNo,
-      type:        chunk.materialId.type,
-      fileUrl:     chunk.materialId.fileUrl,
-      text:        chunk.chunkText,
-      score:       cosineSimilarity(queryEmbedding, chunk.embedding),
-    }));
+const scoreAllChunks = (queryEmbedding, candidates) => {
+  return candidates.map((chunk) => ({
+    materialId: chunk.materialId._id.toString(),
+    courseTitle: chunk.materialId.courseTitle,
+    courseNo: chunk.materialId.courseNo,
+    type: chunk.materialId.type,
+    fileUrl: chunk.materialId.fileUrl,
+    text: chunk.chunkText,
+    score: cosineSimilarity(queryEmbedding, chunk.embedding),
+  }));
 };
 
 // ── Multi-Query Merge ──────────────────────────────────────────────────────────
@@ -109,14 +115,19 @@ const mergeAndDeduplicate = (scoredArrays) => {
  */
 export const adaptiveRetrieve = async (queries, complexity, filters = {}) => {
   const config = RETRIEVAL_CONFIG[complexity] ?? RETRIEVAL_CONFIG.moderate;
+  const candidates = await loadCandidateChunks(filters);
+
+  if (candidates.length === 0) {
+    return { topChunks: [], bestScore: 0, config };
+  }
 
   // Step 1 — embed all sub-queries concurrently
   const embeddings = await Promise.all(queries.map((q) => embedText(q)));
 
   // Step 2 — score chunks against each embedding concurrently
-  //           Note: we only query the DB ONCE per embedding, not once per chunk
+  //           Note: candidates are already loaded once from DB.
   const scoredArrays = await Promise.all(
-    embeddings.map((emb) => scoreAllChunks(emb, filters))
+    embeddings.map((emb) => scoreAllChunks(emb, candidates))
   );
 
   // Step 3 — merge and deduplicate across sub-queries

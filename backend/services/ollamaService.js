@@ -9,19 +9,47 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "mistral";
  * @param {object} [options]
  * @returns {string} 
  */
-const OLLAMA_TIMEOUT_MS = 120_000;
+const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 180_000);
+
+const normalizeModelName = (name = "") => name.toLowerCase().trim();
+
+const modelMatches = (availableModel, requestedModel) => {
+  const available = normalizeModelName(availableModel);
+  const requested = normalizeModelName(requestedModel);
+  if (!available || !requested) return false;
+  if (available === requested) return true;
+  return available.startsWith(`${requested}:`);
+};
+
+const fetchAvailableModels = async () => {
+  const res = await fetch(`${OLLAMA_BASE_URL}/api/tags`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.models || []).map((m) => m.name).filter(Boolean);
+};
+
+const resolveModelName = async (requestedModel) => {
+  const available = await fetchAvailableModels();
+  const requested = requestedModel || OLLAMA_MODEL;
+  const matched = available.find((name) => modelMatches(name, requested));
+  return {
+    model: matched || requested,
+    available,
+  };
+};
 
 export const generateResponse = async (prompt, options = {}) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
+    const { model } = await resolveModelName(options.model || OLLAMA_MODEL);
+    let response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,
       body: JSON.stringify({
-        model: options.model || OLLAMA_MODEL,
+        model,
         prompt,
         stream: false,
         options: {
@@ -34,6 +62,30 @@ export const generateResponse = async (prompt, options = {}) => {
         },
       }),
     });
+
+    if (response.status === 404 || response.status === 400) {
+      const { available } = await resolveModelName(options.model || OLLAMA_MODEL);
+      if (available.length > 0) {
+        response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: available[0],
+            prompt,
+            stream: false,
+            options: {
+              temperature: options.temperature ?? 0.1,
+              top_p: options.top_p ?? 0.9,
+              num_predict: options.max_tokens ?? 384,
+              num_ctx: 2048,
+              repeat_penalty: 1.3,
+              stop: ["\n\nQuestion:", "\n\nStudent:"],
+            },
+          }),
+        });
+      }
+    }
 
     if (!response.ok) {
       const errText = await response.text();
@@ -97,12 +149,13 @@ export const generateChatJSON = async (systemPrompt, userPrompt, options = {}) =
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const { model } = await resolveModelName(options.model || OLLAMA_MODEL);
     const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,
       body: JSON.stringify({
-        model: options.model || OLLAMA_MODEL,
+        model,
         format: "json",   // ← enforces JSON-only output at the Ollama level
         stream: false,
         messages: [
@@ -148,7 +201,7 @@ export const checkOllamaHealth = async () => {
 
     const data = await res.json();
     const models = (data.models || []).map((m) => m.name);
-    const modelLoaded = models.some((n) => n.startsWith(OLLAMA_MODEL));
+    const modelLoaded = models.some((n) => modelMatches(n, OLLAMA_MODEL));
 
     return {
       healthy: true,

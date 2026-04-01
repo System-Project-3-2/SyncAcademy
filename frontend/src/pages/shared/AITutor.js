@@ -429,6 +429,7 @@ const AITutor = () => {
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const healthFailureCountRef = useRef(0);
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -458,9 +459,21 @@ const AITutor = () => {
     const check = async () => {
       try {
         const health = await chatService.checkHealth();
-        setAiHealthy(health.healthy && health.modelLoaded);
+        const healthy = health.healthy && health.modelLoaded;
+        if (healthy) {
+          healthFailureCountRef.current = 0;
+          setAiHealthy(true);
+        } else {
+          healthFailureCountRef.current += 1;
+          if (healthFailureCountRef.current >= 2) {
+            setAiHealthy(false);
+          }
+        }
       } catch {
-        setAiHealthy(false);
+        healthFailureCountRef.current += 1;
+        if (healthFailureCountRef.current >= 2) {
+          setAiHealthy(false);
+        }
       }
     };
     check();

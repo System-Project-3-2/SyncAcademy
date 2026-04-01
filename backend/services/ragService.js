@@ -15,7 +15,9 @@ import { adaptiveRetrieve }  from './adaptiveRetriever.js';
 import { runSelfEvaluation } from './selfEvaluator.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
-const MAX_RETRIES = 2; // max re-retrieve + regenerate cycles before accepting best effort
+const MAX_RETRIES = Math.max(1, Number(process.env.RAG_MAX_RETRIES || 1));
+const ENABLE_SELF_EVAL = String(process.env.RAG_ENABLE_SELF_EVAL || 'false').toLowerCase() === 'true';
+const SELF_EVAL_THRESHOLD = Number(process.env.RAG_SELF_EVAL_THRESHOLD || 0.5);
 
 // ── System Prompt ─────────────────────────────────────────────────────────────
 // CRITICAL: Mistral 7B will answer from its training data if the instruction
@@ -79,11 +81,22 @@ const TOPIC_STOP_WORDS = new Set([
   'still','their','there','these','third','those','through','under',
   'until','using','where','whether','which','while','whose','within',
   'without','would','write','written','describe','mentioned',
+  // Generic tokens that cause false positives across many technical documents
+  'search','algorithm','algorithms','system','systems','model','models',
+  'method','methods','approach','approaches','process','pipeline',
+  'example','examples','concept','concepts','topic','topics',
 ]);
 
-const MIN_MATCH_RATIO = 0.25; // at least 25% of signal words must appear in chunks
+const REL_CONFIG = {
+  simple:   { minRatio: Number(process.env.RAG_TOPIC_MIN_RATIO_SIMPLE || 0.6),  minMatchCount: Number(process.env.RAG_TOPIC_MIN_MATCH_SIMPLE || 2) },
+  moderate: { minRatio: Number(process.env.RAG_TOPIC_MIN_RATIO_MODERATE || 0.4), minMatchCount: Number(process.env.RAG_TOPIC_MIN_MATCH_MODERATE || 2) },
+  complex:  { minRatio: Number(process.env.RAG_TOPIC_MIN_RATIO_COMPLEX || 0.34), minMatchCount: Number(process.env.RAG_TOPIC_MIN_MATCH_COMPLEX || 2) },
+};
 
-const checkTopicRelevance = (question, chunks) => {
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const checkTopicRelevance = (question, chunks, complexity = 'moderate') => {
+  const config = REL_CONFIG[complexity] || REL_CONFIG.moderate;
   const signalWords = question
     .toLowerCase()
     .replace(/[^a-z\s]/g, ' ')  // remove digits and punctuation
@@ -93,16 +106,24 @@ const checkTopicRelevance = (question, chunks) => {
   // If no signal words extracted, we cannot determine relevance — allow through
   if (signalWords.length === 0) return true;
 
-  const combinedText = chunks.map((c) => (c.text || '').toLowerCase()).join(' ');
-  const matchCount   = signalWords.filter((w) => combinedText.includes(w)).length;
+  const combinedText = chunks
+    .map((c) => `${c.courseNo || ''} ${c.courseTitle || ''} ${c.text || ''}`.toLowerCase())
+    .join(' ');
+
+  const matchedWords = signalWords.filter((w) => {
+    const pattern = new RegExp(`\\b${escapeRegExp(w)}\\b`, 'i');
+    return pattern.test(combinedText);
+  });
+  const matchCount   = matchedWords.length;
   const ratio        = matchCount / signalWords.length;
 
   console.log(
     `[RAG] Topic relevance → signal=[${signalWords.join(', ')}], ` +
-    `matches=${matchCount}/${signalWords.length}, ratio=${ratio.toFixed(2)}`
+    `matches=${matchCount}/${signalWords.length}, ratio=${ratio.toFixed(2)}, ` +
+    `requiredRatio=${config.minRatio}, requiredCount=${config.minMatchCount}`
   );
 
-  return ratio >= MIN_MATCH_RATIO;
+  return ratio >= config.minRatio && matchCount >= config.minMatchCount;
 };
 
 // ── Source Deduplicator ────────────────────────────────────────────────────────
@@ -188,7 +209,7 @@ export const ragChat = async (question, chatHistory = [], filters = {}) => {
     // off-topic questions when the embedding model finds incidental overlap.
     // Verify that the question's domain-specific vocabulary actually appears
     // in the retrieved chunks before spending an LLM call.
-    if (!checkTopicRelevance(question, topChunks)) {
+    if (!checkTopicRelevance(question, topChunks, complexity)) {
       console.log('[RAG] ❌ Topic relevance gate failed — off-topic question detected');
       return {
         answer:
@@ -213,20 +234,33 @@ export const ragChat = async (question, chatHistory = [], filters = {}) => {
       answer = 'I was unable to generate a response. Please try rephrasing your question.';
     }
 
-    // ── STAGE 4: Self-Evaluation ─────────────────────────────────────────────────
-    evaluation = await runSelfEvaluation({
-      question,
-      answer,
-      retrievedDocs: topChunks,
-      threshold: 0.50,
-    });
+    // ── STAGE 4: Self-Evaluation (optional) ─────────────────────────────────────
+    if (ENABLE_SELF_EVAL) {
+      evaluation = await runSelfEvaluation({
+        question,
+        answer,
+        retrievedDocs: topChunks,
+        threshold: SELF_EVAL_THRESHOLD,
+      });
 
-    console.log(
-      `[RAG] Self-Eval → faithfulness=${evaluation.faithfulness.toFixed(2)}, ` +
-      `coverage=${evaluation.coverage.toFixed(2)}, ` +
-      `confidence=${evaluation.confidence.toFixed(2)}, ` +
-      `supported=${evaluation.supported}, pass=${evaluation.pass}`
-    );
+      console.log(
+        `[RAG] Self-Eval → faithfulness=${evaluation.faithfulness.toFixed(2)}, ` +
+        `coverage=${evaluation.coverage.toFixed(2)}, ` +
+        `confidence=${evaluation.confidence.toFixed(2)}, ` +
+        `supported=${evaluation.supported}, pass=${evaluation.pass}`
+      );
+    } else {
+      evaluation = {
+        faithfulness: 0,
+        coverage: 0,
+        confidence: 0,
+        supported: 'PARTIAL',
+        pass: true,
+        reasoning: 'Self-evaluation disabled for faster response',
+        parse_failed: false,
+      };
+      console.log('[RAG] Self-Eval skipped (RAG_ENABLE_SELF_EVAL=false)');
+    }
 
     finalAnswer = answer;
     finalChunks = topChunks;
