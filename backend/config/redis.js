@@ -10,13 +10,14 @@ export const getRedis = () => {
 
   redis = new Redis(redisUrl, {
     maxRetriesPerRequest: null,
-    enableReadyCheck: true,
+    enableReadyCheck: false,
+    enableOfflineQueue: false,
     lazyConnect: true,
-    retryStrategy: (times) => Math.min(times * 100, 2000),
+    retryStrategy: () => null, // Don't retry automatically
   });
 
-  redis.on("error", (err) => {
-    logger.error({ err }, "Redis connection error");
+  redis.on("error", () => {
+    // Silently ignore - Redis is optional for this app
   });
 
   redis.on("connect", () => {

@@ -1,0 +1,34 @@
+Student-Aid-Semantic-Search - Terminal Startup Commands
+
+Option 1: Start Full Local Stack with Docker (recommended)
+
+# from project root
+cd infra
+docker compose up --build
+
+# services after startup:
+# API: http://localhost:5000
+# Prometheus: http://localhost:9090
+# Grafana: http://localhost:3001
+# Frontend (manual npm start): http://localhost:3000
+
+
+Option 2: Start Manually (without Docker for app processes)
+
+1) Backend API terminal
+cd backend
+npm install
+npm run dev
+
+2) Worker terminal (separate terminal)
+cd backend
+npm install
+npm run worker
+
+3) Frontend terminal (separate terminal)
+cd frontend
+npm install
+npm start
+
+
+Optional: If dependencies are already installed, you can skip npm install.

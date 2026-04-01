@@ -10,7 +10,8 @@
 k6 run infra/loadtest/k6/quiz-traffic.js \
   -e BASE_URL=http://localhost:5000 \
   -e TOKEN=<student-jwt> \
-  -e QUIZ_ID=<quiz-or-course-id>
+  -e COURSE_ID=<course-id> \
+  -e QUIZ_ID=<quiz-id>
 ```
 
 ## Chat Flow Test

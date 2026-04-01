@@ -16,10 +16,10 @@ router.use(protect);
 router.post("/", semanticSearch);
 
 // Search history
-router.get("/history", cacheGet({ ttl: 30 }), getSearchHistory);
+router.get("/history", cacheGet({ ttl: 300 }), getSearchHistory);
 router.delete("/history", clearSearchHistory);
 
 // Autocomplete suggestions
-router.get("/suggestions", cacheGet({ ttl: 30 }), getSearchSuggestions);
+router.get("/suggestions", cacheGet({ ttl: 300 }), getSearchSuggestions);
 
 export default router;

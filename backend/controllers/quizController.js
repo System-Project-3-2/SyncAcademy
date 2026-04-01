@@ -159,7 +159,6 @@ export const generateQuiz = async (req, res) => {
 
     res.status(201).json(populated);
   } catch (error) {
-    console.error("[QuizController] generateQuiz error:", error.message);
     res.status(500).json({ message: error.message });
   }
 };
@@ -240,7 +239,6 @@ export const createManualQuiz = async (req, res) => {
 
     res.status(201).json(populated);
   } catch (error) {
-    console.error("[QuizController] createManualQuiz error:", error.message);
     res.status(500).json({ message: error.message });
   }
 };
@@ -254,12 +252,20 @@ export const createManualQuiz = async (req, res) => {
  */
 export const getMyCreatedQuizzes = async (req, res) => {
   try {
+    const { page = 1, limit = 20 } = req.query;
+    const pageNum = Math.max(1, Number(page));
+    const limitNum = Math.min(100, Math.max(1, Number(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
     const filter = req.user.role === "admin" ? {} : { createdBy: req.user._id };
+    const total = await Quiz.countDocuments(filter);
 
     const quizzes = await Quiz.find(filter)
       .sort({ createdAt: -1 })
-      .select("-questions")
+      .select("-questions") // Exclude questions for list view
       .populate("course", "courseNo courseTitle")
+      .skip(skip)
+      .limit(limitNum)
       .lean();
 
     // Attach attempt count for each quiz
@@ -275,7 +281,15 @@ export const getMyCreatedQuizzes = async (req, res) => {
     // Add scheduleStatus for dashboard display
     quizzes.forEach((q) => { q.scheduleStatus = getScheduleStatus(q); });
 
-    res.json(quizzes);
+    res.json({
+      data: quizzes,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -291,6 +305,10 @@ export const getMyCreatedQuizzes = async (req, res) => {
 export const getQuizzesByCourse = async (req, res) => {
   try {
     const { courseId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const pageNum = Math.max(1, Number(page));
+    const limitNum = Math.min(100, Math.max(1, Number(limit)));
+    const skip = (pageNum - 1) * limitNum;
 
     const hasAccess = await canAccessCourse(req.user._id, courseId, req.user.role);
     if (!hasAccess) {
@@ -304,10 +322,14 @@ export const getQuizzesByCourse = async (req, res) => {
       filter.isPublished = true;
     }
 
+    const total = await Quiz.countDocuments(filter);
+
     const quizzes = await Quiz.find(filter)
       .sort({ createdAt: -1 })
       .select("-questions")
       .populate("createdBy", "name email avatar")
+      .skip(skip)
+      .limit(limitNum)
       .lean();
 
     // For students, attach their attempt status
@@ -337,7 +359,15 @@ export const getQuizzesByCourse = async (req, res) => {
       });
     }
 
-    res.json(quizzes);
+    res.json({
+      data: quizzes,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

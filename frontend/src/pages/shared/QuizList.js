@@ -64,8 +64,8 @@ const QuizList = () => {
   const fetchQuizzes = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await quizService.getQuizzesByCourse(courseId);
-      setQuizzes(data);
+      const apiResponse = await quizService.getQuizzesByCourse(courseId);
+      setQuizzes(apiResponse.data || apiResponse);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load quizzes');
     } finally {

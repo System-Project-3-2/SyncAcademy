@@ -72,8 +72,8 @@ const TeacherQuizDashboard = () => {
   const fetchQuizzes = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await quizService.getMyCreatedQuizzes();
-      setQuizzes(data);
+      const apiResponse = await quizService.getMyCreatedQuizzes();
+      setQuizzes(apiResponse.data || apiResponse);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load quizzes');
     } finally {

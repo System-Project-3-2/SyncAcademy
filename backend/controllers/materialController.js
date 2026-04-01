@@ -159,27 +159,19 @@ export const getAllMaterials = async (req, res) => {
     if (type) filter.type = type;
     if (courseNo) filter.courseNo = courseNo;
 
-    // If no pagination params, return all (backward compatible)
-    if (!page && !limit) {
-      const materials = await Material.find(filter)
-        .populate("uploadedBy", "name email")
-        .select("-textContent")
-        .sort(sort);
-      return res.status(200).json(materials);
-    }
-
-    // Paginated response
+    // Enforce pagination defaults for performance
     const pageNum = parseInt(page) || 1;
-    const limitNum = parseInt(limit) || 20;
+    const limitNum = Math.min(parseInt(limit) || 20, 100); // Cap at 100 per page
     const skip = (pageNum - 1) * limitNum;
     const total = await Material.countDocuments(filter);
 
     const materials = await Material.find(filter)
       .populate("uploadedBy", "name email")
-      .select("-textContent")
+      .select("title courseTitle courseNo type fileUrl uploadedBy createdAt") // Lean field selection
       .sort(sort)
       .skip(skip)
-      .limit(limitNum);
+      .limit(limitNum)
+      .lean();
 
     res.status(200).json({
       data: materials,
@@ -202,7 +194,9 @@ export const getMaterialById = async (req, res) => {
     const { role, _id } = req.user;
 
     const material = await Material.findById(id)
-      .populate("uploadedBy", "name email");
+      .populate("uploadedBy", "name email")
+      .select("-textContent") // Exclude large text field
+      .lean();
 
     if (!material) {
       return res.status(404).json({ message: "Material not found" });

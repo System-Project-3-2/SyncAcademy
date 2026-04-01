@@ -24,10 +24,10 @@ const router = express.Router();
 router.use(protect);
 
 // Student attempts (must be before /:id to avoid conflict)
-router.get("/my-attempts", authorize("student"), cacheGet({ ttl: 20 }), getMyAttempts);
+router.get("/my-attempts", authorize("student"), cacheGet({ ttl: 120 }), getMyAttempts);
 
 // Teacher: all quizzes created by me across all courses
-router.get("/my-created", authorize("teacher", "admin"), cacheGet({ ttl: 20 }), getMyCreatedQuizzes);
+router.get("/my-created", authorize("teacher", "admin"), cacheGet({ ttl: 120 }), getMyCreatedQuizzes);
 
 // AI generate quiz (teacher/admin)
 router.post("/generate", authorize("teacher", "admin"), generateQuiz);
@@ -36,10 +36,10 @@ router.post("/generate", authorize("teacher", "admin"), generateQuiz);
 router.post("/manual", authorize("teacher", "admin"), createManualQuiz);
 
 // List quizzes for a course
-router.get("/course/:courseId", cacheGet({ ttl: 20 }), getQuizzesByCourse);
+router.get("/course/:courseId", cacheGet({ ttl: 120 }), getQuizzesByCourse);
 
 // Get single quiz
-router.get("/:id", cacheGet({ ttl: 20 }), getQuiz);
+router.get("/:id", cacheGet({ ttl: 120 }), getQuiz);
 
 // Update quiz (edit questions)
 router.put("/:id", authorize("teacher", "admin"), updateQuiz);
@@ -63,6 +63,6 @@ router.post(
 );
 
 // Teacher views all attempts for a quiz
-router.get("/:id/results", authorize("teacher", "admin"), cacheGet({ ttl: 15 }), getQuizResults);
+router.get("/:id/results", authorize("teacher", "admin"), cacheGet({ ttl: 60 }), getQuizResults);
 
 export default router;

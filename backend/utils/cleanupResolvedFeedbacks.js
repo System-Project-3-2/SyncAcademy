@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import Feedback from "../models/feedbackModel.js";
+import logger from "../observability/logger.js";
 
 const deleteResolvedFeedbacks = () => {
   cron.schedule("0 * * * *", async () => {
@@ -13,10 +14,10 @@ const deleteResolvedFeedbacks = () => {
       });
 
       if (result.deletedCount > 0) {
-        console.log(` Deleted ${result.deletedCount} resolved feedback(s)`);
+        logger.info({ deletedCount: result.deletedCount }, "Resolved feedbacks deleted");
       }
     } catch (error) {
-      console.error("Feedback cleanup error:", error.message);
+      logger.error({ err: error }, "Feedback cleanup error");
     }
   });
 };

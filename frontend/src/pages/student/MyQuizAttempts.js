@@ -31,8 +31,8 @@ const MyQuizAttempts = () => {
 
   const fetchAttempts = useCallback(async () => {
     try {
-      const data = await quizService.getMyAttempts();
-      setAttempts(data);
+      const apiResponse = await quizService.getMyAttempts();
+      setAttempts(apiResponse.data || apiResponse);
     } catch (err) {
       toast.error('Failed to load quiz attempts');
     } finally {

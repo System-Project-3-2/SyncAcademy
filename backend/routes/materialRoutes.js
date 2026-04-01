@@ -15,13 +15,13 @@ import { cacheGet } from "../middleware/cacheMiddleware.js";
 const router = express.Router();
 
 // Get all materials - All authenticated users (role-based filtering in controller)
-router.get("/", protect, cacheGet({ ttl: 60 }), getAllMaterials);
+router.get("/", protect, cacheGet({ ttl: 300 }), getAllMaterials);
 
 // Get single material by ID - All authenticated users (role-based access in controller)
-router.get("/:id", protect, cacheGet({ ttl: 120 }), getMaterialById);
+router.get("/:id", protect, cacheGet({ ttl: 600 }), getMaterialById);
 
 // Get signed URL for a material file - All authenticated users (role-based access in controller)
-router.get("/:id/signed-url", protect, cacheGet({ ttl: 300 }), getMaterialSignedUrl);
+router.get("/:id/signed-url", protect, cacheGet({ ttl: 900 }), getMaterialSignedUrl);
 
 // Upload material - Teacher and Admin only
 router.post("/upload", protect, authorize("teacher", "admin"), upload.single("file"), uploadMaterial);

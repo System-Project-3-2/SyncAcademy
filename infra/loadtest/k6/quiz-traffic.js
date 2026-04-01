@@ -4,6 +4,7 @@ import { check, sleep } from "k6";
 const BASE_URL = __ENV.BASE_URL || "http://localhost:5000";
 const TOKEN = __ENV.TOKEN || "";
 const QUIZ_ID = __ENV.QUIZ_ID || "";
+const COURSE_ID = __ENV.COURSE_ID || "";
 
 export const options = {
   scenarios: {
@@ -31,7 +32,7 @@ const authHeaders = TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {};
 export default function () {
   const idempotency = `${__VU}-${__ITER}-${Date.now()}`;
 
-  const listRes = http.get(`${BASE_URL}/api/quizzes/course/${QUIZ_ID}`, {
+  const listRes = http.get(`${BASE_URL}/api/quizzes/course/${COURSE_ID}`, {
     headers: { ...authHeaders },
   });
   check(listRes, { "list quizzes ok": (r) => r.status === 200 || r.status === 403 || r.status === 404 });
