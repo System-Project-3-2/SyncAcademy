@@ -5,12 +5,21 @@
 import User from "../models/userModel.js";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import fs from "fs/promises";
+import { createWriteStream } from "fs";
+import os from "os";
+import path from "path";
+import PDFDocument from "pdfkit";
+import PptxGenJS from "pptxgenjs";
 import Course from "../models/courseModel.js";
 import Material from "../models/materialModel.js";
+import MaterialChunk from "../models/materialChunkModel.js";
 import Quiz from "../models/quizModel.js";
 import Enrollment from "../models/enrollmentModel.js";
 import LearningEvent from "../models/learningEventModel.js";
 import TopicMastery from "../models/topicMasteryModel.js";
+import uploadToCloudinary from "../utils/cloudinaryUpload.js";
+import deletefromCloudinary from "../utils/cloudinaryDelete.js";
 
 const clamp01 = (value) => Math.max(0, Math.min(1, Number(value ?? 0)));
 const randomPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -46,6 +55,99 @@ const buildTopicTags = (topicId, userId) => [
     taggedAt: new Date(),
   },
 ];
+
+const randomId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+const writePdfFile = ({ filePath, title, lines }) =>
+  new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50 });
+    const stream = doc.pipe(createWriteStream(filePath));
+
+    stream.on("finish", resolve);
+    stream.on("error", reject);
+    doc.on("error", reject);
+
+    doc.fontSize(18).text(title);
+    doc.moveDown();
+    doc.fontSize(12);
+    for (const line of lines) {
+      doc.text(`- ${line}`);
+      doc.moveDown(0.5);
+    }
+    doc.end();
+  });
+
+const writePptxFile = async ({ filePath, title, lines }) => {
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_WIDE";
+
+  const slide1 = pptx.addSlide();
+  slide1.addText(title, { x: 0.6, y: 0.4, w: 12, h: 0.8, fontSize: 28, bold: true });
+  slide1.addText("Synthetic study deck", { x: 0.6, y: 1.3, w: 8, h: 0.6, fontSize: 16 });
+
+  const slide2 = pptx.addSlide();
+  slide2.addText("Key Notes", { x: 0.6, y: 0.4, w: 12, h: 0.7, fontSize: 22, bold: true });
+  const bulletLines = lines.slice(0, 6).map((l) => ({ text: l, options: { bullet: { indent: 18 } } }));
+  slide2.addText(bulletLines, { x: 0.8, y: 1.2, w: 11.5, h: 4.5, fontSize: 16 });
+
+  await pptx.writeFile({ fileName: filePath });
+};
+
+const buildMaterialArtifact = async ({ ns, courseNo, topic, index, realFileMode }) => {
+  const contentLines = [
+    `Topic focus: ${topic}`,
+    `Course: ${courseNo}`,
+    "Concept overview and practical applications",
+    "Common mistakes and how to avoid them",
+    "Short examples with expected outcomes",
+    "Practice prompts for self-evaluation",
+  ];
+
+  const textContent = contentLines.join(". ") + ".";
+
+  if (!realFileMode) {
+    return {
+      type: index % 2 === 0 ? "Slides" : "Lecture Notes",
+      fileUrl: `https://example.com/${ns}/${courseNo}/material-${index}.pdf`,
+      originalFileName: `${courseNo}-material-${index}.pdf`,
+      textContent,
+    };
+  }
+
+  const variant = index % 3;
+  const baseName = `${courseNo}-material-${index}-${topic.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}`;
+
+  let ext = ".txt";
+  let type = "Lecture Notes";
+  if (variant === 0) {
+    ext = ".pdf";
+    type = "PDF";
+  } else if (variant === 1) {
+    ext = ".pptx";
+    type = "Slides";
+  }
+
+  const fileName = `${baseName}${ext}`;
+  const tempPath = path.join(os.tmpdir(), `student-aid-${randomId()}-${fileName}`);
+  const title = `${topic.toUpperCase()} - ${courseNo}`;
+
+  if (ext === ".pdf") {
+    await writePdfFile({ filePath: tempPath, title, lines: contentLines });
+  } else if (ext === ".pptx") {
+    await writePptxFile({ filePath: tempPath, title, lines: contentLines });
+  } else {
+    await fs.writeFile(tempPath, `${title}\n\n${contentLines.map((l) => `- ${l}`).join("\n")}\n`, "utf8");
+  }
+
+  const fileUrl = await uploadToCloudinary(tempPath);
+
+  return {
+    type,
+    fileUrl,
+    originalFileName: fileName,
+    textContent,
+  };
+};
 
 const supportsTransactions = async () => {
   try {
@@ -380,6 +482,8 @@ export const getUserStats = async (req, res) => {
  * @access Admin only
  */
 export const generateSyntheticData = async (req, res) => {
+  const uploadedFileUrls = [];
+
   try {
     const {
       namespace,
@@ -391,6 +495,7 @@ export const generateSyntheticData = async (req, res) => {
       eventsPerEnrollment = 35,
       enrollmentsPerStudent = 2,
       password = "password123",
+      realFileMode = false,
     } = req.body || {};
 
     const safe = {
@@ -464,24 +569,37 @@ export const generateSyntheticData = async (req, res) => {
     }
     const studentsCreated = await User.insertMany(studentDocs, { ordered: false });
 
+    const useRealFiles = Boolean(realFileMode);
+
     // 4) Create materials and quizzes
     const materialDocs = [];
     const quizDocs = [];
-
-    coursesCreated.forEach((course, idx) => {
+    for (const [idx, course] of coursesCreated.entries()) {
       const topics = buildCourseTopics(idx + 1);
       const teacherId = course.createdBy;
 
       for (let m = 1; m <= safe.materialsPerCourse; m++) {
         const topic = topics[(m - 1) % topics.length];
+        const artifact = await buildMaterialArtifact({
+          ns,
+          courseNo: course.courseNo,
+          topic,
+          index: m,
+          realFileMode: useRealFiles,
+        });
+
+        if (useRealFiles) {
+          uploadedFileUrls.push(artifact.fileUrl);
+        }
+
         materialDocs.push({
           title: `Material ${m} - ${topic}`,
           courseTitle: course.courseTitle,
-          type: m % 2 === 0 ? "Slides" : "Lecture Notes",
+          type: artifact.type,
           courseNo: course.courseNo,
-          fileUrl: `https://example.com/${ns}/${course.courseNo}/material-${m}.pdf`,
-          originalFileName: `${course.courseNo}-material-${m}.pdf`,
-          textContent: `This synthetic material covers ${topic}. Includes examples, practice and quick summaries for ${topic}.`,
+          fileUrl: artifact.fileUrl,
+          originalFileName: artifact.originalFileName,
+          textContent: artifact.textContent,
           topicTags: buildTopicTags(topic, teacherId),
           uploadedBy: teacherId,
         });
@@ -512,7 +630,7 @@ export const generateSyntheticData = async (req, res) => {
           totalQuestions: questions.length,
         });
       }
-    });
+    }
 
     const materialsCreated = await Material.insertMany(materialDocs, { ordered: false });
     await Quiz.insertMany(quizDocs, { ordered: false });
@@ -658,6 +776,7 @@ export const generateSyntheticData = async (req, res) => {
     res.status(201).json({
       message: "Synthetic dataset generated successfully",
       namespace: ns,
+      realFileMode: useRealFiles,
       summary: {
         teachers: teachersCreated.length,
         students: studentsCreated.length,
@@ -671,6 +790,20 @@ export const generateSyntheticData = async (req, res) => {
       sampleAccounts,
     });
   } catch (error) {
+    // Best effort rollback for uploaded files if DB generation fails midway.
+    try {
+      for (const url of uploadedFileUrls) {
+        if (!url) continue;
+          try {
+            await deletefromCloudinary(url);
+          } catch {
+            // ignore individual cloud cleanup errors
+          }
+      }
+    } catch {
+      // ignore cleanup wrapper errors
+    }
+
     res.status(500).json({ message: error.message });
   }
 };
@@ -696,7 +829,7 @@ export const cleanupSyntheticData = async (req, res) => {
       return res.status(400).json({ message: "Cleanup requires explicit confirmation" });
     }
 
-    const { result: summary, usedTransaction } = await withOptionalTransaction(async (session) => {
+      const { result, usedTransaction } = await withOptionalTransaction(async (session) => {
       const sessionOpt = session ? { session } : {};
 
       const syntheticUsers = await User.find(
@@ -721,16 +854,30 @@ export const cleanupSyntheticData = async (req, res) => {
       const courseIds = syntheticCourses.map((c) => c._id);
       const courseNos = syntheticCourses.map((c) => c.courseNo);
 
-      const materialsRes = await Material.deleteMany(
-        {
-          $or: [
-            { uploadedBy: { $in: teacherIds.length ? teacherIds : [null] } },
-            { courseNo: { $in: courseNos.length ? courseNos : ["__none__"] } },
-            { fileUrl: { $regex: `/${ns}/`, $options: "i" } },
-          ],
-        },
-        sessionOpt
-      );
+        const syntheticMaterials = await Material.find(
+          {
+            $or: [
+              { uploadedBy: { $in: teacherIds.length ? teacherIds : [null] } },
+              { courseNo: { $in: courseNos.length ? courseNos : ["__none__"] } },
+              { fileUrl: { $regex: `/${ns}/`, $options: "i" } },
+            ],
+          },
+          "_id fileUrl",
+          sessionOpt
+        ).lean();
+
+        const materialIds = syntheticMaterials.map((m) => m._id);
+        const materialUrls = syntheticMaterials.map((m) => m.fileUrl).filter(Boolean);
+
+        const materialsRes = await Material.deleteMany(
+          { _id: { $in: materialIds.length ? materialIds : [null] } },
+          sessionOpt
+        );
+
+        const chunksRes = await MaterialChunk.deleteMany(
+          { materialId: { $in: materialIds.length ? materialIds : [null] } },
+          sessionOpt
+        );
 
       const quizzesRes = await Quiz.deleteMany(
         {
@@ -784,16 +931,37 @@ export const cleanupSyntheticData = async (req, res) => {
         sessionOpt
       );
 
-      return {
-        users: usersRes.deletedCount || 0,
-        courses: coursesRes.deletedCount || 0,
-        materials: materialsRes.deletedCount || 0,
-        quizzes: quizzesRes.deletedCount || 0,
-        enrollments: enrollmentsRes.deletedCount || 0,
-        learningEvents: learningEventsRes.deletedCount || 0,
-        topicMasteryRecords: topicMasteryRes.deletedCount || 0,
+        return {
+          summary: {
+            users: usersRes.deletedCount || 0,
+            courses: coursesRes.deletedCount || 0,
+            materials: materialsRes.deletedCount || 0,
+            materialChunks: chunksRes.deletedCount || 0,
+            quizzes: quizzesRes.deletedCount || 0,
+            enrollments: enrollmentsRes.deletedCount || 0,
+            learningEvents: learningEventsRes.deletedCount || 0,
+            topicMasteryRecords: topicMasteryRes.deletedCount || 0,
+          },
+          materialUrls,
       };
     });
+
+      const summary = result.summary || {};
+      const uniqueUrls = [...new Set(result.materialUrls || [])];
+
+      let cloudinaryAssetsDeleted = 0;
+      let cloudinaryAssetsDeleteFailed = 0;
+      for (const fileUrl of uniqueUrls) {
+        try {
+          await deletefromCloudinary(fileUrl);
+          cloudinaryAssetsDeleted += 1;
+        } catch {
+          cloudinaryAssetsDeleteFailed += 1;
+        }
+      }
+
+      summary.cloudinaryAssetsDeleted = cloudinaryAssetsDeleted;
+      summary.cloudinaryAssetsDeleteFailed = cloudinaryAssetsDeleteFailed;
 
     return res.status(200).json({
       message: `Synthetic data cleaned for namespace '${ns}'`,

@@ -14,6 +14,8 @@ import {
   Alert,
   Divider,
   Chip,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   Science as ScienceIcon,
@@ -35,6 +37,7 @@ const initialConfig = {
   eventsPerEnrollment: 35,
   enrollmentsPerStudent: 2,
   password: 'Demo@123',
+  realFileMode: false,
 };
 
 const toNumber = (value, fallback = 0) => {
@@ -119,6 +122,7 @@ const SyntheticDataLab = () => {
         quizzesPerCourse: toNumber(config.quizzesPerCourse, 0),
         eventsPerEnrollment: toNumber(config.eventsPerEnrollment, 0),
         enrollmentsPerStudent: toNumber(config.enrollmentsPerStudent, 0),
+        realFileMode: Boolean(config.realFileMode),
       };
 
       const data = await adminService.generateSyntheticData(payload);
@@ -196,6 +200,18 @@ const SyntheticDataLab = () => {
                   label="Default Password"
                   value={config.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={(
+                    <Switch
+                      checked={Boolean(config.realFileMode)}
+                      onChange={(e) => handleInputChange('realFileMode', e.target.checked)}
+                    />
+                  )}
+                  label="Real File Mode (generate real PDF/PPTX/TXT and upload to Cloudinary)"
                 />
               </Grid>
 
@@ -302,6 +318,10 @@ const SyntheticDataLab = () => {
 
           <Alert severity="success" sx={{ mb: 2 }}>
             Namespace: <strong>{result.namespace}</strong>
+          </Alert>
+
+          <Alert severity={result.realFileMode ? 'warning' : 'info'} sx={{ mb: 2 }}>
+            File mode: <strong>{result.realFileMode ? 'Real files uploaded to Cloudinary' : 'Metadata-only synthetic files'}</strong>
           </Alert>
 
           <Button
