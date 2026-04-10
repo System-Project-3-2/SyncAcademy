@@ -36,6 +36,7 @@ import {
   PersonAdd as InviteIcon,
   Event as EventIcon,
   Quiz as QuizIconNav,
+  Insights as InsightsIcon,
   ExpandLess,
   ExpandMore,
   AutoAwesome as AIQuizIcon,
@@ -51,6 +52,7 @@ const getNavItems = (role) => {
       { text: 'Dashboard', icon: <DashboardIcon />, path: '/student/dashboard' },
       { text: 'My Courses', icon: <MyCoursesIcon />, path: '/student/my-courses' },
       { text: 'AI Tutor', icon: <AITutorIcon />, path: '/student/ai-tutor' },
+      { text: 'Adaptive Recommendations', icon: <InsightsIcon />, path: '/student/adaptive-recommendations' },
       { text: 'All Materials', icon: <LibraryIcon />, path: '/student/materials' },
       { text: 'Search Materials', icon: <SearchIcon />, path: '/student/search' },
       { text: 'Results', icon: <GradingIcon />, path: '/student/my-grades' },
@@ -63,6 +65,7 @@ const getNavItems = (role) => {
     teacher: [
       { text: 'Dashboard', icon: <DashboardIcon />, path: '/teacher/dashboard' },
       { text: 'AI Tutor', icon: <AITutorIcon />, path: '/teacher/ai-tutor' },
+      { text: 'Adaptive Recommendations', icon: <InsightsIcon />, path: '/teacher/adaptive-recommendations' },
       { text: 'My Materials', icon: <LibraryIcon />, path: '/teacher/materials' },
       { text: 'Upload Material', icon: <UploadIcon />, path: '/teacher/materials/upload' },
       { text: 'Courses', icon: <CourseIconNav />, path: '/teacher/courses' },
@@ -85,6 +88,7 @@ const getNavItems = (role) => {
     admin: [
       { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
       { text: 'AI Tutor', icon: <AITutorIcon />, path: '/admin/ai-tutor' },
+      { text: 'Adaptive Recommendations', icon: <InsightsIcon />, path: '/admin/adaptive-recommendations' },
       { text: 'All Materials', icon: <LibraryIcon />, path: '/admin/materials' },
       { text: 'Courses', icon: <CourseIconNav />, path: '/admin/courses' },
       { text: 'User Management', icon: <PeopleIcon />, path: '/admin/users' },

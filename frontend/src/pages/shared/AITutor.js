@@ -61,7 +61,7 @@ import {
   ThumbUp as HelpfulIcon,
   VisibilityOff as DismissIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks';
 import chatService from '../../services/chatService';
 import enrollmentService from '../../services/enrollmentService';
@@ -680,6 +680,7 @@ const AITutor = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user } = useAuth(); // ensure user is authenticated
   const navigate = useNavigate();
+  const location = useLocation();
 
   // State
   const [messages, setMessages] = useState([]);
@@ -713,6 +714,15 @@ const AITutor = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading, scrollToBottom]);
+
+  useEffect(() => {
+    const prefillPrompt = location.state?.prefillPrompt;
+    if (!prefillPrompt || isLoading) return;
+
+    handleSend(prefillPrompt);
+    navigate(location.pathname, { replace: true, state: {} });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, isLoading]);
 
   // Load sessions on mount
   useEffect(() => {

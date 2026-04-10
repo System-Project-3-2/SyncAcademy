@@ -14,6 +14,7 @@ import { Login, Register, ForgotPassword, ResetPassword } from '../pages/auth';
 import Materials from '../pages/shared/Materials';
 import Profile from '../pages/shared/Profile';
 import AITutor from '../pages/shared/AITutor';
+import AdaptiveTutorRecommendations from '../pages/shared/AdaptiveTutorRecommendations';
 import CourseStream from '../pages/shared/CourseStream';
 import CourseAssignments from '../pages/shared/CourseAssignments';
 import QuizList from '../pages/shared/QuizList';
@@ -94,6 +95,7 @@ const AppRouter = () => {
         <Route path="search" element={<SharedSearchMaterials />} />
         <Route path="profile" element={<Profile />} />
         <Route path="ai-tutor" element={<AITutor />} />
+        <Route path="adaptive-recommendations" element={<AdaptiveTutorRecommendations />} />
         <Route path="feedback/new" element={<SubmitFeedback />} />
         <Route path="feedbacks" element={<MyFeedbacks />} />
         <Route path="my-grades" element={<MyGrades />} />
@@ -121,6 +123,7 @@ const AppRouter = () => {
         <Route path="materials" element={<Materials />} />
         <Route path="profile" element={<Profile />} />
         <Route path="ai-tutor" element={<AITutor />} />
+        <Route path="adaptive-recommendations" element={<AdaptiveTutorRecommendations />} />
         <Route path="materials/upload" element={<UploadMaterial />} />
         <Route path="courses" element={<CourseManagement />} />
         <Route path="courses/:courseId/students" element={<CourseStudents />} />
@@ -166,6 +169,7 @@ const AppRouter = () => {
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<Profile />} />
         <Route path="ai-tutor" element={<AITutor />} />
+        <Route path="adaptive-recommendations" element={<AdaptiveTutorRecommendations />} />
         <Route path="courses/:courseId/quizzes" element={<QuizList />} />
         <Route path="quizzes" element={<TeacherQuizDashboard />} />
         <Route path="quizzes/generate" element={<QuizGenerator />} />
