@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-04-10T06:08:50.646468+00:00",
+  "rows": {
+    "sequence": 17966,
+    "baseline_features": 15333
+  },
+  "splits": {
+    "sequence": {
+      "train": 12576,
+      "val": 2695,
+      "test": 2695
+    },
+    "baseline": {
+      "train": 10733,
+      "val": 2300,
+      "test": 2300
+    }
+  },
+  "files": [
+    "ml\\data\\kt_complete_sequence_dataset.csv",
+    "ml\\data\\kt_complete_baseline_features.csv",
+    "ml\\data\\kt_sequence_train.csv",
+    "ml\\data\\kt_sequence_val.csv",
+    "ml\\data\\kt_sequence_test.csv",
+    "ml\\data\\kt_baseline_train.csv",
+    "ml\\data\\kt_baseline_val.csv",
+    "ml\\data\\kt_baseline_test.csv",
+    "ml\\data\\kt_complete_data_dictionary.md"
+  ]
+}
