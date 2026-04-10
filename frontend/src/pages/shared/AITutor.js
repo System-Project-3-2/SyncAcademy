@@ -434,7 +434,9 @@ const AdaptiveTutorPanel = ({
   selectedCourseId,
   onCourseChange,
   insights,
+  explainability,
   loading,
+  explainabilityLoading,
   error,
   dismissedIds,
   helpfulIds,
@@ -447,6 +449,9 @@ const AdaptiveTutorPanel = ({
   const recommendations = (insights?.recommendations?.items || []).filter(
     (item) => !dismissedIds.has(String(item.materialId))
   );
+  const globalDrivers = explainability?.recommendationExplainability?.globalDrivers || [];
+  const increasedActions = explainability?.topContributingActions?.increasedMastery || [];
+  const decreasedActions = explainability?.topContributingActions?.decreasedMastery || [];
 
   return (
     <Card
@@ -576,6 +581,39 @@ const AdaptiveTutorPanel = ({
                 ))}
               </Stack>
             </Box>
+
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                Why these recommendations?
+              </Typography>
+              {explainabilityLoading ? (
+                <LinearProgress sx={{ borderRadius: 2 }} />
+              ) : (
+                <Stack spacing={1}>
+                  <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                    {globalDrivers.length === 0 && (
+                      <Chip size="small" variant="outlined" label="Explainability will appear after enough interactions" />
+                    )}
+                    {globalDrivers.slice(0, 3).map((driver) => (
+                      <Chip
+                        key={driver.driver}
+                        size="small"
+                        variant="outlined"
+                        label={`${driver.driver.replace(/_/g, ' ')} • ${(Number(driver.meanContribution || 0) * 100).toFixed(1)}%`}
+                      />
+                    ))}
+                  </Stack>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    <Typography variant="caption" color="success.main">
+                      Top improved actions: {increasedActions.slice(0, 2).map((a) => a.action).join(' | ') || 'N/A'}
+                    </Typography>
+                    <Typography variant="caption" color="warning.main">
+                      Top declining actions: {decreasedActions.slice(0, 2).map((a) => a.action).join(' | ') || 'N/A'}
+                    </Typography>
+                  </Stack>
+                </Stack>
+              )}
+            </Box>
           </Stack>
         )}
       </CardContent>
@@ -603,7 +641,9 @@ const AITutor = () => {
   const [courses, setCourses] = useState([]);
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [insights, setInsights] = useState(null);
+  const [explainability, setExplainability] = useState(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
+  const [explainabilityLoading, setExplainabilityLoading] = useState(false);
   const [insightsError, setInsightsError] = useState('');
   const [dismissedRecommendationIds, setDismissedRecommendationIds] = useState(new Set());
   const [helpfulRecommendationIds, setHelpfulRecommendationIds] = useState(new Set());
@@ -685,6 +725,32 @@ const AITutor = () => {
     };
 
     loadInsights();
+  }, [selectedCourseId]);
+
+  // Pull explainability payload for recommendation transparency.
+  useEffect(() => {
+    const loadExplainability = async () => {
+      if (!selectedCourseId) {
+        setExplainability(null);
+        return;
+      }
+
+      setExplainabilityLoading(true);
+      try {
+        const data = await ktService.getExplainability(selectedCourseId, {
+          weakLimit: 5,
+          topN: 3,
+          traceLimit: 12,
+        });
+        setExplainability(data);
+      } catch {
+        setExplainability(null);
+      } finally {
+        setExplainabilityLoading(false);
+      }
+    };
+
+    loadExplainability();
   }, [selectedCourseId]);
 
   // Health check with retry every 15 seconds while offline
@@ -806,6 +872,19 @@ const AITutor = () => {
     const materialId = recommendation?.materialId;
     if (!materialId) return;
 
+    if (selectedCourseId && recommendation?.topicId) {
+      ktService.logLearningEvent({
+        courseId: selectedCourseId,
+        topicId: recommendation.topicId,
+        sourceType: 'material',
+        eventType: 'material_view',
+        materialId,
+        materialType: recommendation.type,
+        materialTopicMatchScore: Number(recommendation.score || 0),
+        metadata: { recommendationAction: 'open', reasonCodes: recommendation.reasonCodes || [] },
+      }).catch(() => {});
+    }
+
     try {
       const response = await materialService.getSignedUrl(materialId);
       const signedUrl = response?.url;
@@ -823,18 +902,55 @@ const AITutor = () => {
     const materialId = String(recommendation?.materialId || '');
     if (!materialId) return;
     setHelpfulRecommendationIds((prev) => new Set(prev).add(materialId));
+
+    if (selectedCourseId && recommendation?.topicId) {
+      ktService.logLearningEvent({
+        courseId: selectedCourseId,
+        topicId: recommendation.topicId,
+        sourceType: 'material',
+        eventType: 'material_view',
+        materialId,
+        materialType: recommendation.type,
+        materialTopicMatchScore: Number(recommendation.score || 0),
+        metadata: { recommendationAction: 'helpful', reasonCodes: recommendation.reasonCodes || [] },
+      }).catch(() => {});
+    }
   };
 
   const handleDismissRecommendation = (recommendation) => {
     const materialId = String(recommendation?.materialId || '');
     if (!materialId) return;
     setDismissedRecommendationIds((prev) => new Set(prev).add(materialId));
+
+    if (selectedCourseId && recommendation?.topicId) {
+      ktService.logLearningEvent({
+        courseId: selectedCourseId,
+        topicId: recommendation.topicId,
+        sourceType: 'material',
+        eventType: 'material_view',
+        materialId,
+        materialType: recommendation.type,
+        materialTopicMatchScore: Number(recommendation.score || 0),
+        metadata: { recommendationAction: 'dismiss', reasonCodes: recommendation.reasonCodes || [] },
+      }).catch(() => {});
+    }
   };
 
   const handleQuickCheck = (recommendation) => {
     const topicText = recommendation?.topicId || 'this topic';
     const materialText = recommendation?.title || 'the suggested material';
     const prompt = `Give me a quick 3-question check on ${topicText} based on ${materialText}. Keep it concise and include answers at the end.`;
+
+    if (selectedCourseId && recommendation?.topicId) {
+      ktService.logLearningEvent({
+        courseId: selectedCourseId,
+        topicId: recommendation.topicId,
+        sourceType: 'hint',
+        eventType: 'hint_used',
+        metadata: { recommendationAction: 'quick_check_requested' },
+      }).catch(() => {});
+    }
+
     handleSend(prompt);
   };
 
@@ -999,7 +1115,9 @@ const AITutor = () => {
             selectedCourseId={selectedCourseId}
             onCourseChange={setSelectedCourseId}
             insights={insights}
+            explainability={explainability}
             loading={insightsLoading}
+            explainabilityLoading={explainabilityLoading}
             error={insightsError}
             dismissedIds={dismissedRecommendationIds}
             helpfulIds={helpfulRecommendationIds}

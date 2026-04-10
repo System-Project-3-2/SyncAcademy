@@ -24,6 +24,16 @@ const ktService = {
     const response = await api.get(`/kt/recommendations/${courseId}`, { params });
     return response.data;
   },
+
+  getExplainability: async (courseId, params = {}) => {
+    const response = await api.get(`/kt/explainability/${courseId}`, { params });
+    return response.data;
+  },
+
+  logLearningEvent: async (payload) => {
+    const response = await api.post('/kt/events', payload);
+    return response.data;
+  },
 };
 
 export default ktService;
