@@ -38,6 +38,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  Skeleton,
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -453,6 +454,12 @@ const AdaptiveTutorPanel = ({
   const increasedActions = explainability?.topContributingActions?.increasedMastery || [];
   const decreasedActions = explainability?.topContributingActions?.decreasedMastery || [];
 
+  const weakColor = (score) => {
+    if (score >= 0.75) return 'error';
+    if (score >= 0.55) return 'warning';
+    return 'default';
+  };
+
   return (
     <Card
       elevation={0}
@@ -460,19 +467,27 @@ const AdaptiveTutorPanel = ({
         mb: 2,
         borderRadius: 3,
         border: `1px solid ${theme.palette.divider}`,
-        bgcolor: alpha(theme.palette.background.paper, 0.92),
+        bgcolor: alpha(theme.palette.background.paper, 0.96),
+        overflow: 'hidden',
       }}
     >
-      <CardContent sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', md: 'center' }}>
+      <Box
+        sx={{
+          px: 2,
+          py: 1.25,
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          background: `linear-gradient(120deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.success.main, 0.08)} 100%)`,
+        }}
+      >
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems={{ xs: 'stretch', md: 'center' }}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 220 }}>
             <InsightsIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle2" fontWeight={700}>
-              Adaptive Tutor
+            <Typography variant="subtitle2" fontWeight={800}>
+              Adaptive Tutor Recommendations
             </Typography>
           </Stack>
 
-          <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 280 } }}>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 320 } }}>
             <InputLabel id="adaptive-course-select">Course</InputLabel>
             <Select
               labelId="adaptive-course-select"
@@ -487,41 +502,65 @@ const AdaptiveTutorPanel = ({
               ))}
             </Select>
           </FormControl>
-
-          {insights?.masterySummary && (
-            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ ml: { md: 'auto' } }}>
-              <Chip size="small" label={`Mastery ${(insights.masterySummary.overallMastery * 100).toFixed(0)}%`} color="primary" variant="outlined" />
-              <Chip size="small" label={`Risk Topics ${insights.masterySummary.highRiskTopics}`} color="warning" variant="outlined" />
-              <Chip size="small" label={`Confidence ${(insights.masterySummary.averageConfidence * 100).toFixed(0)}%`} color="info" variant="outlined" />
-            </Stack>
-          )}
         </Stack>
+      </Box>
 
-        {loading && <LinearProgress sx={{ mt: 1.5, borderRadius: 2 }} />}
-        {error && <Alert severity="warning" sx={{ mt: 1.5 }}>{error}</Alert>}
+      <CardContent sx={{ p: 2 }}>
+        {insights?.masterySummary && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
+            <Chip
+              size="small"
+              label={`Mastery ${(insights.masterySummary.overallMastery * 100).toFixed(0)}%`}
+              color="primary"
+              variant="outlined"
+            />
+            <Chip
+              size="small"
+              label={`Risk Topics ${insights.masterySummary.highRiskTopics}`}
+              color="warning"
+              variant="outlined"
+            />
+            <Chip
+              size="small"
+              label={`Confidence ${(insights.masterySummary.averageConfidence * 100).toFixed(0)}%`}
+              color="info"
+              variant="outlined"
+            />
+          </Stack>
+        )}
+
+        {loading && (
+          <Stack spacing={1} sx={{ mb: 1.5 }}>
+            <LinearProgress sx={{ borderRadius: 2 }} />
+            <Skeleton variant="rounded" height={32} />
+            <Skeleton variant="rounded" height={32} />
+          </Stack>
+        )}
+
+        {error && <Alert severity="warning" sx={{ mt: 1 }}>{error}</Alert>}
         {!loading && !error && courses.length === 0 && (
-          <Alert severity="info" sx={{ mt: 1.5, borderRadius: 2 }}>
+          <Alert severity="info" sx={{ mt: 1, borderRadius: 2 }}>
             Enroll in a course to unlock weak-topic insights and personalized recommendations.
           </Alert>
         )}
 
         {!loading && !error && selectedCourseId && (
-          <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+          <Stack spacing={1.5}>
             <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-                Weak topics
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75, fontWeight: 700 }}>
+                Weak Topics To Focus On
               </Typography>
               <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                 {weakTopics.length === 0 && (
                   <Chip size="small" label="No weak topics yet" variant="outlined" />
                 )}
-                {weakTopics.slice(0, 5).map((topic) => (
+                {weakTopics.slice(0, 6).map((topic) => (
                   <Chip
                     key={topic.topicId}
                     size="small"
                     icon={<WeaknessIcon sx={{ fontSize: 14 }} />}
                     label={`${topic.topicId} • ${(topic.weaknessScore * 100).toFixed(0)}% weak`}
-                    color={topic.weaknessScore >= 0.65 ? 'warning' : 'default'}
+                    color={weakColor(Number(topic.weaknessScore || 0))}
                     variant="outlined"
                   />
                 ))}
@@ -529,22 +568,34 @@ const AdaptiveTutorPanel = ({
             </Box>
 
             <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-                Top recommended materials
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75, fontWeight: 700 }}>
+                Recommended Materials
               </Typography>
               <Stack spacing={1}>
                 {recommendations.length === 0 && (
                   <Alert severity="info" sx={{ borderRadius: 2 }}>No recommendations yet for this course.</Alert>
                 )}
-                {recommendations.slice(0, 3).map((rec) => (
-                  <Paper key={`${rec.topicId}-${rec.materialId}`} variant="outlined" sx={{ p: 1.2, borderRadius: 2 }}>
+                {recommendations.slice(0, 3).map((rec, index) => (
+                  <Paper
+                    key={`${rec.topicId}-${rec.materialId}`}
+                    variant="outlined"
+                    sx={{
+                      p: 1.2,
+                      borderRadius: 2,
+                      borderColor: alpha(theme.palette.primary.main, 0.2),
+                      bgcolor: alpha(theme.palette.background.default, 0.5),
+                    }}
+                  >
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }}>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="body2" fontWeight={600} noWrap>
-                          {rec.title}
-                        </Typography>
+                        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.25 }}>
+                          <Chip size="small" label={`#${index + 1}`} color="primary" variant="filled" sx={{ height: 20, fontSize: '0.7rem' }} />
+                          <Typography variant="body2" fontWeight={700} noWrap>
+                            {rec.title}
+                          </Typography>
+                        </Stack>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                          Topic: {rec.topicId} • Score: {(Number(rec.score || 0) * 100).toFixed(0)}%
+                          Topic: {rec.topicId} • Match: {(Number(rec.score || 0) * 100).toFixed(0)}%
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {rec.reason}
@@ -583,8 +634,8 @@ const AdaptiveTutorPanel = ({
             </Box>
 
             <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-                Why these recommendations?
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75, fontWeight: 700 }}>
+                Recommendation Insights
               </Typography>
               {explainabilityLoading ? (
                 <LinearProgress sx={{ borderRadius: 2 }} />
@@ -592,7 +643,7 @@ const AdaptiveTutorPanel = ({
                 <Stack spacing={1}>
                   <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                     {globalDrivers.length === 0 && (
-                      <Chip size="small" variant="outlined" label="Explainability will appear after enough interactions" />
+                      <Chip size="small" variant="outlined" label="Explainability appears after more interactions" />
                     )}
                     {globalDrivers.slice(0, 3).map((driver) => (
                       <Chip
@@ -603,14 +654,16 @@ const AdaptiveTutorPanel = ({
                       />
                     ))}
                   </Stack>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                    <Typography variant="caption" color="success.main">
-                      Top improved actions: {increasedActions.slice(0, 2).map((a) => a.action).join(' | ') || 'N/A'}
+                  <Paper variant="outlined" sx={{ p: 1, borderRadius: 2, bgcolor: alpha(theme.palette.success.main, 0.05) }}>
+                    <Typography variant="caption" color="success.dark" sx={{ display: 'block' }}>
+                      Improved actions: {increasedActions.slice(0, 2).map((a) => a.action).join(' | ') || 'N/A'}
                     </Typography>
-                    <Typography variant="caption" color="warning.main">
-                      Top declining actions: {decreasedActions.slice(0, 2).map((a) => a.action).join(' | ') || 'N/A'}
+                  </Paper>
+                  <Paper variant="outlined" sx={{ p: 1, borderRadius: 2, bgcolor: alpha(theme.palette.warning.main, 0.08) }}>
+                    <Typography variant="caption" color="warning.dark" sx={{ display: 'block' }}>
+                      Declining actions: {decreasedActions.slice(0, 2).map((a) => a.action).join(' | ') || 'N/A'}
                     </Typography>
-                  </Stack>
+                  </Paper>
                 </Stack>
               )}
             </Box>
