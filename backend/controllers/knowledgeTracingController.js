@@ -70,6 +70,79 @@ const toEventDoc = (payload, studentId) => ({
   metadata: payload.metadata || {},
 });
 
+const paginateItems = (items, page = 1, limit = 10) => {
+  const safePage = Math.max(1, Number(page || 1));
+  const safeLimit = Math.max(1, Math.min(Number(limit || 10), 100));
+  const total = items.length;
+  const pages = Math.max(1, Math.ceil(total / safeLimit));
+  const start = (safePage - 1) * safeLimit;
+  const data = items.slice(start, start + safeLimit);
+
+  return {
+    data,
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      pages,
+    },
+  };
+};
+
+const buildConfidenceBands = (items) => {
+  const high = [];
+  const medium = [];
+  const low = [];
+
+  items.forEach((item) => {
+    const value = Number(item.confidence || 0);
+    if (value >= 0.75) high.push(item.topicId);
+    else if (value >= 0.5) medium.push(item.topicId);
+    else low.push(item.topicId);
+  });
+
+  return { high, medium, low };
+};
+
+const enrichWeakTopics = (items) =>
+  items.map((item) => ({
+    ...item,
+    reasonCodes: deriveWeaknessReasonCodes({
+      masteryScore: item.masteryScore,
+      confidence: item.confidence,
+      stats: item.stats || {},
+    }),
+  }));
+
+const buildRecommendationsForCourse = ({ materials, weakTopics, topicLimit = 3, perTopic = 3, topN = 3 }) => {
+  const seenMaterialIds = new Set();
+  const recommendations = [];
+
+  for (const topic of weakTopics.slice(0, topicLimit)) {
+    const ranked = materials
+      .map((m) =>
+        buildMaterialRecommendation({
+          material: m,
+          topic,
+          seenMaterialIds,
+        })
+      )
+      .sort((a, b) => b.score - a.score)
+      .slice(0, perTopic)
+      .map((item) => {
+        seenMaterialIds.add(String(item.materialId));
+        return item;
+      });
+
+    recommendations.push(...ranked);
+  }
+
+  return rankTopRecommendations({
+    candidates: recommendations,
+    topN,
+  });
+};
+
 export const logLearningEvent = async (req, res) => {
   try {
     const error = validateEventPayload(req.body);
@@ -254,14 +327,7 @@ export const getMyWeakTopics = async (req, res) => {
       .limit(limit)
       .lean();
 
-    const enriched = items.map((item) => ({
-      ...item,
-      reasonCodes: deriveWeaknessReasonCodes({
-        masteryScore: item.masteryScore,
-        confidence: item.confidence,
-        stats: item.stats || {},
-      }),
-    }));
+    const enriched = enrichWeakTopics(items);
 
     res.json(enriched);
   } catch (error) {
@@ -275,6 +341,8 @@ export const getMyMaterialRecommendations = async (req, res) => {
     const topicLimit = Math.max(1, Math.min(Number(req.query.topicLimit || 3), 10));
     const perTopic = Math.max(1, Math.min(Number(req.query.perTopic || 3), 5));
     const topN = Math.max(1, Math.min(Number(req.query.topN || 3), 10));
+    const page = Math.max(1, Number(req.query.page || 1));
+    const limit = Math.max(1, Math.min(Number(req.query.limit || topN), 20));
 
     const weakTopics = await TopicMastery.find({
       student: req.user._id,
@@ -301,45 +369,21 @@ export const getMyMaterialRecommendations = async (req, res) => {
       .select("title type fileUrl textContent courseNo courseTitle topicTags")
       .lean();
 
-    const seenMaterialIds = new Set();
-    const recommendations = [];
-
-    for (const topic of weakTopics) {
-      const ranked = materials
-        .map((m) =>
-          buildMaterialRecommendation({
-            material: m,
-            topic,
-            seenMaterialIds,
-          })
-        )
-        .sort((a, b) => b.score - a.score)
-        .slice(0, perTopic)
-        .map((item) => {
-          seenMaterialIds.add(String(item.materialId));
-          return item;
-        });
-
-      recommendations.push(...ranked);
-    }
-
-    const topRecommendations = rankTopRecommendations({
-      candidates: recommendations,
+    const topRecommendations = buildRecommendationsForCourse({
+      materials,
+      weakTopics,
+      topicLimit,
+      perTopic,
       topN,
     });
 
-    const weakTopicsWithReasons = weakTopics.map((item) => ({
-      ...item,
-      reasonCodes: deriveWeaknessReasonCodes({
-        masteryScore: item.masteryScore,
-        confidence: item.confidence,
-        stats: item.stats || {},
-      }),
-    }));
+    const weakTopicsWithReasons = enrichWeakTopics(weakTopics);
+    const pagedRecommendations = paginateItems(topRecommendations, page, limit);
 
     res.json({
       weakTopics: weakTopicsWithReasons,
-      recommendations: topRecommendations,
+      recommendations: pagedRecommendations.data,
+      pagination: pagedRecommendations.pagination,
       metadata: {
         topN,
         topicLimit,
@@ -427,6 +471,90 @@ export const runBackfillMasteryForCourse = async (req, res) => {
       updated: results.length,
       items: results,
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getMyLearningInsights = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const weakLimit = Math.max(1, Math.min(Number(req.query.weakLimit || 5), 20));
+    const recommendationTopN = Math.max(1, Math.min(Number(req.query.topN || 3), 20));
+    const recommendationPage = Math.max(1, Number(req.query.page || 1));
+    const recommendationLimit = Math.max(1, Math.min(Number(req.query.limit || recommendationTopN), 20));
+    const perTopic = Math.max(1, Math.min(Number(req.query.perTopic || 3), 5));
+
+    const [course, allTopics] = await Promise.all([
+      Course.findById(courseId).select("courseNo courseTitle").lean(),
+      TopicMastery.find({ student: req.user._id, course: courseId })
+        .sort({ weaknessScore: -1, confidence: -1 })
+        .lean(),
+    ]);
+
+    if (!course?.courseNo) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    const weakTopics = enrichWeakTopics(allTopics.slice(0, weakLimit));
+
+    const materials = await Material.find({ courseNo: course.courseNo })
+      .select("title type fileUrl textContent courseNo courseTitle topicTags")
+      .lean();
+
+    const allRecommendations = buildRecommendationsForCourse({
+      materials,
+      weakTopics,
+      topicLimit: weakLimit,
+      perTopic,
+      topN: recommendationTopN,
+    });
+    const pagedRecommendations = paginateItems(allRecommendations, recommendationPage, recommendationLimit);
+
+    const avgMastery = allTopics.length
+      ? allTopics.reduce((acc, row) => acc + Number(row.masteryScore || 0), 0) / allTopics.length
+      : 0;
+    const avgConfidence = allTopics.length
+      ? allTopics.reduce((acc, row) => acc + Number(row.confidence || 0), 0) / allTopics.length
+      : 0;
+
+    const payload = {
+      course: {
+        courseId,
+        courseNo: course.courseNo,
+        courseTitle: course.courseTitle,
+      },
+      generatedAt: new Date().toISOString(),
+      masterySummary: {
+        totalTopics: allTopics.length,
+        overallMastery: Number(avgMastery.toFixed(4)),
+        overallWeakness: Number((1 - avgMastery).toFixed(4)),
+        averageConfidence: Number(avgConfidence.toFixed(4)),
+        highRiskTopics: allTopics.filter((row) => Number(row.weaknessScore || 0) >= 0.65).length,
+      },
+      confidenceBands: buildConfidenceBands(allTopics),
+      weakTopics: {
+        items: weakTopics,
+        pagination: {
+          page: 1,
+          limit: weakLimit,
+          total: allTopics.length,
+          pages: Math.max(1, Math.ceil(allTopics.length / weakLimit)),
+        },
+      },
+      recommendations: {
+        items: pagedRecommendations.data,
+        pagination: pagedRecommendations.pagination,
+      },
+      explanationDetails: {
+        weakTopicReasonCodes: weakTopics.map((item) => ({
+          topicId: item.topicId,
+          reasonCodes: item.reasonCodes || [],
+        })),
+      },
+    };
+
+    res.json(payload);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

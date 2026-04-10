@@ -9,6 +9,7 @@ import {
   getMyMasteryByCourse,
   getMyWeakTopics,
   getMyMaterialRecommendations,
+  getMyLearningInsights,
   runBackfillMasteryForCourse,
 } from "../controllers/knowledgeTracingController.js";
 
@@ -30,6 +31,9 @@ router.post("/predict/topic", authorize("student"), predictMyTopicMastery);
 
 // Students retrieve mastery profile for a course.
 router.get("/mastery/:courseId", authorize("student"), getMyMasteryByCourse);
+
+// Frontend-friendly shaped insights payload.
+router.get("/insights/:courseId", authorize("student"), getMyLearningInsights);
 
 // Students get weak topics sorted by weakness score.
 router.get("/weak-topics/:courseId", authorize("student"), getMyWeakTopics);

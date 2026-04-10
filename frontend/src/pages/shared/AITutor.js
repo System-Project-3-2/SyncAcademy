@@ -25,6 +25,14 @@ import {
   alpha,
   useMediaQuery,
   Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Card,
+  CardContent,
+  Stack,
+  LinearProgress,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -45,9 +53,19 @@ import {
   School as TutorIcon,
   ContentCopy as CopyIcon,
   Check as CheckIcon,
+  AutoAwesome as SuggestionIcon,
+  Insights as InsightsIcon,
+  Psychology as WeaknessIcon,
+  Launch as OpenIcon,
+  ThumbUp as HelpfulIcon,
+  VisibilityOff as DismissIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks';
 import chatService from '../../services/chatService';
+import enrollmentService from '../../services/enrollmentService';
+import materialService from '../../services/materialService';
+import ktService from '../../services/ktService';
 
 // ── Markdown-lite renderer ───────────────────────────────
 // Renders basic markdown: **bold**, `code`, ```blocks```, bullet points
@@ -410,11 +428,167 @@ const WelcomeScreen = ({ theme, onSuggestion }) => {
   );
 };
 
+const AdaptiveTutorPanel = ({
+  theme,
+  courses,
+  selectedCourseId,
+  onCourseChange,
+  insights,
+  loading,
+  error,
+  dismissedIds,
+  helpfulIds,
+  onOpenMaterial,
+  onMarkHelpful,
+  onDismiss,
+  onQuickCheck,
+}) => {
+  const weakTopics = insights?.weakTopics?.items || [];
+  const recommendations = (insights?.recommendations?.items || []).filter(
+    (item) => !dismissedIds.has(String(item.materialId))
+  );
+
+  return (
+    <Card
+      elevation={0}
+      sx={{
+        mb: 2,
+        borderRadius: 3,
+        border: `1px solid ${theme.palette.divider}`,
+        bgcolor: alpha(theme.palette.background.paper, 0.92),
+      }}
+    >
+      <CardContent sx={{ p: 2 }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', md: 'center' }}>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 220 }}>
+            <InsightsIcon color="primary" fontSize="small" />
+            <Typography variant="subtitle2" fontWeight={700}>
+              Adaptive Tutor
+            </Typography>
+          </Stack>
+
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 280 } }}>
+            <InputLabel id="adaptive-course-select">Course</InputLabel>
+            <Select
+              labelId="adaptive-course-select"
+              value={selectedCourseId || ''}
+              label="Course"
+              onChange={(e) => onCourseChange(e.target.value)}
+            >
+              {courses.map((course) => (
+                <MenuItem key={course._id} value={course._id}>
+                  {course.courseNo} - {course.courseTitle}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {insights?.masterySummary && (
+            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ ml: { md: 'auto' } }}>
+              <Chip size="small" label={`Mastery ${(insights.masterySummary.overallMastery * 100).toFixed(0)}%`} color="primary" variant="outlined" />
+              <Chip size="small" label={`Risk Topics ${insights.masterySummary.highRiskTopics}`} color="warning" variant="outlined" />
+              <Chip size="small" label={`Confidence ${(insights.masterySummary.averageConfidence * 100).toFixed(0)}%`} color="info" variant="outlined" />
+            </Stack>
+          )}
+        </Stack>
+
+        {loading && <LinearProgress sx={{ mt: 1.5, borderRadius: 2 }} />}
+        {error && <Alert severity="warning" sx={{ mt: 1.5 }}>{error}</Alert>}
+        {!loading && !error && courses.length === 0 && (
+          <Alert severity="info" sx={{ mt: 1.5, borderRadius: 2 }}>
+            Enroll in a course to unlock weak-topic insights and personalized recommendations.
+          </Alert>
+        )}
+
+        {!loading && !error && selectedCourseId && (
+          <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                Weak topics
+              </Typography>
+              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                {weakTopics.length === 0 && (
+                  <Chip size="small" label="No weak topics yet" variant="outlined" />
+                )}
+                {weakTopics.slice(0, 5).map((topic) => (
+                  <Chip
+                    key={topic.topicId}
+                    size="small"
+                    icon={<WeaknessIcon sx={{ fontSize: 14 }} />}
+                    label={`${topic.topicId} • ${(topic.weaknessScore * 100).toFixed(0)}% weak`}
+                    color={topic.weaknessScore >= 0.65 ? 'warning' : 'default'}
+                    variant="outlined"
+                  />
+                ))}
+              </Stack>
+            </Box>
+
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                Top recommended materials
+              </Typography>
+              <Stack spacing={1}>
+                {recommendations.length === 0 && (
+                  <Alert severity="info" sx={{ borderRadius: 2 }}>No recommendations yet for this course.</Alert>
+                )}
+                {recommendations.slice(0, 3).map((rec) => (
+                  <Paper key={`${rec.topicId}-${rec.materialId}`} variant="outlined" sx={{ p: 1.2, borderRadius: 2 }}>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }}>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="body2" fontWeight={600} noWrap>
+                          {rec.title}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          Topic: {rec.topicId} • Score: {(Number(rec.score || 0) * 100).toFixed(0)}%
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {rec.reason}
+                        </Typography>
+                      </Box>
+                      <Stack direction="row" spacing={0.5}>
+                        <Tooltip title="Open material">
+                          <IconButton size="small" onClick={() => onOpenMaterial(rec)}>
+                            <OpenIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Mark helpful">
+                          <IconButton
+                            size="small"
+                            color={helpfulIds.has(String(rec.materialId)) ? 'success' : 'default'}
+                            onClick={() => onMarkHelpful(rec)}
+                          >
+                            <HelpfulIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Dismiss">
+                          <IconButton size="small" onClick={() => onDismiss(rec)}>
+                            <DismissIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Quick check">
+                          <IconButton size="small" color="primary" onClick={() => onQuickCheck(rec)}>
+                            <SuggestionIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            </Box>
+          </Stack>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 // ── Main Chat Component ──────────────────────────────────
 const AITutor = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  useAuth(); // ensure user is authenticated
+  const { user } = useAuth(); // ensure user is authenticated
+  const navigate = useNavigate();
 
   // State
   const [messages, setMessages] = useState([]);
@@ -426,6 +600,13 @@ const AITutor = () => {
   const [aiHealthy, setAiHealthy] = useState(null); // null=checking, true/false
   const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null });
   const [error, setError] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [insights, setInsights] = useState(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState('');
+  const [dismissedRecommendationIds, setDismissedRecommendationIds] = useState(new Set());
+  const [helpfulRecommendationIds, setHelpfulRecommendationIds] = useState(new Set());
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -452,6 +633,59 @@ const AITutor = () => {
     };
     loadSessions();
   }, []);
+
+  // Load student courses for adaptive tutor panel
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const enrolledCourses = await enrollmentService.getMyEnrolledCourses();
+        const normalizedCourses = Array.isArray(enrolledCourses)
+          ? enrolledCourses
+          : enrolledCourses?.courses || [];
+
+        setCourses(normalizedCourses);
+        if (normalizedCourses.length > 0) {
+          setSelectedCourseId((prev) => prev || normalizedCourses[0]._id);
+        }
+      } catch {
+        setCourses([]);
+      }
+    };
+
+    loadCourses();
+  }, []);
+
+  // Pull adaptive mastery/recommendation insights for selected course
+  useEffect(() => {
+    const loadInsights = async () => {
+      if (!selectedCourseId) {
+        setInsights(null);
+        setInsightsError('');
+        return;
+      }
+
+      setInsightsLoading(true);
+      setInsightsError('');
+
+      try {
+        const data = await ktService.getInsights(selectedCourseId, {
+          weakLimit: 5,
+          topN: 3,
+          perTopic: 3,
+          page: 1,
+          limit: 3,
+        });
+        setInsights(data);
+      } catch (err) {
+        setInsights(null);
+        setInsightsError(err?.response?.data?.message || 'Unable to load adaptive insights right now.');
+      } finally {
+        setInsightsLoading(false);
+      }
+    };
+
+    loadInsights();
+  }, [selectedCourseId]);
 
   // Health check with retry every 15 seconds while offline
   useEffect(() => {
@@ -566,6 +800,42 @@ const AITutor = () => {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleOpenMaterial = async (recommendation) => {
+    const materialId = recommendation?.materialId;
+    if (!materialId) return;
+
+    try {
+      const response = await materialService.getSignedUrl(materialId);
+      const signedUrl = response?.url;
+      if (signedUrl) {
+        window.open(signedUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        navigate(`/${user?.role || 'student'}/materials`);
+      }
+    } catch {
+      navigate(`/${user?.role || 'student'}/materials`);
+    }
+  };
+
+  const handleMarkHelpful = (recommendation) => {
+    const materialId = String(recommendation?.materialId || '');
+    if (!materialId) return;
+    setHelpfulRecommendationIds((prev) => new Set(prev).add(materialId));
+  };
+
+  const handleDismissRecommendation = (recommendation) => {
+    const materialId = String(recommendation?.materialId || '');
+    if (!materialId) return;
+    setDismissedRecommendationIds((prev) => new Set(prev).add(materialId));
+  };
+
+  const handleQuickCheck = (recommendation) => {
+    const topicText = recommendation?.topicId || 'this topic';
+    const materialText = recommendation?.title || 'the suggested material';
+    const prompt = `Give me a quick 3-question check on ${topicText} based on ${materialText}. Keep it concise and include answers at the end.`;
+    handleSend(prompt);
   };
 
   // ── Sidebar Drawer ──────────────────
@@ -723,6 +993,22 @@ const AITutor = () => {
 
         {/* Messages Area */}
         <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+          <AdaptiveTutorPanel
+            theme={theme}
+            courses={courses}
+            selectedCourseId={selectedCourseId}
+            onCourseChange={setSelectedCourseId}
+            insights={insights}
+            loading={insightsLoading}
+            error={insightsError}
+            dismissedIds={dismissedRecommendationIds}
+            helpfulIds={helpfulRecommendationIds}
+            onOpenMaterial={handleOpenMaterial}
+            onMarkHelpful={handleMarkHelpful}
+            onDismiss={handleDismissRecommendation}
+            onQuickCheck={handleQuickCheck}
+          />
+
           {aiHealthy === false && (
             <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
               AI model is offline. Make sure Ollama is running locally (<code>ollama serve</code>). Retrying automatically...
