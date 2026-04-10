@@ -15,6 +15,7 @@ import {
   School as StudentIcon,
   Work as TeacherIcon,
   ArrowForward as ArrowForwardIcon,
+  Science as ScienceIcon,
 } from '@mui/icons-material';
 import { PageHeader, StatCard, LoadingSpinner, EmptyState } from '../../components';
 import { useAuth } from '../../hooks';
@@ -63,6 +64,7 @@ const AdminDashboard = () => {
 
   const quickActions = [
     { label: 'User Management', icon: <PeopleIcon />, path: '/admin/users', color: 'primary' },
+    { label: 'Synthetic Data Lab', icon: <ScienceIcon />, path: '/admin/synthetic-data', color: 'warning' },
     { label: 'All Feedbacks', icon: <FeedbackIcon />, path: '/admin/feedbacks', color: 'secondary' },
     { label: 'Upload Material', icon: <UploadIcon />, path: '/admin/materials/upload', color: 'success' },
     { label: 'Search Materials', icon: <SearchIcon />, path: '/admin/search', color: 'info' },

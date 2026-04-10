@@ -58,6 +58,15 @@ const adminService = {
     const response = await api.get('/admin/users/stats');
     return response.data;
   },
+
+  /**
+   * Generate synthetic dataset for demos/testing
+   * @param {Object} config - Dataset scale configuration
+   */
+  generateSyntheticData: async (config = {}) => {
+    const response = await api.post('/admin/synthetic-data/generate', config);
+    return response.data;
+  },
 };
 
 export default adminService;

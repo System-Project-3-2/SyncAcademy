@@ -10,6 +10,7 @@ import {
   updateUser,
   deleteUser,
   getUserStats,
+  generateSyntheticData,
 } from "../controllers/adminController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorize } from "../middleware/roleMiddleware.js";
@@ -22,6 +23,9 @@ router.use(authorize("admin"));
 
 // User statistics (must be before /:id to avoid conflict)
 router.get("/users/stats", getUserStats);
+
+// Synthetic data generation for demos/testing
+router.post("/synthetic-data/generate", generateSyntheticData);
 
 // User CRUD operations
 router.get("/users", getAllUsers);

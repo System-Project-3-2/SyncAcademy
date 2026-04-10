@@ -40,6 +40,7 @@ import {
   ExpandLess,
   ExpandMore,
   AutoAwesome as AIQuizIcon,
+  Science as ScienceIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks';
 
@@ -92,6 +93,7 @@ const getNavItems = (role) => {
       { text: 'All Materials', icon: <LibraryIcon />, path: '/admin/materials' },
       { text: 'Courses', icon: <CourseIconNav />, path: '/admin/courses' },
       { text: 'User Management', icon: <PeopleIcon />, path: '/admin/users' },
+      { text: 'Synthetic Data', icon: <ScienceIcon />, path: '/admin/synthetic-data' },
       { text: 'Notifications', icon: <NotificationsIcon />, path: '/admin/notifications' },
       { text: 'All Feedbacks', icon: <FeedbackIcon />, path: '/admin/feedbacks' },
       { text: 'Upload Material', icon: <UploadIcon />, path: '/admin/materials/upload' },

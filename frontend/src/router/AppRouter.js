@@ -56,6 +56,7 @@ import {
   UserManagement,
   AdminFeedbacks,
   CourseManagement,
+  SyntheticDataLab,
 } from '../pages/admin';
 
 // Landing Page
@@ -158,6 +159,7 @@ const AppRouter = () => {
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="materials" element={<Materials />} />
         <Route path="users" element={<UserManagement />} />
+        <Route path="synthetic-data" element={<SyntheticDataLab />} />
         <Route path="feedbacks" element={<AdminFeedbacks />} />
         <Route path="courses" element={<CourseManagement />} />
         <Route path="courses/:courseId/students" element={<CourseStudents />} />
