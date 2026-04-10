@@ -120,3 +120,37 @@ npm run kt:sequence:evaluate
 ### Inference wrapper
 
 `ml/sequence_inference.py` provides `SequenceKTInference` for loading `.pt` artifacts and predicting next-correct probability from recent event history.
+
+## Phase 8 Explainability, A/B Testing, and Packaging
+
+### Explainability API
+
+Backend endpoint:
+
+```bash
+GET /api/kt/explainability/:courseId
+```
+
+Response includes:
+
+- Tabular explainability
+  - Global feature importance (`shap_style_proxy`)
+  - Local topic-level contributions
+- Sequence explainability
+  - Attention-like recency contribution traces
+  - Top actions that increased/decreased mastery
+- Recommendation explainability
+  - Local recommendation drivers
+  - Global recommendation driver summary
+
+### Research Packaging Templates
+
+Generated templates are available in `ml/templates/`:
+
+- `ab_experiment_plan.md`
+- `paper_results_template.md`
+- `reproducibility_checklist.md`
+
+Final report draft scaffold:
+
+- `ml/reports/final_report_draft_phase8.md`

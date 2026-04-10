@@ -12,6 +12,13 @@ import {
   rankTopRecommendations,
   clamp01,
 } from "../utils/ktMasteryEngine.js";
+import {
+  buildTabularGlobalExplanation,
+  buildTabularLocalExplanation,
+  buildSequenceContributionTrace,
+  summarizeRecommendationDrivers,
+  buildTopActionSummary,
+} from "../utils/ktExplainability.js";
 
 
 const validateEventPayload = (body) => {
@@ -555,6 +562,91 @@ export const getMyLearningInsights = async (req, res) => {
     };
 
     res.json(payload);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getMyExplainabilityByCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const weakLimit = Math.max(1, Math.min(Number(req.query.weakLimit || 5), 20));
+    const recommendationTopN = Math.max(1, Math.min(Number(req.query.topN || 3), 20));
+    const perTopic = Math.max(1, Math.min(Number(req.query.perTopic || 3), 5));
+    const traceLimit = Math.max(4, Math.min(Number(req.query.traceLimit || 12), 40));
+
+    const [course, masteryRows] = await Promise.all([
+      Course.findById(courseId).select("courseNo courseTitle").lean(),
+      TopicMastery.find({ student: req.user._id, course: courseId })
+        .sort({ weaknessScore: -1, confidence: -1 })
+        .lean(),
+    ]);
+
+    if (!course?.courseNo) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    const weakTopics = enrichWeakTopics(masteryRows.slice(0, weakLimit));
+    const materials = await Material.find({ courseNo: course.courseNo })
+      .select("title type fileUrl textContent courseNo courseTitle topicTags")
+      .lean();
+
+    const recommendations = buildRecommendationsForCourse({
+      materials,
+      weakTopics,
+      topicLimit: weakLimit,
+      perTopic,
+      topN: recommendationTopN,
+    });
+
+    const recentEvents = await LearningEvent.find({
+      student: req.user._id,
+      course: courseId,
+      eventType: { $in: ["question_attempt", "assignment_attempt"] },
+    })
+      .sort({ eventTimestamp: -1 })
+      .limit(200)
+      .lean();
+
+    const chronologicalEvents = [...recentEvents].reverse();
+    const sequenceTraces = weakTopics.slice(0, 3).map((topic) =>
+      buildSequenceContributionTrace({
+        events: chronologicalEvents,
+        topicId: topic.topicId,
+        limit: traceLimit,
+      })
+    );
+
+    const localTabular = weakTopics.map((row) => buildTabularLocalExplanation(row));
+    const globalTabular = buildTabularGlobalExplanation(masteryRows);
+    const recommendationExplanations = summarizeRecommendationDrivers(recommendations, weakTopics);
+    const topActions = buildTopActionSummary(sequenceTraces);
+
+    res.json({
+      course: {
+        courseId,
+        courseNo: course.courseNo,
+        courseTitle: course.courseTitle,
+      },
+      generatedAt: new Date().toISOString(),
+      modelHints: {
+        tabular: "shap_style_proxy",
+        sequence: "attention_like_recency_trace",
+      },
+      tabularExplainability: {
+        global: globalTabular,
+        local: localTabular,
+      },
+      sequenceExplainability: {
+        traces: sequenceTraces,
+      },
+      recommendationExplainability: recommendationExplanations,
+      topContributingActions: topActions,
+      metadata: {
+        weakTopicsAnalyzed: weakTopics.length,
+        recommendationsAnalyzed: recommendations.length,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -10,6 +10,7 @@ import {
   getMyWeakTopics,
   getMyMaterialRecommendations,
   getMyLearningInsights,
+  getMyExplainabilityByCourse,
   runBackfillMasteryForCourse,
 } from "../controllers/knowledgeTracingController.js";
 
@@ -34,6 +35,9 @@ router.get("/mastery/:courseId", authorize("student"), getMyMasteryByCourse);
 
 // Frontend-friendly shaped insights payload.
 router.get("/insights/:courseId", authorize("student"), getMyLearningInsights);
+
+// Explainability payload for mastery, recommendation, and sequence traces.
+router.get("/explainability/:courseId", authorize("student"), getMyExplainabilityByCourse);
 
 // Students get weak topics sorted by weakness score.
 router.get("/weak-topics/:courseId", authorize("student"), getMyWeakTopics);
