@@ -25,6 +25,9 @@
     "start": "nodemon server.js",
     "topic-tags:backfill": "node scripts/backfillTopicTags.js",
     "topic-tags:seed": "node scripts/seedTopicTaxonomy.js",
-    "topic-tags:report": "node scripts/generateTopicTagReport.js"
+    "topic-tags:report": "node scripts/generateTopicTagReport.js",
+    "kt:features:daily": "node scripts/buildDailyKTFeatures.js",
+    "kt:dq:report": "node scripts/ktDataQualityReport.js",
+    "test:kt": "node --test tests/*.test.js"
   }
 }

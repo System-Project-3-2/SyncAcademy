@@ -4,6 +4,7 @@ import Material from "../models/materialModel.js";
 import Course from "../models/courseModel.js";
 import mongoose from "mongoose";
 import { predictTopicMastery } from "../services/ktModelService.js";
+import { buildFeatureRows, summarizeFeatureRows } from "../utils/ktFeaturePipeline.js";
 
 const clamp01 = (value) => Math.max(0, Math.min(1, value));
 
@@ -39,6 +40,18 @@ const validateEventPayload = (body) => {
     if (!body[key]) return `Missing required field: ${key}`;
   }
 
+  if (!["quiz", "assignment", "material", "hint"].includes(body.sourceType)) {
+    return "sourceType must be one of quiz, assignment, material, hint";
+  }
+
+  if (
+    (body.eventType === "question_attempt" || body.eventType === "assignment_attempt") &&
+    typeof body.isCorrect !== "boolean" &&
+    typeof body.normalizedScore !== "number"
+  ) {
+    return "question_attempt/assignment_attempt requires isCorrect or normalizedScore";
+  }
+
   if (body.normalizedScore != null && (body.normalizedScore < 0 || body.normalizedScore > 1)) {
     return "normalizedScore must be between 0 and 1";
   }
@@ -50,37 +63,107 @@ const validateEventPayload = (body) => {
   return null;
 };
 
+const toEventDoc = (payload, studentId) => ({
+  student: studentId,
+  course: payload.courseId,
+  topicId: payload.topicId,
+  subtopicId: payload.subtopicId || "",
+  sourceType: payload.sourceType,
+  sourceId: payload.sourceId || null,
+  questionId: payload.questionId || null,
+  eventType: payload.eventType,
+  isCorrect: typeof payload.isCorrect === "boolean" ? payload.isCorrect : null,
+  rawScore: payload.rawScore ?? null,
+  normalizedScore: payload.normalizedScore ?? null,
+  difficulty: payload.difficulty || "unknown",
+  timeSpentSec: Number(payload.timeSpentSec || payload.timeTaken || 0),
+  responseLatencySec: Number(payload.responseLatencySec || 0),
+  attemptNo: Number(payload.attemptNo || payload.attemptIndex || 1),
+  hintUsed: Boolean(payload.hintUsed),
+  explanationViewed: Boolean(payload.explanationViewed),
+  materialId: payload.materialId || null,
+  materialType: payload.materialType || "",
+  materialTopicMatchScore: Number(payload.materialTopicMatchScore || 0),
+  eventTimestamp: payload.eventTimestamp || payload.timestamp
+    ? new Date(payload.eventTimestamp || payload.timestamp)
+    : new Date(),
+  metadata: payload.metadata || {},
+});
+
 export const logLearningEvent = async (req, res) => {
   try {
     const error = validateEventPayload(req.body);
     if (error) return res.status(400).json({ message: error });
 
-    const event = await LearningEvent.create({
-      student: req.user._id,
-      course: req.body.courseId,
-      topicId: req.body.topicId,
-      subtopicId: req.body.subtopicId || "",
-      sourceType: req.body.sourceType,
-      sourceId: req.body.sourceId || null,
-      questionId: req.body.questionId || null,
-      eventType: req.body.eventType,
-      isCorrect: typeof req.body.isCorrect === "boolean" ? req.body.isCorrect : null,
-      rawScore: req.body.rawScore ?? null,
-      normalizedScore: req.body.normalizedScore ?? null,
-      difficulty: req.body.difficulty || "unknown",
-      timeSpentSec: Number(req.body.timeSpentSec || 0),
-      responseLatencySec: Number(req.body.responseLatencySec || 0),
-      attemptNo: Number(req.body.attemptNo || 1),
-      hintUsed: Boolean(req.body.hintUsed),
-      explanationViewed: Boolean(req.body.explanationViewed),
-      materialId: req.body.materialId || null,
-      materialType: req.body.materialType || "",
-      materialTopicMatchScore: Number(req.body.materialTopicMatchScore || 0),
-      eventTimestamp: req.body.eventTimestamp ? new Date(req.body.eventTimestamp) : new Date(),
-      metadata: req.body.metadata || {},
-    });
+    const event = await LearningEvent.create(toEventDoc(req.body, req.user._id));
 
     res.status(201).json(event);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const logLearningEventsBulk = async (req, res) => {
+  try {
+    const events = Array.isArray(req.body?.events) ? req.body.events : [];
+    if (!events.length) {
+      return res.status(400).json({ message: "events array is required" });
+    }
+
+    const normalized = [];
+    const rejected = [];
+
+    events.forEach((event, index) => {
+      const error = validateEventPayload(event || {});
+      if (error) {
+        rejected.push({ index, message: error });
+      } else {
+        normalized.push(toEventDoc(event, req.user._id));
+      }
+    });
+
+    let inserted = [];
+    if (normalized.length) {
+      inserted = await LearningEvent.insertMany(normalized, { ordered: false });
+    }
+
+    res.status(201).json({
+      insertedCount: inserted.length,
+      rejectedCount: rejected.length,
+      rejected,
+      insertedIds: inserted.map((e) => e._id),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getFeatureSnapshot = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const topicId = req.query.topicId ? String(req.query.topicId) : null;
+    const limit = Math.max(10, Math.min(Number(req.query.limit || 250), 2000));
+
+    const filter = {
+      student: req.user._id,
+      course: courseId,
+    };
+    if (topicId) filter.topicId = topicId;
+
+    const events = await LearningEvent.find(filter)
+      .sort({ eventTimestamp: -1 })
+      .limit(limit)
+      .lean();
+
+    const rows = buildFeatureRows([...events].reverse());
+
+    res.json({
+      courseId,
+      topicId,
+      eventsConsidered: events.length,
+      summary: summarizeFeatureRows(rows),
+      rows,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -3,6 +3,8 @@ import { protect } from "../middleware/authMiddleware.js";
 import { authorize } from "../middleware/roleMiddleware.js";
 import {
   logLearningEvent,
+  logLearningEventsBulk,
+  getFeatureSnapshot,
   predictMyTopicMastery,
   getMyMasteryByCourse,
   getMyWeakTopics,
@@ -16,6 +18,12 @@ router.use(protect);
 
 // Students create their own learning events.
 router.post("/events", authorize("student"), logLearningEvent);
+
+// Students can push batched events from UI sessions.
+router.post("/events/bulk", authorize("student"), logLearningEventsBulk);
+
+// Students can inspect generated rolling features.
+router.get("/features/:courseId", authorize("student"), getFeatureSnapshot);
 
 // Students request a fresh prediction for a single topic.
 router.post("/predict/topic", authorize("student"), predictMyTopicMastery);
