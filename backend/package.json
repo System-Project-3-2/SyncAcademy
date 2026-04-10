@@ -28,6 +28,9 @@
     "topic-tags:report": "node scripts/generateTopicTagReport.js",
     "kt:features:daily": "node scripts/buildDailyKTFeatures.js",
     "kt:dq:report": "node scripts/ktDataQualityReport.js",
+    "kt:dataset:export": "node scripts/exportKTTrainingDataset.js",
+    "kt:baseline:train": "python ml/train_baselines.py",
+    "kt:baseline:smoke": "python ml/train_baselines.py --smoke-test",
     "test:kt": "node --test tests/*.test.js"
   }
 }
