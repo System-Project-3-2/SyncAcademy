@@ -3,6 +3,7 @@
  * Handles all admin-related operations for user management
  */
 import User from "../models/userModel.js";
+import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import Course from "../models/courseModel.js";
 import Material from "../models/materialModel.js";
@@ -45,6 +46,36 @@ const buildTopicTags = (topicId, userId) => [
     taggedAt: new Date(),
   },
 ];
+
+const supportsTransactions = async () => {
+  try {
+    await mongoose.connection.db.admin().command({ replSetGetStatus: 1 });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const withOptionalTransaction = async (workFn) => {
+  const canUseTransaction = await supportsTransactions();
+  if (!canUseTransaction) {
+    const result = await workFn(null);
+    return { result, usedTransaction: false };
+  }
+
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const result = await workFn(session);
+    await session.commitTransaction();
+    return { result, usedTransaction: true };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    await session.endSession();
+  }
+};
 
 /**
  * Get all users
@@ -359,7 +390,7 @@ export const generateSyntheticData = async (req, res) => {
       quizzesPerCourse = 3,
       eventsPerEnrollment = 35,
       enrollmentsPerStudent = 2,
-      password = "Demo@123",
+      password = "password123",
     } = req.body || {};
 
     const safe = {
@@ -641,5 +672,136 @@ export const generateSyntheticData = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * Delete all synthetic data generated under a namespace.
+ * @route POST /api/admin/synthetic-data/cleanup
+ * @access Admin only
+ */
+export const cleanupSyntheticData = async (req, res) => {
+  try {
+    const { namespace, confirm } = req.body || {};
+    const ns = String(namespace || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9-]/g, "-");
+
+    if (!ns) {
+      return res.status(400).json({ message: "Namespace is required" });
+    }
+
+    if (confirm !== true) {
+      return res.status(400).json({ message: "Cleanup requires explicit confirmation" });
+    }
+
+    const { result: summary, usedTransaction } = await withOptionalTransaction(async (session) => {
+      const sessionOpt = session ? { session } : {};
+
+      const syntheticUsers = await User.find(
+        { email: { $regex: `^${ns}-(teacher|student)-`, $options: "i" } },
+        "_id role",
+        sessionOpt
+      ).lean();
+
+      const userIds = syntheticUsers.map((u) => u._id);
+      const teacherIds = syntheticUsers.filter((u) => u.role === "teacher").map((u) => u._id);
+      const studentIds = syntheticUsers.filter((u) => u.role === "student").map((u) => u._id);
+
+      const syntheticCourses = await Course.find(
+        {
+          createdBy: { $in: teacherIds.length ? teacherIds : [null] },
+          description: { $regex: "^Auto-generated synthetic course", $options: "i" },
+        },
+        "_id courseNo",
+        sessionOpt
+      ).lean();
+
+      const courseIds = syntheticCourses.map((c) => c._id);
+      const courseNos = syntheticCourses.map((c) => c.courseNo);
+
+      const materialsRes = await Material.deleteMany(
+        {
+          $or: [
+            { uploadedBy: { $in: teacherIds.length ? teacherIds : [null] } },
+            { courseNo: { $in: courseNos.length ? courseNos : ["__none__"] } },
+            { fileUrl: { $regex: `/${ns}/`, $options: "i" } },
+          ],
+        },
+        sessionOpt
+      );
+
+      const quizzesRes = await Quiz.deleteMany(
+        {
+          $or: [
+            { createdBy: { $in: teacherIds.length ? teacherIds : [null] } },
+            { course: { $in: courseIds.length ? courseIds : [null] } },
+          ],
+        },
+        sessionOpt
+      );
+
+      const enrollmentsRes = await Enrollment.deleteMany(
+        {
+          $or: [
+            { student: { $in: studentIds.length ? studentIds : [null] } },
+            { course: { $in: courseIds.length ? courseIds : [null] } },
+          ],
+        },
+        sessionOpt
+      );
+
+      const learningEventsRes = await LearningEvent.deleteMany(
+        {
+          $or: [
+            { "metadata.namespace": ns },
+            { student: { $in: studentIds.length ? studentIds : [null] } },
+            { course: { $in: courseIds.length ? courseIds : [null] } },
+          ],
+        },
+        sessionOpt
+      );
+
+      const topicMasteryRes = await TopicMastery.deleteMany(
+        {
+          $or: [
+            { "explanation.namespace": ns },
+            { student: { $in: studentIds.length ? studentIds : [null] } },
+            { course: { $in: courseIds.length ? courseIds : [null] } },
+          ],
+        },
+        sessionOpt
+      );
+
+      const coursesRes = await Course.deleteMany(
+        { _id: { $in: courseIds.length ? courseIds : [null] } },
+        sessionOpt
+      );
+
+      const usersRes = await User.deleteMany(
+        { _id: { $in: userIds.length ? userIds : [null] } },
+        sessionOpt
+      );
+
+      return {
+        users: usersRes.deletedCount || 0,
+        courses: coursesRes.deletedCount || 0,
+        materials: materialsRes.deletedCount || 0,
+        quizzes: quizzesRes.deletedCount || 0,
+        enrollments: enrollmentsRes.deletedCount || 0,
+        learningEvents: learningEventsRes.deletedCount || 0,
+        topicMasteryRecords: topicMasteryRes.deletedCount || 0,
+      };
+    });
+
+    return res.status(200).json({
+      message: `Synthetic data cleaned for namespace '${ns}'`,
+      namespace: ns,
+      usedTransaction,
+      summary,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };

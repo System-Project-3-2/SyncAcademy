@@ -11,6 +11,7 @@ import {
   deleteUser,
   getUserStats,
   generateSyntheticData,
+  cleanupSyntheticData,
 } from "../controllers/adminController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorize } from "../middleware/roleMiddleware.js";
@@ -26,6 +27,7 @@ router.get("/users/stats", getUserStats);
 
 // Synthetic data generation for demos/testing
 router.post("/synthetic-data/generate", generateSyntheticData);
+router.post("/synthetic-data/cleanup", cleanupSyntheticData);
 
 // User CRUD operations
 router.get("/users", getAllUsers);

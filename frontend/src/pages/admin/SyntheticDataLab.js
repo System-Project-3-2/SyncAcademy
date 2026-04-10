@@ -19,6 +19,7 @@ import {
   Science as ScienceIcon,
   RocketLaunch as RocketIcon,
   AutoFixHigh as AutoFixHighIcon,
+  DeleteForever as DeleteForeverIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { PageHeader } from '../../components';
@@ -44,7 +45,10 @@ const toNumber = (value, fallback = 0) => {
 const SyntheticDataLab = () => {
   const [config, setConfig] = useState(initialConfig);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [result, setResult] = useState(null);
+  const [cleanupNamespace, setCleanupNamespace] = useState('');
+  const [cleanupResult, setCleanupResult] = useState(null);
 
   const estimatedScale = useMemo(() => {
     const teachers = toNumber(config.teachers, 0);
@@ -119,12 +123,43 @@ const SyntheticDataLab = () => {
 
       const data = await adminService.generateSyntheticData(payload);
       setResult(data);
+      setCleanupNamespace(data?.namespace || '');
+      setCleanupResult(null);
       toast.success('Synthetic dataset generated successfully');
     } catch (error) {
       const message = error?.response?.data?.message || 'Failed to generate synthetic data';
       toast.error(message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCleanup = async (namespaceFromButton) => {
+    const targetNamespace = String(namespaceFromButton || cleanupNamespace || '').trim();
+
+    if (!targetNamespace) {
+      toast.error('Enter a namespace to clean');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete all synthetic data for namespace '${targetNamespace}'? This cannot be undone.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      const data = await adminService.cleanupSyntheticData(targetNamespace);
+      setCleanupResult(data);
+      toast.success('Synthetic data cleanup completed');
+    } catch (error) {
+      const message = error?.response?.data?.message || 'Failed to clean synthetic data';
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -200,7 +235,7 @@ const SyntheticDataLab = () => {
                 variant="contained"
                 startIcon={<RocketIcon />}
                 onClick={handleGenerate}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isDeleting}
               >
                 {isSubmitting ? 'Generating...' : 'Generate Synthetic Dataset'}
               </Button>
@@ -208,9 +243,34 @@ const SyntheticDataLab = () => {
                 variant="outlined"
                 startIcon={<AutoFixHighIcon />}
                 onClick={() => setConfig(initialConfig)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isDeleting}
               >
                 Reset
+              </Button>
+            </Stack>
+
+            <Divider sx={{ my: 3 }} />
+
+            <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+              Cleanup Synthetic Namespace
+            </Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+              <TextField
+                fullWidth
+                label="Namespace to delete"
+                value={cleanupNamespace}
+                onChange={(e) => setCleanupNamespace(e.target.value)}
+                helperText="Example: synth-1712732100000 or your custom namespace"
+              />
+              <Button
+                color="error"
+                variant="contained"
+                startIcon={<DeleteForeverIcon />}
+                onClick={() => handleCleanup()}
+                disabled={isSubmitting || isDeleting}
+                sx={{ minWidth: { sm: 220 } }}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Namespace'}
               </Button>
             </Stack>
           </Paper>
@@ -244,6 +304,17 @@ const SyntheticDataLab = () => {
             Namespace: <strong>{result.namespace}</strong>
           </Alert>
 
+          <Button
+            color="error"
+            variant="outlined"
+            startIcon={<DeleteForeverIcon />}
+            onClick={() => handleCleanup(result.namespace)}
+            disabled={isSubmitting || isDeleting}
+            sx={{ mb: 2 }}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete This Namespace'}
+          </Button>
+
           <Grid container spacing={2} sx={{ mb: 2 }}>
             {Object.entries(result.summary || {}).map(([key, value]) => (
               <Grid item xs={12} sm={6} md={3} key={key}>
@@ -266,6 +337,34 @@ const SyntheticDataLab = () => {
             <br />
             Password: <strong>{result.sampleAccounts?.password}</strong>
           </Alert>
+        </Paper>
+      )}
+
+      {cleanupResult && (
+        <Paper sx={{ p: 3, borderRadius: 3, mt: 3 }}>
+          <Typography variant="h6" fontWeight={700} gutterBottom>
+            Last Cleanup Summary
+          </Typography>
+          <Alert severity="success" sx={{ mb: 2 }}>
+            Namespace cleaned: <strong>{cleanupResult.namespace}</strong>
+          </Alert>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Transaction mode: <strong>{cleanupResult.usedTransaction ? 'enabled' : 'fallback (non-transactional DB)'}</strong>
+          </Alert>
+          <Grid container spacing={2}>
+            {Object.entries(cleanupResult.summary || {}).map(([key, value]) => (
+              <Grid item xs={12} sm={6} md={3} key={key}>
+                <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {key}
+                  </Typography>
+                  <Typography variant="h6" fontWeight={700}>
+                    {value}
+                  </Typography>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
         </Paper>
       )}
     </Box>

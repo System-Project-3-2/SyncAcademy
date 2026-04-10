@@ -67,6 +67,18 @@ const adminService = {
     const response = await api.post('/admin/synthetic-data/generate', config);
     return response.data;
   },
+
+  /**
+   * Delete synthetic dataset by namespace
+   * @param {string} namespace - Synthetic namespace to clean
+   */
+  cleanupSyntheticData: async (namespace) => {
+    const response = await api.post('/admin/synthetic-data/cleanup', {
+      namespace,
+      confirm: true,
+    });
+    return response.data;
+  },
 };
 
 export default adminService;
