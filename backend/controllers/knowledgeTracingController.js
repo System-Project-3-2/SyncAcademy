@@ -5,34 +5,14 @@ import Course from "../models/courseModel.js";
 import mongoose from "mongoose";
 import { predictTopicMastery } from "../services/ktModelService.js";
 import { buildFeatureRows, summarizeFeatureRows } from "../utils/ktFeaturePipeline.js";
+import {
+  applyTemporalSmoothing,
+  deriveWeaknessReasonCodes,
+  buildMaterialRecommendation,
+  rankTopRecommendations,
+  clamp01,
+} from "../utils/ktMasteryEngine.js";
 
-const clamp01 = (value) => Math.max(0, Math.min(1, value));
-
-const scoreMaterial = ({ material, weaknessScore, topicId, seenMaterialIds }) => {
-  const topic = String(topicId || "").toLowerCase();
-  const title = String(material.title || "").toLowerCase();
-  const text = String(material.textContent || "").toLowerCase();
-
-  const hasTopicInTitle = topic && title.includes(topic) ? 1 : 0;
-  const hasTopicInText = topic && text.includes(topic) ? 1 : 0;
-
-  const relevance = hasTopicInTitle ? 1 : hasTopicInText ? 0.7 : 0.35;
-  const noveltyPenalty = seenMaterialIds.has(String(material._id)) ? 0.2 : 0;
-
-  const finalScore = clamp01(0.55 * weaknessScore + 0.35 * relevance - 0.1 * noveltyPenalty);
-
-  const reasonParts = [];
-  if (weaknessScore >= 0.6) reasonParts.push("high weakness on this topic");
-  if (hasTopicInTitle) reasonParts.push("topic appears in material title");
-  else if (hasTopicInText) reasonParts.push("topic appears in material content");
-  if (reasonParts.length === 0) reasonParts.push("selected as supportive material for the weak topic");
-
-  return {
-    material,
-    score: Number(finalScore.toFixed(4)),
-    reason: reasonParts.join(", "),
-  };
-};
 
 const validateEventPayload = (body) => {
   const required = ["courseId", "topicId", "sourceType", "eventType"];
@@ -176,11 +156,41 @@ export const predictMyTopicMastery = async (req, res) => {
       return res.status(400).json({ message: "courseId and topicId are required" });
     }
 
+    const previous = await TopicMastery.findOne({
+      student: req.user._id,
+      course: courseId,
+      topicId,
+    }).lean();
+
     const prediction = await predictTopicMastery({
       studentId: req.user._id,
       courseId,
       topicId,
     });
+
+    const smoothing = applyTemporalSmoothing({
+      previousMastery: previous?.masteryScore,
+      modelProbability: prediction.masteryScore,
+    });
+
+    const finalMastery = smoothing.smoothedMastery;
+    const finalWeakness = clamp01(1 - finalMastery);
+    const confidence = clamp01(prediction.confidence ?? 0);
+    const reasonCodes = deriveWeaknessReasonCodes({
+      masteryScore: finalMastery,
+      confidence,
+      stats: prediction.stats || {},
+    });
+
+    const explanation = {
+      ...(prediction.explanation || {}),
+      reasonCodes,
+      smoothing: {
+        previousMastery: smoothing.previousMastery,
+        rawModelProbability: smoothing.rawModelProbability,
+        alpha: smoothing.alpha,
+      },
+    };
 
     const upserted = await TopicMastery.findOneAndUpdate(
       { student: req.user._id, course: courseId, topicId },
@@ -188,14 +198,14 @@ export const predictMyTopicMastery = async (req, res) => {
         student: req.user._id,
         course: courseId,
         topicId,
-        masteryScore: prediction.masteryScore,
-        weaknessScore: prediction.weaknessScore,
-        confidence: prediction.confidence,
+        masteryScore: finalMastery,
+        weaknessScore: finalWeakness,
+        confidence,
         modelVersion: prediction.modelVersion,
         sourceModelType: prediction.sourceModelType,
         lastPredictionAt: new Date(),
         stats: prediction.stats || {},
-        explanation: prediction.explanation || {},
+        explanation,
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     ).lean();
@@ -216,7 +226,16 @@ export const getMyMasteryByCourse = async (req, res) => {
       .sort({ weaknessScore: -1, topicId: 1 })
       .lean();
 
-    res.json(items);
+    const withReasons = items.map((item) => ({
+      ...item,
+      reasonCodes: deriveWeaknessReasonCodes({
+        masteryScore: item.masteryScore,
+        confidence: item.confidence,
+        stats: item.stats || {},
+      }),
+    }));
+
+    res.json(withReasons);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -235,7 +254,16 @@ export const getMyWeakTopics = async (req, res) => {
       .limit(limit)
       .lean();
 
-    res.json(items);
+    const enriched = items.map((item) => ({
+      ...item,
+      reasonCodes: deriveWeaknessReasonCodes({
+        masteryScore: item.masteryScore,
+        confidence: item.confidence,
+        stats: item.stats || {},
+      }),
+    }));
+
+    res.json(enriched);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -246,6 +274,7 @@ export const getMyMaterialRecommendations = async (req, res) => {
     const { courseId } = req.params;
     const topicLimit = Math.max(1, Math.min(Number(req.query.topicLimit || 3), 10));
     const perTopic = Math.max(1, Math.min(Number(req.query.perTopic || 3), 5));
+    const topN = Math.max(1, Math.min(Number(req.query.topN || 3), 10));
 
     const weakTopics = await TopicMastery.find({
       student: req.user._id,
@@ -269,7 +298,7 @@ export const getMyMaterialRecommendations = async (req, res) => {
     }
 
     const materials = await Material.find({ courseNo: course.courseNo })
-      .select("title type fileUrl textContent courseNo courseTitle")
+      .select("title type fileUrl textContent courseNo courseTitle topicTags")
       .lean();
 
     const seenMaterialIds = new Set();
@@ -278,36 +307,44 @@ export const getMyMaterialRecommendations = async (req, res) => {
     for (const topic of weakTopics) {
       const ranked = materials
         .map((m) =>
-          scoreMaterial({
+          buildMaterialRecommendation({
             material: m,
-            weaknessScore: topic.weaknessScore,
-            topicId: topic.topicId,
+            topic,
             seenMaterialIds,
           })
         )
         .sort((a, b) => b.score - a.score)
         .slice(0, perTopic)
         .map((item) => {
-          seenMaterialIds.add(String(item.material._id));
-          return {
-            topicId: topic.topicId,
-            weaknessScore: topic.weaknessScore,
-            confidence: topic.confidence,
-            materialId: item.material._id,
-            title: item.material.title || item.material.courseTitle,
-            type: item.material.type,
-            fileUrl: item.material.fileUrl,
-            score: item.score,
-            reason: item.reason,
-          };
+          seenMaterialIds.add(String(item.materialId));
+          return item;
         });
 
       recommendations.push(...ranked);
     }
 
+    const topRecommendations = rankTopRecommendations({
+      candidates: recommendations,
+      topN,
+    });
+
+    const weakTopicsWithReasons = weakTopics.map((item) => ({
+      ...item,
+      reasonCodes: deriveWeaknessReasonCodes({
+        masteryScore: item.masteryScore,
+        confidence: item.confidence,
+        stats: item.stats || {},
+      }),
+    }));
+
     res.json({
-      weakTopics,
-      recommendations,
+      weakTopics: weakTopicsWithReasons,
+      recommendations: topRecommendations,
+      metadata: {
+        topN,
+        topicLimit,
+        perTopic,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -327,11 +364,41 @@ export const runBackfillMasteryForCourse = async (req, res) => {
 
     const results = [];
     for (const row of topics) {
+      const previous = await TopicMastery.findOne({
+        student: req.user._id,
+        course: courseId,
+        topicId: row.topicId,
+      }).lean();
+
       const prediction = await predictTopicMastery({
         studentId: req.user._id,
         courseId,
         topicId: row.topicId,
       });
+
+      const smoothing = applyTemporalSmoothing({
+        previousMastery: previous?.masteryScore,
+        modelProbability: prediction.masteryScore,
+      });
+
+      const finalMastery = smoothing.smoothedMastery;
+      const finalWeakness = clamp01(1 - finalMastery);
+      const confidence = clamp01(prediction.confidence ?? 0);
+      const reasonCodes = deriveWeaknessReasonCodes({
+        masteryScore: finalMastery,
+        confidence,
+        stats: prediction.stats || {},
+      });
+
+      const explanation = {
+        ...(prediction.explanation || {}),
+        reasonCodes,
+        smoothing: {
+          previousMastery: smoothing.previousMastery,
+          rawModelProbability: smoothing.rawModelProbability,
+          alpha: smoothing.alpha,
+        },
+      };
 
       const record = await TopicMastery.findOneAndUpdate(
         { student: req.user._id, course: courseId, topicId: row.topicId },
@@ -339,14 +406,14 @@ export const runBackfillMasteryForCourse = async (req, res) => {
           student: req.user._id,
           course: courseId,
           topicId: row.topicId,
-          masteryScore: prediction.masteryScore,
-          weaknessScore: prediction.weaknessScore,
-          confidence: prediction.confidence,
+          masteryScore: finalMastery,
+          weaknessScore: finalWeakness,
+          confidence,
           modelVersion: prediction.modelVersion,
           sourceModelType: prediction.sourceModelType,
           lastPredictionAt: new Date(),
           stats: prediction.stats || {},
-          explanation: prediction.explanation || {},
+          explanation,
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       ).lean();

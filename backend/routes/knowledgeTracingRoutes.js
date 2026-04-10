@@ -37,6 +37,9 @@ router.get("/weak-topics/:courseId", authorize("student"), getMyWeakTopics);
 // Students get material suggestions driven by weak topics.
 router.get("/recommendations/:courseId", authorize("student"), getMyMaterialRecommendations);
 
+// Convenience endpoint for top-3 recommendation view.
+router.get("/recommendations/:courseId/top3", authorize("student"), getMyMaterialRecommendations);
+
 // Students can backfill predictions for all observed topics in a course.
 router.post("/backfill/:courseId", authorize("student"), runBackfillMasteryForCourse);
 
