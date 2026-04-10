@@ -13,8 +13,29 @@ import { embedText } from "../services/embeddingServices.js";
 import cloudinary from "../config/cloudinary.js";
 import Course from "../models/courseModel.js";
 import { notifyEnrolledStudents } from "../utils/notificationHelper.js";
+import { normalizeTopicTags } from "../utils/topicTagValidation.js";
 
 import path from "path";
+
+const parseTopicTagsInput = (raw, userId) => {
+  if (!raw) return [];
+  let parsed = raw;
+
+  if (typeof raw === "string") {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = [];
+    }
+  }
+
+  const normalized = normalizeTopicTags(parsed);
+  return normalized.map((tag) => ({
+    ...tag,
+    taggedBy: tag.taggedBy || userId,
+    taggedAt: tag.taggedAt || new Date(),
+  }));
+};
 
 // Upload material (Teacher/Admin only)
 export const uploadMaterial = async (req, res) => {
@@ -52,6 +73,7 @@ export const uploadMaterial = async (req, res) => {
       fileUrl,
       originalFileName: file.originalname,
       textContent,
+      topicTags: parseTopicTagsInput(req.body.topicTags, req.user._id),
       uploadedBy: req.user._id,
     };
 
@@ -204,6 +226,9 @@ export const updateMaterial = async (req, res) => {
     if (courseTitle) material.courseTitle = courseTitle;
     if (courseNo) material.courseNo = courseNo;
     if (type) material.type = type;
+    if (req.body.topicTags !== undefined) {
+      material.topicTags = parseTopicTagsInput(req.body.topicTags, req.user._id);
+    }
 
     const updatedMaterial = await material.save();
 

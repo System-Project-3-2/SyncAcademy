@@ -15,6 +15,7 @@ import chatRoutes from "./routes/chatRoutes.js";
 import enrollmentRoutes from "./routes/enrollmentRoutes.js";
 import announcementRoutes from "./routes/announcementRoutes.js";
 import discussionRoutes from "./routes/discussionRoutes.js";import assignmentRoutes from './routes/assignmentRoutes.js';import notificationRoutes from './routes/notificationRoutes.js';import courseInvitationRoutes from './routes/courseInvitationRoutes.js';import eventRoutes from './routes/eventRoutes.js';import quizRoutes from './routes/quizRoutes.js';import deleteResolvedFeedbacks from './utils/cleanupResolvedFeedbacks.js';
+import topicTagRoutes from "./routes/topicTagRoutes.js";
 import knowledgeTracingRoutes from "./routes/knowledgeTracingRoutes.js";
 import Course, { generateCourseCode } from './models/courseModel.js';
 
@@ -84,6 +85,8 @@ app.use("/api/course-invitations", courseInvitationRoutes);
 app.use("/api/events", eventRoutes);
 
 app.use("/api/quizzes", quizRoutes);
+
+app.use("/api/topic-tags", topicTagRoutes);
 
 app.use("/api/kt", knowledgeTracingRoutes);
 

@@ -1,5 +1,25 @@
 import mongoose from "mongoose";
 
+const topicTagSchema = new mongoose.Schema(
+  {
+    topicId: { type: String, required: true, trim: true },
+    subtopicId: { type: String, default: "", trim: true },
+    confidence: { type: Number, min: 0, max: 1, default: 0.7 },
+    source: {
+      type: String,
+      enum: ["auto", "manual", "seed", "import"],
+      default: "manual",
+    },
+    taggedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    taggedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const materialSchema = new mongoose.Schema(
   {
     title: { type: String, default: "" },
@@ -9,6 +29,10 @@ const materialSchema = new mongoose.Schema(
     fileUrl: { type: String, required: true },
     originalFileName: { type: String },
     textContent: { type: String },
+    topicTags: {
+      type: [topicTagSchema],
+      default: [],
+    },
     // embedding: { type: Array },
     uploadedBy: {
       type: mongoose.Schema.Types.ObjectId,

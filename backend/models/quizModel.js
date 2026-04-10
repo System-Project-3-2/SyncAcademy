@@ -1,5 +1,25 @@
 import mongoose from "mongoose";
 
+const topicTagSchema = new mongoose.Schema(
+  {
+    topicId: { type: String, required: true, trim: true },
+    subtopicId: { type: String, default: "", trim: true },
+    confidence: { type: Number, min: 0, max: 1, default: 0.7 },
+    source: {
+      type: String,
+      enum: ["auto", "manual", "seed", "import"],
+      default: "manual",
+    },
+    taggedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    taggedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const questionSchema = new mongoose.Schema(
   {
     questionText: {
@@ -32,6 +52,10 @@ const questionSchema = new mongoose.Schema(
     sourceChunk: {
       type: String,
       default: "",
+    },
+    topicTags: {
+      type: [topicTagSchema],
+      default: [],
     },
   },
   { _id: true }

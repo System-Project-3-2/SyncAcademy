@@ -22,6 +22,9 @@
   },
   "type": "module",
   "scripts": {
-    "start": "nodemon server.js"
+    "start": "nodemon server.js",
+    "topic-tags:backfill": "node scripts/backfillTopicTags.js",
+    "topic-tags:seed": "node scripts/seedTopicTaxonomy.js",
+    "topic-tags:report": "node scripts/generateTopicTagReport.js"
   }
 }

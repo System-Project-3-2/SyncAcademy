@@ -8,6 +8,10 @@ import Course from "../models/courseModel.js";
 import Enrollment from "../models/enrollmentModel.js";
 import { generateQuiz as generateQuizFromMaterials } from "../services/quizGeneratorService.js";
 import { notifyEnrolledStudents } from "../utils/notificationHelper.js";
+import {
+  normalizeTopicTags,
+  validateQuizTopicTagsForPublish,
+} from "../utils/topicTagValidation.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -65,6 +69,15 @@ const getScheduleStatus = (quiz) => {
   if (quiz.scheduledAt && now < new Date(quiz.scheduledAt)) return "upcoming";
   if (quiz.availableUntil && now > new Date(quiz.availableUntil)) return "expired";
   return "available";
+};
+
+const sanitizeQuestionTopicTags = (q, userId) => {
+  const rawTags = normalizeTopicTags(q.topicTags || []);
+  return rawTags.map((tag) => ({
+    ...tag,
+    taggedBy: tag.taggedBy || userId,
+    taggedAt: tag.taggedAt || new Date(),
+  }));
 };
 
 // ─── Generate Quiz (AI) ──────────────────────────────────────────────────────
@@ -179,6 +192,7 @@ export const createManualQuiz = async (req, res) => {
       correctAnswer: Number(q.correctAnswer),
       explanation: q.explanation ? q.explanation.trim() : "",
       difficulty: ["easy", "medium", "hard"].includes(q.difficulty) ? q.difficulty : "medium",
+      topicTags: sanitizeQuestionTopicTags(q, req.user._id),
     }));
 
     const quiz = await Quiz.create({
@@ -433,7 +447,10 @@ export const updateQuiz = async (req, res) => {
     if (scheduledAt !== undefined) quiz.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
     if (availableUntil !== undefined) quiz.availableUntil = availableUntil ? new Date(availableUntil) : null;
     if (questions && Array.isArray(questions)) {
-      quiz.questions = questions;
+      quiz.questions = questions.map((q) => ({
+        ...q,
+        topicTags: sanitizeQuestionTopicTags(q, req.user._id),
+      }));
       quiz.totalQuestions = questions.length;
     }
 
@@ -469,7 +486,19 @@ export const publishQuiz = async (req, res) => {
     }
 
     const wasPublished = quiz.isPublished;
-    quiz.isPublished = req.body.publish !== undefined ? Boolean(req.body.publish) : !quiz.isPublished;
+    const requestedPublish = req.body.publish !== undefined ? Boolean(req.body.publish) : !quiz.isPublished;
+
+    if (requestedPublish) {
+      const validation = validateQuizTopicTagsForPublish(quiz);
+      if (!validation.ok) {
+        return res.status(400).json({
+          message: "Cannot publish quiz: topic tags are missing for some questions",
+          validation,
+        });
+      }
+    }
+
+    quiz.isPublished = requestedPublish;
     await quiz.save();
 
     // Notify students when publishing for the first time
