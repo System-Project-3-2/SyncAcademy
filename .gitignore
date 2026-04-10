@@ -6,3 +6,5 @@ uploads/
 *.txt
 backend/ml/model_registry/*
 backend/ml/reports/*
+
+.venv
