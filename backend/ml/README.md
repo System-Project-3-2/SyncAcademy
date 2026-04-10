@@ -64,3 +64,59 @@ pip install -r ml/requirements.txt
 ```
 
 If `xgboost` is not available, the trainer uses a fallback gradient-boosting baseline and marks it in outputs.
+
+## Phase 7 Sequence KT (LSTM DKT + Transformer KT)
+
+Sequence models are trained from ordered student events using topic + behavior features:
+
+- `topicId`
+- `label_nextCorrect` (previous correctness in sequence context)
+- `difficulty`
+- `timeSpentSec`
+- `hintUsed`
+- `sourceType`
+
+### Sequence commands
+
+1. Export raw sequence dataset from learning events:
+
+```bash
+npm run kt:dataset:export:sequence
+```
+
+2. Train sequence models on real dataset:
+
+```bash
+npm run kt:sequence:train -- --dataset ml/data/<your-sequence-file>.csv
+```
+
+3. Smoke test training (synthetic):
+
+```bash
+npm run kt:sequence:smoke
+```
+
+4. Generate ablation/evaluation summary for latest run:
+
+```bash
+npm run kt:sequence:evaluate
+```
+
+### Sequence outputs
+
+- Model artifacts in `ml/model_registry/<run_id>/`
+  - `lstm_with_behavior.pt`
+  - `lstm_topic_only.pt`
+  - `transformer_with_behavior.pt`
+  - `transformer_topic_only.pt`
+- Reports in `ml/reports/<run_id>/`
+  - `sequence_model_comparison.csv`
+  - `ablation_behavior.csv`
+  - `history_slice_metrics.csv`
+  - `baseline_vs_sequence.csv`
+  - `findings_summary.md`
+  - `sequence_run_summary.json`
+
+### Inference wrapper
+
+`ml/sequence_inference.py` provides `SequenceKTInference` for loading `.pt` artifacts and predicting next-correct probability from recent event history.

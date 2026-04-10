@@ -29,8 +29,12 @@
     "kt:features:daily": "node scripts/buildDailyKTFeatures.js",
     "kt:dq:report": "node scripts/ktDataQualityReport.js",
     "kt:dataset:export": "node scripts/exportKTTrainingDataset.js",
+    "kt:dataset:export:sequence": "node scripts/exportKTSequenceDataset.js",
     "kt:baseline:train": "python ml/train_baselines.py",
     "kt:baseline:smoke": "python ml/train_baselines.py --smoke-test",
+    "kt:sequence:train": "python ml/train_sequence_models.py",
+    "kt:sequence:smoke": "python ml/train_sequence_models.py --smoke-test --epochs 2 --batch-size 32",
+    "kt:sequence:evaluate": "python ml/evaluate_sequence_ablation.py",
     "test:kt": "node --test tests/*.test.js"
   }
 }
