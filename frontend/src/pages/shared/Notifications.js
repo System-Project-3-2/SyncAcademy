@@ -173,13 +173,6 @@ const Notifications = () => {
                 {idx > 0 && <Divider />}
                 <ListItem
                   onClick={() => handleClick(notif)}
-                  secondaryAction={
-                    <Tooltip title="Delete">
-                      <IconButton edge="end" size="small" onClick={(e) => handleDelete(e, notif._id)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  }
                   sx={{
                     cursor: 'pointer',
                     bgcolor: notif.isRead ? 'transparent' : alpha(theme.palette.primary.main, 0.04),
@@ -193,14 +186,37 @@ const Notifications = () => {
                   </ListItemIcon>
                   <ListItemText
                     primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {!notif.isRead && (
-                          <UnreadDot sx={{ fontSize: 8, color: 'primary.main' }} />
-                        )}
-                        <Typography variant="body2" fontWeight={notif.isRead ? 400 : 600}>
-                          {notif.title}
-                        </Typography>
-                        <Chip label={formatTime(notif.createdAt)} size="small" variant="outlined" sx={{ ml: 'auto', fontSize: '0.7rem', height: 22 }} />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flexGrow: 1 }}>
+                          {!notif.isRead && (
+                            <UnreadDot sx={{ fontSize: 8, color: 'primary.main', flexShrink: 0 }} />
+                          )}
+                          <Typography
+                            variant="body2"
+                            fontWeight={notif.isRead ? 400 : 600}
+                            sx={{
+                              minWidth: 0,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {notif.title}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
+                          <Chip
+                            label={formatTime(notif.createdAt)}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: '0.7rem', height: 22 }}
+                          />
+                          <Tooltip title="Delete">
+                            <IconButton size="small" onClick={(e) => handleDelete(e, notif._id)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                       </Box>
                     }
                     secondary={
