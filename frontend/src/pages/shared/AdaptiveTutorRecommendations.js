@@ -11,6 +11,7 @@ import {
   Stack,
   Chip,
   Alert,
+  Button,
   FormControl,
   InputLabel,
   Select,
@@ -29,6 +30,7 @@ import {
   ThumbUp as HelpfulIcon,
   VisibilityOff as DismissIcon,
   AutoAwesome as SuggestionIcon,
+  InfoOutlined as InfoIcon,
 } from '@mui/icons-material';
 import { PageHeader } from '../../components';
 import { useAuth } from '../../hooks';
@@ -63,6 +65,19 @@ const AdaptiveTutorRecommendations = () => {
     if (score >= 0.75) return 'error';
     if (score >= 0.55) return 'warning';
     return 'default';
+  };
+
+  const formatDriverLabel = (driver) => {
+    if (driver === 'topic_weakness_alignment') return 'Targets weak topics';
+    if (driver === 'material_relevance_score') return 'Material relevance';
+    if (driver === 'confidence_support') return 'Confidence support';
+    return String(driver || '').replace(/_/g, ' ');
+  };
+
+  const getMatchTone = (score) => {
+    if (score >= 0.75) return 'success';
+    if (score >= 0.5) return 'info';
+    return 'warning';
   };
 
   useEffect(() => {
@@ -256,6 +271,14 @@ const AdaptiveTutorRecommendations = () => {
         </Box>
 
         <Box sx={{ p: 2 }}>
+          <Alert
+            icon={<InfoIcon fontSize="inherit" />}
+            severity="info"
+            sx={{ mb: 1.5, borderRadius: 2 }}
+          >
+            Match % shows how strongly a material fits your weak topics right now. Start with rank #1, then use Quick Check to verify understanding.
+          </Alert>
+
           {insights?.masterySummary && (
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
               <Chip size="small" label={`Mastery ${(insights.masterySummary.overallMastery * 100).toFixed(0)}%`} color="primary" variant="outlined" />
@@ -290,14 +313,18 @@ const AdaptiveTutorRecommendations = () => {
                     <Chip size="small" label="No weak topics yet" variant="outlined" />
                   )}
                   {weakTopics.slice(0, 6).map((topic) => (
-                    <Chip
+                    <Tooltip
                       key={topic.topicId}
-                      size="small"
-                      icon={<WeaknessIcon sx={{ fontSize: 14 }} />}
-                      label={`${topic.topicId} • ${(topic.weaknessScore * 100).toFixed(0)}% weak`}
-                      color={weakColor(Number(topic.weaknessScore || 0))}
-                      variant="outlined"
-                    />
+                      title={`Reason codes: ${(topic.reasonCodes || []).join(', ') || 'No specific reason code yet'}`}
+                    >
+                      <Chip
+                        size="small"
+                        icon={<WeaknessIcon sx={{ fontSize: 14 }} />}
+                        label={`${topic.topicId} • ${(topic.weaknessScore * 100).toFixed(0)}% weak`}
+                        color={weakColor(Number(topic.weaknessScore || 0))}
+                        variant="outlined"
+                      />
+                    </Tooltip>
                   ))}
                 </Stack>
               </Box>
@@ -308,7 +335,9 @@ const AdaptiveTutorRecommendations = () => {
                 </Typography>
                 <Stack spacing={1}>
                   {recommendations.length === 0 && (
-                    <Alert severity="info" sx={{ borderRadius: 2 }}>No recommendations yet for this course.</Alert>
+                    <Alert severity="info" sx={{ borderRadius: 2 }}>
+                      No recommendations yet for this course. Try attempting a quiz or using AI Tutor quick checks to generate learning signals.
+                    </Alert>
                   )}
                   {recommendations.slice(0, 3).map((rec, index) => (
                     <Paper
@@ -325,6 +354,7 @@ const AdaptiveTutorRecommendations = () => {
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.25 }}>
                             <Chip size="small" label={`#${index + 1}`} color="primary" variant="filled" sx={{ height: 20, fontSize: '0.7rem' }} />
+                              <Chip size="small" label={rec.type || 'Material'} variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
                             <Typography variant="body2" fontWeight={700} noWrap>
                               {rec.title}
                             </Typography>
@@ -332,6 +362,12 @@ const AdaptiveTutorRecommendations = () => {
                           <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                             Topic: {rec.topicId} • Match: {(Number(rec.score || 0) * 100).toFixed(0)}%
                           </Typography>
+                            <LinearProgress
+                              variant="determinate"
+                              value={Math.max(0, Math.min(100, Number(rec.score || 0) * 100))}
+                              color={getMatchTone(Number(rec.score || 0))}
+                              sx={{ mt: 0.6, mb: 0.75, height: 6, borderRadius: 999 }}
+                            />
                           <Typography variant="caption" color="text.secondary">
                             {rec.reason}
                           </Typography>
@@ -359,6 +395,14 @@ const AdaptiveTutorRecommendations = () => {
                           </Tooltip>
                         </Stack>
                       </Stack>
+                        <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                          <Button size="small" variant="text" onClick={() => handleQuickCheck(rec)} startIcon={<SuggestionIcon fontSize="small" />}>
+                            Quick Check
+                          </Button>
+                          <Button size="small" variant="text" onClick={() => handleOpenMaterial(rec)} startIcon={<OpenIcon fontSize="small" />}>
+                            Open
+                          </Button>
+                        </Stack>
                     </Paper>
                   ))}
                 </Stack>
@@ -381,7 +425,7 @@ const AdaptiveTutorRecommendations = () => {
                           key={driver.driver}
                           size="small"
                           variant="outlined"
-                          label={`${driver.driver.replace(/_/g, ' ')} • ${(Number(driver.meanContribution || 0) * 100).toFixed(1)}%`}
+                            label={`${formatDriverLabel(driver.driver)} • ${(Number(driver.meanContribution || 0) * 100).toFixed(1)}%`}
                         />
                       ))}
                     </Stack>
