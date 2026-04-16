@@ -148,7 +148,9 @@ export const getTeacherStats = async (req, res) => {
     });
 
     // Enrollment stats: students enrolled in teacher's courses
-    const teacherCourses = await Course.find({ createdBy: teacherId }).select("_id courseNo courseTitle");
+    const teacherCourses = await Course.find({
+      $or: [{ createdBy: teacherId }, { coTeachers: teacherId }],
+    }).select("_id courseNo courseTitle");
     const teacherCourseIds = teacherCourses.map((c) => c._id);
     const enrolledStudentsTotal = await Enrollment.countDocuments({
       course: { $in: teacherCourseIds },
@@ -175,6 +177,155 @@ export const getTeacherStats = async (req, res) => {
     const totalQuizzes = await Quiz.countDocuments({ createdBy: teacherId });
     const publishedQuizzes = await Quiz.countDocuments({ createdBy: teacherId, isPublished: true });
 
+    // Performance analytics for teacher courses: average quiz %, assignment %, and combined % by course.
+    const [quizByCourseRaw, assignmentByCourseRaw, studentsByCourseRaw] = await Promise.all([
+      QuizAttempt.aggregate([
+        {
+          $lookup: {
+            from: "quizzes",
+            localField: "quiz",
+            foreignField: "_id",
+            as: "quizDoc",
+          },
+        },
+        { $unwind: "$quizDoc" },
+        { $match: { "quizDoc.course": { $in: teacherCourseIds } } },
+        {
+          $group: {
+            _id: "$quizDoc.course",
+            avgQuizPercentage: { $avg: "$percentage" },
+            quizAttempts: { $sum: 1 },
+          },
+        },
+      ]),
+      Submission.aggregate([
+        {
+          $match: {
+            grade: { $ne: null },
+          },
+        },
+        {
+          $lookup: {
+            from: "assignments",
+            localField: "assignment",
+            foreignField: "_id",
+            as: "assignmentDoc",
+          },
+        },
+        { $unwind: "$assignmentDoc" },
+        {
+          $match: {
+            "assignmentDoc.course": { $in: teacherCourseIds },
+            "assignmentDoc.totalMarks": { $gt: 0 },
+          },
+        },
+        {
+          $addFields: {
+            assignmentPercentage: {
+              $multiply: [
+                {
+                  $divide: ["$grade", "$assignmentDoc.totalMarks"],
+                },
+                100,
+              ],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: "$assignmentDoc.course",
+            avgAssignmentPercentage: { $avg: "$assignmentPercentage" },
+            gradedAssignments: { $sum: 1 },
+          },
+        },
+      ]),
+      Enrollment.aggregate([
+        {
+          $match: {
+            course: { $in: teacherCourseIds },
+            status: "active",
+          },
+        },
+        {
+          $group: {
+            _id: "$course",
+            studentCount: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
+
+    const quizByCourseMap = new Map(
+      quizByCourseRaw.map((item) => [
+        item._id.toString(),
+        {
+          avgQuizPercentage: clampPercentage(item.avgQuizPercentage),
+          quizAttempts: Number(item.quizAttempts) || 0,
+        },
+      ])
+    );
+
+    const assignmentByCourseMap = new Map(
+      assignmentByCourseRaw.map((item) => [
+        item._id.toString(),
+        {
+          avgAssignmentPercentage: clampPercentage(item.avgAssignmentPercentage),
+          gradedAssignments: Number(item.gradedAssignments) || 0,
+        },
+      ])
+    );
+
+    const studentsByCourseMap = new Map(
+      studentsByCourseRaw.map((item) => [item._id.toString(), Number(item.studentCount) || 0])
+    );
+
+    const byCourse = teacherCourses
+      .map((course) => {
+        const courseId = course._id.toString();
+        const quizStats = quizByCourseMap.get(courseId) || {
+          avgQuizPercentage: 0,
+          quizAttempts: 0,
+        };
+        const assignmentStats = assignmentByCourseMap.get(courseId) || {
+          avgAssignmentPercentage: 0,
+          gradedAssignments: 0,
+        };
+
+        const overallAverage = clampPercentage(
+          (quizStats.avgQuizPercentage + assignmentStats.avgAssignmentPercentage) / 2
+        );
+
+        return {
+          courseId,
+          courseNo: course.courseNo,
+          courseTitle: course.courseTitle,
+          quizAverage: Number(quizStats.avgQuizPercentage.toFixed(1)),
+          assignmentAverage: Number(assignmentStats.avgAssignmentPercentage.toFixed(1)),
+          overallAverage: Number(overallAverage.toFixed(1)),
+          quizAttempts: quizStats.quizAttempts,
+          gradedAssignments: assignmentStats.gradedAssignments,
+          activeStudents: studentsByCourseMap.get(courseId) || 0,
+          hasPerformanceData:
+            quizStats.quizAttempts > 0 || assignmentStats.gradedAssignments > 0,
+        };
+      })
+      .sort((a, b) => b.overallAverage - a.overallAverage);
+
+    const coursesWithData = byCourse.filter((course) => course.hasPerformanceData);
+    const overallPerformanceAverage = coursesWithData.length
+      ? Number(
+          (
+            coursesWithData.reduce((sum, course) => sum + course.overallAverage, 0) /
+            coursesWithData.length
+          ).toFixed(1)
+        )
+      : 0;
+
+    const bestCourse = coursesWithData.length ? coursesWithData[0] : null;
+    const weakestCourse = coursesWithData.length
+      ? [...coursesWithData].sort((a, b) => a.overallAverage - b.overallAverage)[0]
+      : null;
+
     res.status(200).json({
       materials: {
         total: totalMaterials,
@@ -199,6 +350,27 @@ export const getTeacherStats = async (req, res) => {
       quizzes: {
         total: totalQuizzes,
         published: publishedQuizzes,
+      },
+      performanceAnalytics: {
+        byCourse,
+        summary: {
+          overallAverage: overallPerformanceAverage,
+          coursesWithData: coursesWithData.length,
+          bestCourse: bestCourse
+            ? {
+                courseId: bestCourse.courseId,
+                courseNo: bestCourse.courseNo,
+                overallAverage: bestCourse.overallAverage,
+              }
+            : null,
+          weakestCourse: weakestCourse
+            ? {
+                courseId: weakestCourse.courseId,
+                courseNo: weakestCourse.courseNo,
+                overallAverage: weakestCourse.overallAverage,
+              }
+            : null,
+        },
       },
     });
   } catch (error) {
