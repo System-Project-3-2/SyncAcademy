@@ -456,7 +456,9 @@ export const getStudentStats = async (req, res) => {
     const attemptedQuizzes = await QuizAttempt.countDocuments({ student: studentId });
 
     // Performance analytics: average quiz % and assignment % per course, then average both.
-    const [quizByCourseRaw, assignmentByCourseRaw] = await Promise.all([
+    // A course should appear in the spider graph once the student has either quiz attempts
+    // or assignment submissions (even if assignment grading is still pending).
+    const [quizByCourseRaw, assignmentByCourseRaw, submittedByCourseRaw, assignmentTotalsByCourseRaw] = await Promise.all([
       QuizAttempt.aggregate([
         { $match: { student: studentId } },
         {
@@ -496,7 +498,6 @@ export const getStudentStats = async (req, res) => {
         {
           $match: {
             "assignmentDoc.course": { $in: enrolledCourseIds },
-            "assignmentDoc.isResultPublished": true,
             "assignmentDoc.totalMarks": { $gt: 0 },
           },
         },
@@ -517,6 +518,47 @@ export const getStudentStats = async (req, res) => {
             _id: "$assignmentDoc.course",
             avgAssignmentPercentage: { $avg: "$assignmentPercentage" },
             gradedAssignments: { $sum: 1 },
+          },
+        },
+      ]),
+      Submission.aggregate([
+        {
+          $match: {
+            student: studentId,
+          },
+        },
+        {
+          $lookup: {
+            from: "assignments",
+            localField: "assignment",
+            foreignField: "_id",
+            as: "assignmentDoc",
+          },
+        },
+        { $unwind: "$assignmentDoc" },
+        {
+          $match: {
+            "assignmentDoc.course": { $in: enrolledCourseIds },
+          },
+        },
+        {
+          $group: {
+            _id: "$assignmentDoc.course",
+            submittedAssignments: { $sum: 1 },
+          },
+        },
+      ]),
+      Assignment.aggregate([
+        {
+          $match: {
+            course: { $in: enrolledCourseIds },
+            isPublished: true,
+          },
+        },
+        {
+          $group: {
+            _id: "$course",
+            totalAssignments: { $sum: 1 },
           },
         },
       ]),
@@ -542,6 +584,24 @@ export const getStudentStats = async (req, res) => {
       ])
     );
 
+    const submittedByCourseMap = new Map(
+      submittedByCourseRaw.map((item) => [
+        item._id.toString(),
+        {
+          submittedAssignments: Number(item.submittedAssignments) || 0,
+        },
+      ])
+    );
+
+    const assignmentTotalsByCourseMap = new Map(
+      assignmentTotalsByCourseRaw.map((item) => [
+        item._id.toString(),
+        {
+          totalAssignments: Number(item.totalAssignments) || 0,
+        },
+      ])
+    );
+
     const byCourse = enrolledCourseDocs
       .map((course) => {
         const courseId = course._id.toString();
@@ -553,9 +613,23 @@ export const getStudentStats = async (req, res) => {
           avgAssignmentPercentage: 0,
           gradedAssignments: 0,
         };
+        const submissionStats = submittedByCourseMap.get(courseId) || {
+          submittedAssignments: 0,
+        };
+        const assignmentTotalStats = assignmentTotalsByCourseMap.get(courseId) || {
+          totalAssignments: 0,
+        };
+
+        const fallbackAssignmentPercentage = assignmentTotalStats.totalAssignments > 0
+          ? clampPercentage((submissionStats.submittedAssignments / assignmentTotalStats.totalAssignments) * 100)
+          : 0;
+
+        const assignmentDisplayAverage = assignmentStats.gradedAssignments > 0
+          ? assignmentStats.avgAssignmentPercentage
+          : fallbackAssignmentPercentage;
 
         const overallAverage = clampPercentage(
-          (quizStats.avgQuizPercentage + assignmentStats.avgAssignmentPercentage) / 2
+          (quizStats.avgQuizPercentage + assignmentDisplayAverage) / 2
         );
 
         return {
@@ -563,12 +637,14 @@ export const getStudentStats = async (req, res) => {
           courseNo: course.courseNo,
           courseTitle: course.courseTitle,
           quizAverage: Number(quizStats.avgQuizPercentage.toFixed(1)),
-          assignmentAverage: Number(assignmentStats.avgAssignmentPercentage.toFixed(1)),
+          assignmentAverage: Number(assignmentDisplayAverage.toFixed(1)),
           overallAverage: Number(overallAverage.toFixed(1)),
           quizAttempts: quizStats.quizAttempts,
+          submittedAssignments: submissionStats.submittedAssignments,
+          totalAssignments: assignmentTotalStats.totalAssignments,
           gradedAssignments: assignmentStats.gradedAssignments,
           hasPerformanceData:
-            quizStats.quizAttempts > 0 || assignmentStats.gradedAssignments > 0,
+            quizStats.quizAttempts > 0 || submissionStats.submittedAssignments > 0,
         };
       })
       .sort((a, b) => b.overallAverage - a.overallAverage);

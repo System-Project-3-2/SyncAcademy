@@ -36,11 +36,23 @@ const toShortCourseLabel = (courseNo, courseTitle) => {
 };
 
 const PerformanceSpiderChart = ({ courses = [] }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const chartSize = 500;
   const center = chartSize / 2;
   const maxRadius = 136;
   const rings = [20, 40, 60, 80, 100];
   const radialData = (courses.length ? courses : []).slice(0, MAX_SPIDER_COURSES);
+  const assignmentStroke = isDark ? '#facc15' : '#d97706';
+  const assignmentFill = alpha(assignmentStroke, isDark ? 0.16 : 0.22);
+  const assignmentPointStroke = isDark ? '#fde68a' : '#fef3c7';
+  const quizStroke = isDark ? '#ff4d4f' : '#dc2626';
+  const quizFill = alpha(quizStroke, isDark ? 0.1 : 0.14);
+  const quizPointStroke = isDark ? '#fda4af' : '#fecaca';
+  const axisStroke = alpha(isDark ? '#d5e2ea' : '#1e293b', isDark ? 0.42 : 0.32);
+  const ringStroke = alpha(isDark ? '#dde8ef' : '#334155', isDark ? 0.42 : 0.26);
+  const outerRingStroke = alpha(isDark ? '#edf4f8' : '#0f172a', isDark ? 0.62 : 0.4);
+  const labelColor = alpha(isDark ? '#f8fafc' : theme.palette.text.primary, isDark ? 0.96 : 0.9);
 
   if (!radialData.length) {
     return (
@@ -146,7 +158,7 @@ const PerformanceSpiderChart = ({ courses = [] }) => {
             key={`ring-${rings[index]}`}
             points={points}
             fill="none"
-            stroke={index === ringPolygons.length - 1 ? 'rgba(231, 239, 244, 0.62)' : 'rgba(192, 203, 210, 0.42)'}
+            stroke={index === ringPolygons.length - 1 ? outerRingStroke : ringStroke}
             strokeWidth={index === ringPolygons.length - 1 ? '2.2' : '1.5'}
           />
         ))}
@@ -160,26 +172,26 @@ const PerformanceSpiderChart = ({ courses = [] }) => {
               y1={center}
               x2={axis.x}
               y2={axis.y}
-              stroke="rgba(191, 206, 214, 0.48)"
+              stroke={axisStroke}
               strokeWidth="1.4"
             />
           );
         })}
 
         <polygon
-          points={assignmentPolygonPoints}
-          fill="rgba(255, 235, 59, 0.10)"
-          stroke="#f8e71c"
-          strokeWidth="3.4"
-          filter="url(#teacherAssignmentGlow)"
+          points={quizPolygonPoints}
+          fill={quizFill}
+          stroke={quizStroke}
+          strokeWidth="3.2"
+          filter="url(#teacherQuizGlow)"
         />
 
         <polygon
-          points={quizPolygonPoints}
-          fill="rgba(255, 59, 48, 0.08)"
-          stroke="#ff3b30"
-          strokeWidth="3.2"
-          filter="url(#teacherQuizGlow)"
+          points={assignmentPolygonPoints}
+          fill={assignmentFill}
+          stroke={assignmentStroke}
+          strokeWidth="3.8"
+          filter="url(#teacherAssignmentGlow)"
         />
 
         {radialData.map((course, index) => {
@@ -190,12 +202,12 @@ const PerformanceSpiderChart = ({ courses = [] }) => {
 
           return (
             <g key={`point-${course.courseId || index}`}>
-              <circle cx={assignmentPoint.x} cy={assignmentPoint.y} r="6" fill="#f8e71c" stroke="#fef08a" strokeWidth="1.4" />
-              <circle cx={quizPoint.x} cy={quizPoint.y} r="6" fill="#ff3b30" stroke="#fda4af" strokeWidth="1.4" />
+              <circle cx={assignmentPoint.x} cy={assignmentPoint.y} r="6.4" fill={assignmentStroke} stroke={assignmentPointStroke} strokeWidth="1.6" />
+              <circle cx={quizPoint.x} cy={quizPoint.y} r="6" fill={quizStroke} stroke={quizPointStroke} strokeWidth="1.4" />
               <text
                 x={axis.labelX}
                 y={axis.labelY}
-                fill="rgba(251, 253, 255, 1)"
+                fill={labelColor}
                 textAnchor={axis.anchor}
                 dominantBaseline="middle"
                 style={{ fontSize: '13px', fontWeight: 800, letterSpacing: '0.6px' }}
@@ -209,14 +221,14 @@ const PerformanceSpiderChart = ({ courses = [] }) => {
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.2, flexWrap: 'wrap', justifyContent: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
-          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#f8e71c', boxShadow: '0 0 8px rgba(248,231,28,0.7)' }} />
-          <Typography variant="body2" sx={{ color: alpha('#f8fafc', 0.9), fontWeight: 700 }}>
+          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: assignmentStroke, boxShadow: `0 0 8px ${alpha(assignmentStroke, 0.72)}` }} />
+          <Typography variant="body2" sx={{ color: labelColor, fontWeight: 700 }}>
             Assignment
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
-          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#ff3b30', boxShadow: '0 0 8px rgba(255,59,48,0.72)' }} />
-          <Typography variant="body2" sx={{ color: alpha('#f8fafc', 0.9), fontWeight: 700 }}>
+          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: quizStroke, boxShadow: `0 0 8px ${alpha(quizStroke, 0.72)}` }} />
+          <Typography variant="body2" sx={{ color: labelColor, fontWeight: 700 }}>
             Quiz
           </Typography>
         </Box>
@@ -337,7 +349,8 @@ const TeacherDashboard = () => {
         </Grid>
       </Grid>
 
-      {/* Quick Actions and Recent Feedbacks */}
+      {/* Spider graph is student-only. Keep teacher dashboard focused on materials and feedback workflows. */}
+      {false && (
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12}>
           <Paper
@@ -517,6 +530,7 @@ const TeacherDashboard = () => {
           </Paper>
         </Grid>
       </Grid>
+      )}
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
