@@ -21,61 +21,181 @@ import {
 } from "../utils/ktExplainability.js";
 
 
+const ALLOWED_SOURCE_TYPES = ["quiz", "assignment", "material", "hint"];
+const ALLOWED_EVENT_TYPES = [
+  "question_attempt",
+  "assignment_attempt",
+  "material_view",
+  "material_download",
+  "hint_used",
+];
+const ALLOWED_DIFFICULTIES = ["easy", "medium", "hard", "unknown"];
+const ATTEMPT_EVENT_TYPES = new Set(["question_attempt", "assignment_attempt"]);
+
+const hasValue = (value) => value !== undefined && value !== null && value !== "";
+
+const parseNumberOrNull = (value) => {
+  if (!hasValue(value)) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseBooleanOrNull = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") {
+    if (value === 1) return true;
+    if (value === 0) return false;
+    return null;
+  }
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim().toLowerCase();
+  if (["true", "1", "yes"].includes(normalized)) return true;
+  if (["false", "0", "no"].includes(normalized)) return false;
+  return null;
+};
+
+const parseDateOrNull = (value) => {
+  if (!hasValue(value)) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const normalizeDifficulty = (value) => {
+  if (!hasValue(value)) return "unknown";
+  const normalized = String(value).trim().toLowerCase();
+  return ALLOWED_DIFFICULTIES.includes(normalized) ? normalized : null;
+};
+
+const normalizeEventPayload = (payload = {}) => {
+  const eventType = String(payload.eventType || "").trim();
+  const isAttempt = ATTEMPT_EVENT_TYPES.has(eventType);
+  const normalizedScore = parseNumberOrNull(payload.normalizedScore);
+  const parsedIsCorrect = parseBooleanOrNull(payload.isCorrect);
+
+  const derivedIsCorrect =
+    parsedIsCorrect != null
+      ? parsedIsCorrect
+      : isAttempt && normalizedScore != null
+        ? normalizedScore >= 0.5
+        : null;
+
+  const eventTimestampRaw = payload.eventTimestamp ?? payload.timestamp;
+
+  return {
+    ...payload,
+    topicId: String(payload.topicId || "").trim(),
+    sourceType: String(payload.sourceType || "").trim(),
+    eventType,
+    isCorrect: derivedIsCorrect,
+    normalizedScore,
+    difficulty: normalizeDifficulty(payload.difficulty),
+    timeSpentSec: parseNumberOrNull(payload.timeSpentSec ?? payload.timeTaken),
+    responseLatencySec: parseNumberOrNull(payload.responseLatencySec),
+    attemptNo: parseNumberOrNull(payload.attemptNo ?? payload.attemptIndex),
+    hintUsed: parseBooleanOrNull(payload.hintUsed),
+    explanationViewed: parseBooleanOrNull(payload.explanationViewed),
+    materialTopicMatchScore: parseNumberOrNull(payload.materialTopicMatchScore),
+    eventTimestampRaw,
+    parsedEventTimestamp: parseDateOrNull(eventTimestampRaw),
+  };
+};
+
+
 const validateEventPayload = (body) => {
+  const normalized = normalizeEventPayload(body);
+
   const required = ["courseId", "topicId", "sourceType", "eventType"];
   for (const key of required) {
-    if (!body[key]) return `Missing required field: ${key}`;
+    if (!hasValue(normalized[key])) return `Missing required field: ${key}`;
   }
 
-  if (!["quiz", "assignment", "material", "hint"].includes(body.sourceType)) {
+  if (!ALLOWED_SOURCE_TYPES.includes(normalized.sourceType)) {
     return "sourceType must be one of quiz, assignment, material, hint";
   }
 
-  if (
-    (body.eventType === "question_attempt" || body.eventType === "assignment_attempt") &&
-    typeof body.isCorrect !== "boolean" &&
-    typeof body.normalizedScore !== "number"
-  ) {
-    return "question_attempt/assignment_attempt requires isCorrect or normalizedScore";
+  if (!ALLOWED_EVENT_TYPES.includes(normalized.eventType)) {
+    return "eventType must be one of question_attempt, assignment_attempt, material_view, material_download, hint_used";
   }
 
-  if (body.normalizedScore != null && (body.normalizedScore < 0 || body.normalizedScore > 1)) {
+  if (hasValue(body.isCorrect) && normalized.isCorrect == null) {
+    return "isCorrect must be a boolean";
+  }
+
+  if (hasValue(body.hintUsed) && normalized.hintUsed == null) {
+    return "hintUsed must be a boolean";
+  }
+
+  if (hasValue(body.difficulty) && normalized.difficulty == null) {
+    return "difficulty must be one of easy, medium, hard, unknown";
+  }
+
+  if (hasValue(body.eventTimestamp) || hasValue(body.timestamp)) {
+    if (!normalized.parsedEventTimestamp) {
+      return "eventTimestamp/timestamp must be a valid date";
+    }
+  }
+
+  if (hasValue(body.timeSpentSec) || hasValue(body.timeTaken)) {
+    if (normalized.timeSpentSec == null) {
+      return "timeSpentSec must be a valid number";
+    }
+  }
+
+  if (normalized.normalizedScore != null && (normalized.normalizedScore < 0 || normalized.normalizedScore > 1)) {
     return "normalizedScore must be between 0 and 1";
   }
 
-  if (body.timeSpentSec != null && body.timeSpentSec < 0) {
+  if (normalized.timeSpentSec != null && normalized.timeSpentSec < 0) {
     return "timeSpentSec must be >= 0";
+  }
+
+  if (ATTEMPT_EVENT_TYPES.has(normalized.eventType)) {
+    if (!hasValue(body.difficulty)) {
+      return "question_attempt/assignment_attempt requires difficulty";
+    }
+    if (!hasValue(body.timeSpentSec) && !hasValue(body.timeTaken)) {
+      return "question_attempt/assignment_attempt requires timeSpentSec";
+    }
+    if (!hasValue(body.hintUsed)) {
+      return "question_attempt/assignment_attempt requires hintUsed";
+    }
+    if (normalized.isCorrect == null && normalized.normalizedScore == null) {
+      return "question_attempt/assignment_attempt requires isCorrect or normalizedScore";
+    }
   }
 
   return null;
 };
 
-const toEventDoc = (payload, studentId) => ({
-  student: studentId,
-  course: payload.courseId,
-  topicId: payload.topicId,
-  subtopicId: payload.subtopicId || "",
-  sourceType: payload.sourceType,
-  sourceId: payload.sourceId || null,
-  questionId: payload.questionId || null,
-  eventType: payload.eventType,
-  isCorrect: typeof payload.isCorrect === "boolean" ? payload.isCorrect : null,
-  rawScore: payload.rawScore ?? null,
-  normalizedScore: payload.normalizedScore ?? null,
-  difficulty: payload.difficulty || "unknown",
-  timeSpentSec: Number(payload.timeSpentSec || payload.timeTaken || 0),
-  responseLatencySec: Number(payload.responseLatencySec || 0),
-  attemptNo: Number(payload.attemptNo || payload.attemptIndex || 1),
-  hintUsed: Boolean(payload.hintUsed),
-  explanationViewed: Boolean(payload.explanationViewed),
-  materialId: payload.materialId || null,
-  materialType: payload.materialType || "",
-  materialTopicMatchScore: Number(payload.materialTopicMatchScore || 0),
-  eventTimestamp: payload.eventTimestamp || payload.timestamp
-    ? new Date(payload.eventTimestamp || payload.timestamp)
-    : new Date(),
-  metadata: payload.metadata || {},
-});
+const toEventDoc = (payload, studentId) => {
+  const normalized = normalizeEventPayload(payload);
+
+  return {
+    student: studentId,
+    course: payload.courseId,
+    topicId: normalized.topicId,
+    subtopicId: payload.subtopicId || "",
+    sourceType: normalized.sourceType,
+    sourceId: payload.sourceId || null,
+    questionId: payload.questionId || null,
+    eventType: normalized.eventType,
+    isCorrect: normalized.isCorrect,
+    rawScore: payload.rawScore ?? null,
+    normalizedScore: normalized.normalizedScore,
+    difficulty: normalized.difficulty || "unknown",
+    timeSpentSec: normalized.timeSpentSec ?? 0,
+    responseLatencySec: normalized.responseLatencySec ?? 0,
+    attemptNo: Math.max(1, Math.round(normalized.attemptNo ?? 1)),
+    hintUsed: normalized.hintUsed ?? false,
+    explanationViewed: normalized.explanationViewed ?? false,
+    materialId: payload.materialId || null,
+    materialType: payload.materialType || "",
+    materialTopicMatchScore: clamp01(normalized.materialTopicMatchScore ?? 0),
+    eventTimestamp: normalized.parsedEventTimestamp || new Date(),
+    metadata: payload.metadata || {},
+  };
+};
 
 const paginateItems = (items, page = 1, limit = 10) => {
   const safePage = Math.max(1, Number(page || 1));

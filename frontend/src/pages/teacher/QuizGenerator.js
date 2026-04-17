@@ -168,7 +168,7 @@ const QuizGenerator = () => {
       toast.success('Quiz published! Students can now take it.');
       navigate(`/${user.role}/courses/${quiz.course._id || quiz.course}/quizzes`);
     } catch (err) {
-      toast.error('Failed to publish quiz');
+      toast.error(err.response?.data?.message || 'Failed to publish quiz');
     } finally {
       setPublishing(false);
     }

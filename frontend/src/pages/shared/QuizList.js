@@ -102,7 +102,7 @@ const QuizList = () => {
       toast.success(menuQuiz.isPublished ? 'Quiz unpublished' : 'Quiz published');
       fetchQuizzes();
     } catch (err) {
-      toast.error('Failed to update quiz');
+      toast.error(err.response?.data?.message || 'Failed to update quiz');
     }
     handleMenuClose();
   };

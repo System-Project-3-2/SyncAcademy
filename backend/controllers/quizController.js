@@ -71,9 +71,52 @@ const getScheduleStatus = (quiz) => {
   return "available";
 };
 
+const toTopicSlug = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 64);
+
+const inferTopicIdFromQuestion = (question = {}) => {
+  const questionText = String(question.questionText || "");
+  const sourceChunk = String(question.sourceChunk || "");
+  const candidates = [];
+
+  const leadingBracketMatch = questionText.match(/^\s*\(([^)]+)\)/);
+  if (leadingBracketMatch?.[1]) candidates.push(leadingBracketMatch[1]);
+
+  const topicLabelMatch = questionText.match(/\btopic\s*[:\-]\s*([a-zA-Z0-9 _-]{2,64})/i);
+  if (topicLabelMatch?.[1]) candidates.push(topicLabelMatch[1]);
+
+  const sourceTopicMatch = sourceChunk.match(/\btopic\s*[:\-]\s*([a-zA-Z0-9 _-]{2,64})/i);
+  if (sourceTopicMatch?.[1]) candidates.push(sourceTopicMatch[1]);
+
+  for (const candidate of candidates) {
+    const slug = toTopicSlug(candidate);
+    if (slug) return slug;
+  }
+
+  return "unknown_topic";
+};
+
 const sanitizeQuestionTopicTags = (q, userId) => {
   const rawTags = normalizeTopicTags(q.topicTags || []);
-  return rawTags.map((tag) => ({
+  const ensured = rawTags.length
+    ? rawTags
+    : [
+        {
+          topicId: inferTopicIdFromQuestion(q),
+          subtopicId: "",
+          confidence: 0.6,
+          source: "auto",
+          taggedBy: userId,
+          taggedAt: new Date(),
+        },
+      ];
+
+  return ensured.map((tag) => ({
     ...tag,
     taggedBy: tag.taggedBy || userId,
     taggedAt: tag.taggedAt || new Date(),
@@ -112,16 +155,35 @@ export const generateQuiz = async (req, res) => {
     // Generate questions using AI
     const questions = await generateQuizFromMaterials(course.courseNo, count, diff, materialId || null, courseId);
 
+    const sanitizedQuestions = (questions || []).map((q, index) => {
+      const safeOptions = Array.isArray(q.options) && q.options.length === 4
+        ? q.options.map((option) => String(option || "").trim())
+        : ["Option A", "Option B", "Option C", "Option D"];
+      const normalizedCorrectAnswer = Number(q.correctAnswer);
+
+      return {
+        questionText: String(q.questionText || `Question ${index + 1}`).trim(),
+        options: safeOptions,
+        correctAnswer: Number.isFinite(normalizedCorrectAnswer)
+          ? Math.max(0, Math.min(3, Math.trunc(normalizedCorrectAnswer)))
+          : 0,
+        explanation: q.explanation ? String(q.explanation).trim() : "",
+        difficulty: ["easy", "medium", "hard"].includes(q.difficulty) ? q.difficulty : diff,
+        sourceChunk: q.sourceChunk ? String(q.sourceChunk) : "",
+        topicTags: sanitizeQuestionTopicTags(q, req.user._id),
+      };
+    });
+
     // Create quiz (unpublished so teacher can review)
     const quiz = await Quiz.create({
       course: courseId,
       createdBy: req.user._id,
       title: title.trim(),
       description: description ? description.trim() : "",
-      questions,
+      questions: sanitizedQuestions,
       isPublished: false,
       timeLimit: timeLimit ? Number(timeLimit) : null,
-      totalQuestions: questions.length,
+      totalQuestions: sanitizedQuestions.length,
     });
 
     const populated = await Quiz.findById(quiz._id)
@@ -489,6 +551,13 @@ export const publishQuiz = async (req, res) => {
     const requestedPublish = req.body.publish !== undefined ? Boolean(req.body.publish) : !quiz.isPublished;
 
     if (requestedPublish) {
+      (quiz.questions || []).forEach((question, index) => {
+        const existing = normalizeTopicTags(question.topicTags || []);
+        if (!existing.length) {
+          quiz.questions[index].topicTags = sanitizeQuestionTopicTags(question, req.user._id);
+        }
+      });
+
       const validation = validateQuizTopicTagsForPublish(quiz);
       if (!validation.ok) {
         return res.status(400).json({

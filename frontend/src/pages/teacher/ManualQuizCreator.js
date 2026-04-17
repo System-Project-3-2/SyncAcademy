@@ -153,8 +153,8 @@ const ManualQuizCreator = () => {
       await quizService.publishQuiz(quiz._id, true);
       toast.success('Quiz published! Students can now take it.');
       navigate(`/${user.role}/courses/${quiz.course._id || quiz.course}/quizzes`);
-    } catch {
-      toast.error('Failed to publish quiz');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to publish quiz');
     } finally {
       setPublishing(false);
     }

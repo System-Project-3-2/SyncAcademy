@@ -120,8 +120,8 @@ const TeacherQuizDashboard = () => {
       await quizService.publishQuiz(menuQuiz._id, !menuQuiz.isPublished);
       toast.success(menuQuiz.isPublished ? 'Quiz unpublished' : 'Quiz published — students notified!');
       fetchQuizzes();
-    } catch {
-      toast.error('Failed to update quiz status');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update quiz status');
     }
     handleMenuClose();
   };
@@ -316,8 +316,8 @@ const TeacherQuizDashboard = () => {
                     await quizService.publishQuiz(quiz._id, !quiz.isPublished);
                     toast.success(quiz.isPublished ? 'Quiz unpublished' : 'Quiz published — students notified!');
                     fetchQuizzes();
-                  } catch {
-                    toast.error('Failed to update quiz status');
+                  } catch (err) {
+                    toast.error(err.response?.data?.message || 'Failed to update quiz status');
                   }
                 }}
               >

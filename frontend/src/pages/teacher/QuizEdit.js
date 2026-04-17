@@ -155,7 +155,7 @@ const QuizEdit = () => {
       toast.success(quiz.isPublished ? 'Quiz unpublished' : 'Quiz published');
       fetchQuiz();
     } catch (err) {
-      toast.error('Failed to update quiz');
+      toast.error(err.response?.data?.message || 'Failed to update quiz');
     } finally {
       setPublishing(false);
     }

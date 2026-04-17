@@ -34,6 +34,11 @@ const ktService = {
     const response = await api.post('/kt/events', payload);
     return response.data;
   },
+
+  logLearningEventsBulk: async (events = []) => {
+    const response = await api.post('/kt/events/bulk', { events });
+    return response.data;
+  },
 };
 
 export default ktService;

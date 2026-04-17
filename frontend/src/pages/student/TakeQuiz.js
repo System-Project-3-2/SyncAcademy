@@ -35,8 +35,61 @@ import {
   EventBusy as ExpiredIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
-import { quizService } from '../../services';
+import { quizService, ktService } from '../../services';
 import { PageHeader, LoadingSpinner } from '../../components';
+
+const getQuestionTopicId = (question) => {
+  const tags = Array.isArray(question?.topicTags) ? question.topicTags : [];
+  const primaryTag = tags.find((tag) => typeof tag?.topicId === 'string' && tag.topicId.trim());
+  if (primaryTag?.topicId) return primaryTag.topicId.trim();
+  return 'unknown_topic';
+};
+
+const buildQuizAttemptLearningEvents = ({ quizData, attemptData }) => {
+  const questions = Array.isArray(quizData?.questions) ? quizData.questions : [];
+  const answers = Array.isArray(attemptData?.answers) ? attemptData.answers : [];
+  const courseId = quizData?.course?._id || quizData?.course;
+  const quizSourceId = quizData?._id;
+  const completedAt = attemptData?.completedAt || new Date().toISOString();
+  const totalTimeSec = Number(attemptData?.timeTaken || 0);
+  const perQuestionTime = Math.max(
+    1,
+    Math.round(totalTimeSec / Math.max(1, answers.length || questions.length || 1))
+  );
+
+  if (!courseId || !quizSourceId || !answers.length) return [];
+
+  return answers
+    .map((answer) => {
+      const questionIndex = Number(answer?.questionIndex);
+      const selectedAnswer = Number(answer?.selectedAnswer);
+      if (!Number.isInteger(questionIndex) || questionIndex < 0) return null;
+
+      const question = questions[questionIndex];
+      if (!question) return null;
+
+      const correctAnswer = Number(question?.correctAnswer);
+      const isCorrect = Number.isInteger(correctAnswer) ? selectedAnswer === correctAnswer : false;
+
+      return {
+        courseId,
+        topicId: getQuestionTopicId(question),
+        sourceType: 'quiz',
+        eventType: 'question_attempt',
+        sourceId: quizSourceId,
+        questionId: question?._id,
+        isCorrect,
+        difficulty: question?.difficulty || 'medium',
+        timeSpentSec: perQuestionTime,
+        hintUsed: false,
+        eventTimestamp: completedAt,
+        metadata: {
+          quizAttemptId: attemptData?._id,
+        },
+      };
+    })
+    .filter(Boolean);
+};
 
 const TakeQuiz = () => {
   const { quizId } = useParams();
@@ -147,6 +200,15 @@ const TakeQuiz = () => {
         questionOrder,
         optionOrders,
       });
+
+      const learningEvents = buildQuizAttemptLearningEvents({
+        quizData: data?.quiz,
+        attemptData: data?.attempt,
+      });
+
+      if (learningEvents.length) {
+        ktService.logLearningEventsBulk(learningEvents).catch(() => {});
+      }
 
       setResult(data.attempt);
       // Update quiz with full question data (answers visible now)
