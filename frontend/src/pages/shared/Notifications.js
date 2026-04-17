@@ -186,6 +186,10 @@ const Notifications = () => {
                     '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.08) },
                     py: 1.5,
                     px: 2,
+                    '& .MuiListItemSecondaryAction-root': {
+                      top: '68%',
+                      transform: 'translateY(-50%)',
+                    },
                   }}
                 >
                   <ListItemIcon sx={{ minWidth: 40 }}>

@@ -13,6 +13,9 @@ import {
   validateQuizTopicTagsForPublish,
 } from "../utils/topicTagValidation.js";
 
+const ENFORCE_QUIZ_TOPIC_TAGS_ON_PUBLISH =
+  String(process.env.ENFORCE_QUIZ_TOPIC_TAGS_ON_PUBLISH || "false").toLowerCase() === "true";
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const canManageCourse = async (userId, courseId, userRole) => {
@@ -549,6 +552,7 @@ export const publishQuiz = async (req, res) => {
 
     const wasPublished = quiz.isPublished;
     const requestedPublish = req.body.publish !== undefined ? Boolean(req.body.publish) : !quiz.isPublished;
+    let validationWarning = null;
 
     if (requestedPublish) {
       (quiz.questions || []).forEach((question, index) => {
@@ -560,10 +564,13 @@ export const publishQuiz = async (req, res) => {
 
       const validation = validateQuizTopicTagsForPublish(quiz);
       if (!validation.ok) {
-        return res.status(400).json({
-          message: "Cannot publish quiz: topic tags are missing for some questions",
-          validation,
-        });
+        if (ENFORCE_QUIZ_TOPIC_TAGS_ON_PUBLISH) {
+          return res.status(400).json({
+            message: "Cannot publish quiz: topic tags are missing for some questions",
+            validation,
+          });
+        }
+        validationWarning = validation;
       }
     }
 
@@ -581,7 +588,11 @@ export const publishQuiz = async (req, res) => {
       }).catch(() => {});
     }
 
-    res.json({ message: quiz.isPublished ? "Quiz published" : "Quiz unpublished", quiz });
+    res.json({
+      message: quiz.isPublished ? "Quiz published" : "Quiz unpublished",
+      quiz,
+      validationWarning,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

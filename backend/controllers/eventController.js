@@ -26,6 +26,24 @@ const EVENT_TYPE_LABELS = {
   project_show: "Project Show",
 };
 
+const getComputedEventStatus = (eventDate, existingStatus) => {
+  if (!eventDate) return existingStatus || "upcoming";
+  if (existingStatus === "completed") return "completed";
+
+  const now = Date.now();
+  const startTime = new Date(eventDate).getTime();
+  if (Number.isNaN(startTime)) return existingStatus || "upcoming";
+
+  return now < startTime ? "upcoming" : "completed";
+};
+
+const withComputedStatus = (eventDoc) => {
+  if (!eventDoc) return eventDoc;
+  const eventObj = typeof eventDoc.toObject === "function" ? eventDoc.toObject() : { ...eventDoc };
+  eventObj.status = getComputedEventStatus(eventObj.eventDate, eventObj.status);
+  return eventObj;
+};
+
 // ─────────────────────────────────────────────
 // Teacher: Create Event
 // ─────────────────────────────────────────────
@@ -122,7 +140,8 @@ export const getMyEvents = async (req, res) => {
       .populate("courses.teacher", "name email")
       .sort("-eventDate");
 
-    res.status(200).json(events);
+    const normalized = events.map((event) => withComputedStatus(event));
+    res.status(200).json(normalized);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -157,7 +176,7 @@ export const getEventById = async (req, res) => {
       .populate("student", "name email studentId")
       .sort("createdAt");
 
-    res.status(200).json({ event, registrations });
+    res.status(200).json({ event: withComputedStatus(event), registrations });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -247,7 +266,8 @@ export const registerForEvent = async (req, res) => {
 
     if (!event) return res.status(404).json({ message: "Invalid registration code" });
 
-    if (event.status === "completed") {
+    const computedStatus = getComputedEventStatus(event.eventDate, event.status);
+    if (computedStatus === "completed") {
       return res.status(400).json({ message: "This event is already completed. Registration is closed." });
     }
 
@@ -257,7 +277,7 @@ export const registerForEvent = async (req, res) => {
 
     await EventRegistration.create({ event: event._id, student: req.user._id });
 
-    res.status(201).json({ message: "Registered successfully", event });
+    res.status(201).json({ message: "Registered successfully", event: withComputedStatus(event) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -284,7 +304,13 @@ export const getMyRegistrations = async (req, res) => {
       })
       .sort("-createdAt");
 
-    res.status(200).json(regs);
+    const normalized = regs.map((reg) => {
+      const regObj = reg.toObject();
+      regObj.event = withComputedStatus(regObj.event);
+      return regObj;
+    });
+
+    res.status(200).json(normalized);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
