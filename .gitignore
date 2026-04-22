@@ -9,3 +9,9 @@ backend/ml/reports/*
 
 .venv
 *.md
+.venv-linux
+.venv-mac
+.venv-windows
+.plain.md
+.tmp
+.pip-cache

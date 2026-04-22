@@ -349,8 +349,7 @@ const TeacherDashboard = () => {
         </Grid>
       </Grid>
 
-      {/* Spider graph is student-only. Keep teacher dashboard focused on materials and feedback workflows. */}
-      {false && (
+      {/* Spider graph is now enabled for teachers as requested. */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12}>
           <Paper
@@ -530,7 +529,6 @@ const TeacherDashboard = () => {
           </Paper>
         </Grid>
       </Grid>
-      )}
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
