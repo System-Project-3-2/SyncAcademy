@@ -105,7 +105,13 @@ const fetchAndDownload = async (url, filename) => {
     return true;
   } catch {
     // Fallback: just open the URL in a new tab
-    window.open(url, '_blank');
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     return false;
   }
 };
@@ -152,7 +158,15 @@ const FilePreviewDialog = ({ open, onClose, material }) => {
     setError(true);
   };
 
-  const handleOpenExternal = () => window.open(fileUrl, '_blank');
+  const handleOpenExternal = () => {
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleDownload = async () => {
     setDownloading(true);

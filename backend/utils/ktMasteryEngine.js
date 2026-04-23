@@ -26,7 +26,6 @@ export const deriveWeaknessReasonCodes = ({
 
   if (weakness >= 0.55) reasons.push("LOW_MASTERY");
   if ((stats.attempts || 0) < 3) reasons.push("LOW_HISTORY");
-  if ((stats.hintRate || 0) >= 0.4) reasons.push("HIGH_HINT_USAGE");
   if ((stats.avgTimeSec || 0) >= 75) reasons.push("SLOW_RESPONSE_TIME");
   if ((stats.correctAttempts || 0) === 0 && (stats.attempts || 0) > 0) reasons.push("NO_CORRECT_ATTEMPT");
   if (confidence < 0.5) reasons.push("LOW_CONFIDENCE");
@@ -70,7 +69,10 @@ export const buildMaterialRecommendation = ({
   const explicitTopicMatch = topicTagMatchScore(material, topic.topicId);
   const fallbackTextMatch = explicitTopicMatch > 0 ? explicitTopicMatch : textMatchScore(material, topic.topicId);
 
-  const successPrior = clamp01((1 - (topic.stats?.hintRate || 0)) * 0.7 + confidence * 0.3);
+  const attempts = Math.max(0, Number(topic.stats?.attempts || 0));
+  const correctAttempts = Math.max(0, Number(topic.stats?.correctAttempts || 0));
+  const observedAccuracy = attempts > 0 ? correctAttempts / attempts : 0.5;
+  const successPrior = clamp01(observedAccuracy * 0.7 + confidence * 0.3);
   const noveltyPenalty = seenMaterialIds.has(String(material._id)) ? 0.18 : 0;
 
   const finalScore = clamp01(

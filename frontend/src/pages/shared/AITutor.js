@@ -741,6 +741,7 @@ const AITutor = () => {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const healthFailureCountRef = useRef(0);
+  const processedPrefillPromptRef = useRef('');
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -752,13 +753,17 @@ const AITutor = () => {
   }, [messages, isLoading, scrollToBottom]);
 
   useEffect(() => {
-    const prefillPrompt = location.state?.prefillPrompt;
+    const prefillPrompt = location.state?.prefillPrompt?.trim();
     if (!prefillPrompt || isLoading) return;
 
+    if (processedPrefillPromptRef.current === prefillPrompt) {
+      return;
+    }
+    processedPrefillPromptRef.current = prefillPrompt;
+
     handleSend(prefillPrompt);
-    navigate(location.pathname, { replace: true, state: {} });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state, isLoading]);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state?.prefillPrompt, isLoading, navigate]);
 
   // Load sessions on mount
   useEffect(() => {
@@ -988,7 +993,13 @@ const AITutor = () => {
       const response = await materialService.getSignedUrl(materialId);
       const signedUrl = response?.url;
       if (signedUrl) {
-        window.open(signedUrl, '_blank', 'noopener,noreferrer');
+        const link = document.createElement('a');
+        link.href = signedUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       } else {
         navigate(`/${user?.role || 'student'}/materials`);
       }

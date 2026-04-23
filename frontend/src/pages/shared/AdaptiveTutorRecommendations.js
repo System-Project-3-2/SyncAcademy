@@ -189,7 +189,13 @@ const AdaptiveTutorRecommendations = () => {
       const response = await materialService.getSignedUrl(materialId);
       const signedUrl = response?.url;
       if (signedUrl) {
-        window.open(signedUrl, '_blank', 'noopener,noreferrer');
+        const link = document.createElement('a');
+        link.href = signedUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       } else {
         navigate(`/${user?.role || 'student'}/materials`);
       }

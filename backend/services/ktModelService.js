@@ -34,11 +34,6 @@ const buildRuleFeatures = (events) => {
       ? questionEvents.reduce((acc, e) => acc + (e.timeSpentSec || 0), 0) / questionEvents.length
       : 0;
 
-  const hintRate =
-    questionEvents.length > 0
-      ? questionEvents.filter((e) => e.hintUsed).length / questionEvents.length
-      : 0;
-
   const weightedAccuracy =
     questionEvents.length > 0
       ? questionEvents.reduce((acc, e) => {
@@ -54,7 +49,6 @@ const buildRuleFeatures = (events) => {
     accuracy,
     weightedAccuracy,
     avgTimeSec,
-    hintRate,
   };
 };
 
@@ -63,9 +57,8 @@ const ruleBasedPredict = ({ events }) => {
   const alpha = Number(process.env.KT_RULE_SMOOTHING_ALPHA || 0.8);
 
   const timePenalty = features.avgTimeSec > 0 ? Math.min(0.12, features.avgTimeSec / 1500) : 0;
-  const hintPenalty = Math.min(0.1, features.hintRate * 0.2);
 
-  const instant = clamp01(features.weightedAccuracy - timePenalty - hintPenalty);
+  const instant = clamp01(features.weightedAccuracy - timePenalty);
   const masteryScore = clamp01(alpha * 0.5 + (1 - alpha) * instant);
   const confidence = clamp01(Math.min(1, features.attempts / 20));
 
@@ -79,7 +72,8 @@ const ruleBasedPredict = ({ events }) => {
       attempts: features.attempts,
       correctAttempts: features.correctAttempts,
       avgTimeSec: Number(features.avgTimeSec.toFixed(2)),
-      hintRate: Number(features.hintRate.toFixed(4)),
+      // Backward-compatible field retained for existing consumers.
+      hintRate: 0,
     },
     explanation: {
       topDrivers: [
@@ -87,11 +81,6 @@ const ruleBasedPredict = ({ events }) => {
           name: "topic_accuracy",
           impact: Number((features.accuracy - 0.5).toFixed(4)),
           value: Number(features.accuracy.toFixed(4)),
-        },
-        {
-          name: "hint_rate",
-          impact: Number((-features.hintRate * 0.2).toFixed(4)),
-          value: Number(features.hintRate.toFixed(4)),
         },
         {
           name: "avg_time_penalty",
