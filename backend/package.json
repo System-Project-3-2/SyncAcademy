@@ -1,10 +1,30 @@
 {
+  "type": "module",
+  "engines": {
+    "node": "18.x"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "topic-tags:backfill": "node scripts/backfillTopicTags.js",
+    "topic-tags:seed": "node scripts/seedTopicTaxonomy.js",
+    "topic-tags:report": "node scripts/generateTopicTagReport.js",
+    "kt:features:daily": "node scripts/buildDailyKTFeatures.js",
+    "kt:dq:report": "node scripts/ktDataQualityReport.js",
+    "kt:dataset:export": "node scripts/exportKTTrainingDataset.js",
+    "kt:dataset:export:sequence": "node scripts/exportKTSequenceDataset.js",
+    "kt:baseline:train": "python ml/train_baselines.py",
+    "kt:baseline:smoke": "python ml/train_baselines.py --smoke-test",
+    "kt:sequence:train": "python ml/train_sequence_models.py",
+    "kt:sequence:smoke": "python ml/train_sequence_models.py --smoke-test --epochs 2 --batch-size 32",
+    "kt:sequence:evaluate": "python ml/evaluate_sequence_ablation.py",
+    "test:kt": "node --test tests/*.test.js"
+  },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.8.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "express": "^5.2.1",
+    "express": "^4.19.2",
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.11.0",
     "mongoose": "^9.0.2",
@@ -20,22 +40,5 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
-  },
-  "type": "module",
-  "scripts": {
-    "start": "nodemon server.js",
-    "topic-tags:backfill": "node scripts/backfillTopicTags.js",
-    "topic-tags:seed": "node scripts/seedTopicTaxonomy.js",
-    "topic-tags:report": "node scripts/generateTopicTagReport.js",
-    "kt:features:daily": "node scripts/buildDailyKTFeatures.js",
-    "kt:dq:report": "node scripts/ktDataQualityReport.js",
-    "kt:dataset:export": "node scripts/exportKTTrainingDataset.js",
-    "kt:dataset:export:sequence": "node scripts/exportKTSequenceDataset.js",
-    "kt:baseline:train": "python ml/train_baselines.py",
-    "kt:baseline:smoke": "python ml/train_baselines.py --smoke-test",
-    "kt:sequence:train": "python ml/train_sequence_models.py",
-    "kt:sequence:smoke": "python ml/train_sequence_models.py --smoke-test --epochs 2 --batch-size 32",
-    "kt:sequence:evaluate": "python ml/evaluate_sequence_ablation.py",
-    "test:kt": "node --test tests/*.test.js"
   }
 }
