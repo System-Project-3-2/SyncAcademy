@@ -17,6 +17,7 @@ import announcementRoutes from "./routes/announcementRoutes.js";
 import discussionRoutes from "./routes/discussionRoutes.js";import assignmentRoutes from './routes/assignmentRoutes.js';import notificationRoutes from './routes/notificationRoutes.js';import courseInvitationRoutes from './routes/courseInvitationRoutes.js';import eventRoutes from './routes/eventRoutes.js';import quizRoutes from './routes/quizRoutes.js';import deleteResolvedFeedbacks from './utils/cleanupResolvedFeedbacks.js';
 import topicTagRoutes from "./routes/topicTagRoutes.js";
 import knowledgeTracingRoutes from "./routes/knowledgeTracingRoutes.js";
+import recommendationRoutes from "./routes/recommendationRoutes.js";
 import Course, { generateCourseCode } from './models/courseModel.js';
 
 deleteResolvedFeedbacks();
@@ -89,6 +90,8 @@ app.use("/api/quizzes", quizRoutes);
 app.use("/api/topic-tags", topicTagRoutes);
 
 app.use("/api/kt", knowledgeTracingRoutes);
+
+app.use("/", recommendationRoutes);
 
 // Global error handler for multer and other errors
 app.use((err, req, res, next) => {
