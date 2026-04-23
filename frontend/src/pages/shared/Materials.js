@@ -5,7 +5,7 @@
  * - Teacher: CRUD on own materials only
  * - Admin: CRUD on all materials
  */
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -59,6 +59,7 @@ import {
   LibraryBooks as LibraryIcon,
   Person as PersonIcon,
   Visibility as ViewIcon,
+  LocalOffer as TagsIcon,
   Close as CloseIcon,
   Save as SaveIcon,
 } from '@mui/icons-material';
@@ -93,12 +94,13 @@ const formatDate = (dateString) => {
 };
 
 // Material Card Component
-const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit, onDownload, onView }) => {
+const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit, onDownload, onView, onViewTags }) => {
   const theme = useTheme();
   const isOwner = material.uploadedBy?._id === currentUserId;
   const canEdit = userRole === 'admin' || (userRole === 'teacher' && isOwner);
   const canDelete = userRole === 'admin' || (userRole === 'teacher' && isOwner);
   const isReadOnly = userRole === 'student';
+  const topicTagCount = Array.isArray(material.topicTags) ? material.topicTags.length : 0;
 
   return (
     <Card
@@ -215,6 +217,12 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
             {formatDate(material.createdAt)}
           </Typography>
         </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+          <TagsIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+          <Typography variant="caption" color="text.disabled">
+            {topicTagCount} tag{topicTagCount === 1 ? '' : 's'}
+          </Typography>
+        </Box>
       </CardContent>
 
       {/* Card Actions */}
@@ -263,6 +271,21 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
               <ViewIcon fontSize="small" />
             </IconButton>
           </Tooltip>
+          <Tooltip title="View tags">
+            <IconButton
+              size="small"
+              color="secondary"
+              onClick={() => onViewTags(material)}
+              sx={{
+                bgcolor: alpha(theme.palette.secondary.main, 0.08),
+                '&:hover': {
+                  bgcolor: alpha(theme.palette.secondary.main, 0.15),
+                },
+              }}
+            >
+              <TagsIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Box>
         
         {!isReadOnly && (
@@ -309,7 +332,7 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
 };
 
 // Course Group Accordion Component
-const CourseGroup = ({ courseNo, courseTitle, materials, expandedCourse, onExpand, userRole, currentUserId, onDelete, onEdit, onDownload, onView }) => {
+const CourseGroup = ({ courseNo, courseTitle, materials, expandedCourse, onExpand, userRole, currentUserId, onDelete, onEdit, onDownload, onView, onViewTags }) => {
   const theme = useTheme();
   const isExpanded = expandedCourse === courseNo;
 
@@ -417,6 +440,7 @@ const CourseGroup = ({ courseNo, courseTitle, materials, expandedCourse, onExpan
                 onEdit={onEdit}
                 onDownload={onDownload}
                 onView={onView}
+                onViewTags={onViewTags}
               />
             </Grid>
           ))}
@@ -543,6 +567,70 @@ const EditMaterialDialog = ({ open, material, onClose, onSave }) => {
   );
 };
 
+const MaterialTagsDialog = ({ open, material, onClose }) => {
+  const tags = Array.isArray(material?.topicTags) ? material.topicTags : [];
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 3 } }}
+    >
+      <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <TagsIcon color="secondary" />
+        Material Tags
+        <IconButton onClick={onClose} sx={{ ml: 'auto' }}>
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent>
+        <Box sx={{ pt: 1, mb: 1.5 }}>
+          <Typography variant="subtitle2" fontWeight={700} noWrap title={material?.title || material?.courseTitle || ''}>
+            {material?.title || material?.courseTitle || 'Untitled material'}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {material?.courseNo || ''} {material?.courseTitle ? `• ${material.courseTitle}` : ''}
+          </Typography>
+        </Box>
+
+        {tags.length === 0 ? (
+          <Alert severity="info" sx={{ borderRadius: 2 }}>
+            No tags added for this material yet.
+          </Alert>
+        ) : (
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              {tags.length} tag{tags.length === 1 ? '' : 's'}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {tags.map((tag, index) => {
+                const topicLabel = tag?.topicId || tag?.topic || 'topic';
+                const confidence = Number(tag?.confidence ?? 0);
+                return (
+                  <Chip
+                    key={`${topicLabel}-${index}`}
+                    label={confidence > 0 ? `${topicLabel} (${Math.round(confidence * 100)}%)` : topicLabel}
+                    variant="outlined"
+                    size="small"
+                    sx={{ borderRadius: 1.5 }}
+                  />
+                );
+              })}
+            </Box>
+          </Box>
+        )}
+      </DialogContent>
+      <DialogActions sx={{ p: 2.5, pt: 1 }}>
+        <Button onClick={onClose} variant="contained" sx={{ borderRadius: 2 }}>
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 // Loading Skeleton Component
 const MaterialsSkeleton = () => (
   <Box>
@@ -581,6 +669,7 @@ const Materials = () => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, material: null });
   const [editDialog, setEditDialog] = useState({ open: false, material: null });
   const [previewDialog, setPreviewDialog] = useState({ open: false, material: null });
+  const [tagsDialog, setTagsDialog] = useState({ open: false, material: null });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   // Pagination state
@@ -592,11 +681,7 @@ const Materials = () => {
   const userRole = user?.role;
   const currentUserId = user?.id || user?._id;
 
-  useEffect(() => {
-    fetchMaterials();
-  }, [page, pageLimit]);
-
-  const fetchMaterials = async () => {
+  const fetchMaterials = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await materialService.getAllMaterials({
@@ -632,7 +717,11 @@ const Materials = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, pageLimit]);
+
+  useEffect(() => {
+    fetchMaterials();
+  }, [fetchMaterials]);
 
   // Get unique types and courses for filters
   const { types, courses } = useMemo(() => {
@@ -704,6 +793,10 @@ const Materials = () => {
 
   const handleView = (material) => {
     setPreviewDialog({ open: true, material });
+  };
+
+  const handleViewTags = (material) => {
+    setTagsDialog({ open: true, material });
   };
 
   const getPreviewUrl = (fileUrl) => {
@@ -1056,6 +1149,7 @@ const Materials = () => {
               onEdit={handleEditClick}
               onDownload={handleDownload}
               onView={handleView}
+              onViewTags={handleViewTags}
             />
           ))}
           {/* Pagination */}
@@ -1120,6 +1214,12 @@ const Materials = () => {
         material={editDialog.material}
         onClose={() => setEditDialog({ open: false, material: null })}
         onSave={handleEditSave}
+      />
+
+      <MaterialTagsDialog
+        open={tagsDialog.open}
+        material={tagsDialog.material}
+        onClose={() => setTagsDialog({ open: false, material: null })}
       />
 
       {/* Preview Dialog */}
