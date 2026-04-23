@@ -7,10 +7,10 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import fs from "fs/promises";
 import { createWriteStream } from "fs";
+import { createRequire } from "module";
 import os from "os";
 import path from "path";
 import PDFDocument from "pdfkit";
-import PptxGenJS from "pptxgenjs";
 import Course from "../models/courseModel.js";
 import Material from "../models/materialModel.js";
 import MaterialChunk from "../models/materialChunkModel.js";
@@ -20,6 +20,9 @@ import LearningEvent from "../models/learningEventModel.js";
 import TopicMastery from "../models/topicMasteryModel.js";
 import uploadToCloudinary from "../utils/cloudinaryUpload.js";
 import deletefromCloudinary from "../utils/cloudinaryDelete.js";
+
+const require = createRequire(import.meta.url);
+const PptxGenJS = require("pptxgenjs");
 
 const clamp01 = (value) => Math.max(0, Math.min(1, Number(value ?? 0)));
 const randomPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
