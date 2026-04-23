@@ -57,6 +57,7 @@ const AdaptiveTutorRecommendations = () => {
   const recommendations = (insights?.recommendations?.items || []).filter(
     (item) => !dismissedIds.has(String(item.materialId))
   );
+  const signalSummary = insights?.signalSummary || {};
   const globalDrivers = explainability?.recommendationExplainability?.globalDrivers || [];
   const increasedActions = explainability?.topContributingActions?.increasedMastery || [];
   const decreasedActions = explainability?.topContributingActions?.decreasedMastery || [];
@@ -284,6 +285,7 @@ const AdaptiveTutorRecommendations = () => {
               <Chip size="small" label={`Mastery ${(insights.masterySummary.overallMastery * 100).toFixed(0)}%`} color="primary" variant="outlined" />
               <Chip size="small" label={`Risk Topics ${insights.masterySummary.highRiskTopics}`} color="warning" variant="outlined" />
               <Chip size="small" label={`Confidence ${(insights.masterySummary.averageConfidence * 100).toFixed(0)}%`} color="info" variant="outlined" />
+              <Chip size="small" label={`Signals ${signalSummary.topicsDiscovered ?? 0}`} color="success" variant="outlined" />
             </Stack>
           )}
 
@@ -412,6 +414,11 @@ const AdaptiveTutorRecommendations = () => {
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75, fontWeight: 700 }}>
                   Recommendation Insights
                 </Typography>
+                {(signalSummary.topicsDiscovered || signalSummary.masteryUpdated) && (
+                  <Alert severity="success" sx={{ mb: 1, borderRadius: 2 }}>
+                    Signals found: {signalSummary.topicsDiscovered || 0} topic groups, {signalSummary.masteryUpdated || 0} mastery rows refreshed.
+                  </Alert>
+                )}
                 {explainabilityLoading ? (
                   <LinearProgress sx={{ borderRadius: 2 }} />
                 ) : (

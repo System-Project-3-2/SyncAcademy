@@ -23,8 +23,8 @@ import { cosineSimilarity } from '../utils/cosineSimilarity.js';
 //  noContextThreshold– if best score < this, abort (no relevant material at all)
 //
 const RETRIEVAL_CONFIG = {
-  simple:   { topK: 3, threshold: 0.50, noContextThreshold: 0.42 },
-  moderate: { topK: 5, threshold: 0.42, noContextThreshold: 0.36 },
+  simple:   { topK: 4, threshold: 0.46, noContextThreshold: 0.39 },
+  moderate: { topK: 6, threshold: 0.39, noContextThreshold: 0.34 },
   complex:  { topK: 8, threshold: 0.35, noContextThreshold: 0.30 },
 };
 

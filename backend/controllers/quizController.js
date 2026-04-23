@@ -4,14 +4,17 @@
  */
 import Quiz from "../models/quizModel.js";
 import QuizAttempt from "../models/quizAttemptModel.js";
+import LearningEvent from "../models/learningEventModel.js";
 import Course from "../models/courseModel.js";
 import Enrollment from "../models/enrollmentModel.js";
 import { generateQuiz as generateQuizFromMaterials } from "../services/quizGeneratorService.js";
+import { inferTopicTagsFromText } from "../services/topicTaggingService.js";
 import { notifyEnrolledStudents } from "../utils/notificationHelper.js";
 import {
   normalizeTopicTags,
   validateQuizTopicTagsForPublish,
 } from "../utils/topicTagValidation.js";
+import { refreshTopicMasteryForTopics } from "../utils/ktSignalSync.js";
 
 const ENFORCE_QUIZ_TOPIC_TAGS_ON_PUBLISH =
   String(process.env.ENFORCE_QUIZ_TOPIC_TAGS_ON_PUBLISH || "false").toLowerCase() === "true";
@@ -781,6 +784,67 @@ export const submitAttempt = async (req, res) => {
       questionOrder: hasRandomization ? questionOrder : [],
       optionOrders: hasRandomization ? optionOrders : [],
     });
+
+    const secondsPerQuestion = Math.max(1, Math.round(timeTaken / Math.max(1, gradedAnswers.length)));
+    const learningEvents = [];
+
+    for (const answer of gradedAnswers) {
+      const question = quiz.questions[Number(answer.questionIndex)];
+      if (!question) continue;
+
+      let topicTags = normalizeTopicTags(question.topicTags || []);
+      if (!topicTags.length) {
+        const inference = await inferTopicTagsFromText({
+          text: `${question.questionText || ""}\n${question.explanation || ""}`,
+          courseId: quiz.course,
+          taggedBy: req.user._id,
+        });
+        topicTags = inference.tags || [];
+      }
+
+      const isCorrect = Number(question.correctAnswer) === Number(answer.selectedAnswer);
+      const normalizedScore = isCorrect ? 1 : 0;
+
+      for (const tag of topicTags) {
+        learningEvents.push({
+          student: req.user._id,
+          course: quiz.course,
+          topicId: tag.topicId,
+          subtopicId: tag.subtopicId || "",
+          sourceType: "quiz",
+          sourceId: quiz._id,
+          questionId: question._id,
+          eventType: "question_attempt",
+          isCorrect,
+          rawScore: normalizedScore,
+          normalizedScore,
+          difficulty: question.difficulty || "unknown",
+          timeSpentSec: secondsPerQuestion,
+          attemptNo: 1,
+          hintUsed: false,
+          explanationViewed: false,
+          materialId: null,
+          materialType: "",
+          materialTopicMatchScore: 0,
+          eventTimestamp: now,
+          metadata: {
+            quizId: quiz._id,
+            attemptId: attempt._id,
+            questionIndex: Number(answer.questionIndex),
+            randomized: hasRandomization,
+          },
+        });
+      }
+    }
+
+    if (learningEvents.length) {
+      await LearningEvent.insertMany(learningEvents, { ordered: false });
+      await refreshTopicMasteryForTopics({
+        studentId: req.user._id,
+        courseId: quiz.course,
+        topicIds: learningEvents.map((event) => event.topicId),
+      });
+    }
 
     // Return full quiz with answers for review
     const fullQuiz = quiz.toObject();

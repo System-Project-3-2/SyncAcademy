@@ -99,7 +99,7 @@ Tutor's Answer:`;
 // ── Run all tests ──
 async function main() {
   console.log('🔧 Student-Aid RAG System Test');
-  console.log(`   Model: ${process.env.OLLAMA_MODEL || 'tinyllama'}`);
+  console.log(`   Model: ${process.env.OLLAMA_MODEL || 'llama3.1'}`);
   console.log(`   Ollama URL: ${process.env.OLLAMA_BASE_URL || 'http://localhost:11434'}`);
   console.log(`   Embedding: ${process.env.EMBEDDING_PROVIDER || 'huggingface'}`);
   

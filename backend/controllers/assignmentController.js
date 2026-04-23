@@ -13,6 +13,9 @@ import path from "path";
 import PDFDocument from "pdfkit";
 import { notifyEnrolledStudents, createNotification } from "../utils/notificationHelper.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import LearningEvent from "../models/learningEventModel.js";
+import { inferTopicTagsFromText } from "../services/topicTaggingService.js";
+import { refreshTopicMasteryForTopics } from "../utils/ktSignalSync.js";
 import fs from "fs";
 import os from "os";
 
@@ -28,6 +31,8 @@ const uploadFiles = async (files = []) => {
   }
   return results;
 };
+
+const clamp01 = (value) => Math.max(0, Math.min(1, Number(value ?? 0)));
 
 /**
  * Check if user can manage (create/edit/delete) assignments for a course
@@ -525,6 +530,74 @@ export const gradeSubmission = async (req, res) => {
     submission.gradedBy = req.user._id;
     submission.gradedAt = new Date();
     await submission.save();
+
+    const course = await Course.findById(assignment.course).select("courseNo").lean();
+    if (course?.courseNo) {
+      const inference = await inferTopicTagsFromText({
+        text: [assignment.title, assignment.description, submission.textContent].filter(Boolean).join("\n"),
+        courseId: assignment.course,
+        taggedBy: req.user._id,
+      });
+
+      if (inference.tags.length) {
+        const normalizedScore = clamp01(Number(grade) / Math.max(1, Number(assignment.totalMarks || 100)));
+        const isCorrect = normalizedScore >= 0.5;
+        const eventTimestamp = new Date();
+
+        await LearningEvent.bulkWrite(
+          inference.tags.map((tag) => ({
+            updateOne: {
+              filter: {
+                student: submission.student,
+                course: assignment.course,
+                topicId: tag.topicId,
+                sourceId: assignment._id,
+                eventType: "assignment_attempt",
+              },
+              update: {
+                $set: {
+                  student: submission.student,
+                  course: assignment.course,
+                  topicId: tag.topicId,
+                  subtopicId: tag.subtopicId || "",
+                  sourceType: "assignment",
+                  sourceId: assignment._id,
+                  questionId: null,
+                  eventType: "assignment_attempt",
+                  isCorrect,
+                  rawScore: Number(grade),
+                  normalizedScore,
+                  difficulty: "medium",
+                  timeSpentSec: 0,
+                  responseLatencySec: 0,
+                  attemptNo: 1,
+                  hintUsed: false,
+                  explanationViewed: false,
+                  materialId: null,
+                  materialType: "",
+                  materialTopicMatchScore: 0,
+                  eventTimestamp,
+                  metadata: {
+                    assignmentId: assignment._id,
+                    submissionId: submission._id,
+                    graderId: req.user._id,
+                    inferenceCandidates: inference.candidates,
+                  },
+                },
+              },
+              upsert: true,
+            },
+          })),
+          { ordered: false }
+        );
+
+        await refreshTopicMasteryForTopics({
+          studentId: submission.student,
+          courseId: assignment.course,
+          topicIds: inference.tags.map((tag) => tag.topicId),
+        });
+      }
+    }
 
     const populated = await Submission.findById(submission._id)
       .populate("student", "name email avatar")

@@ -270,6 +270,79 @@ const buildRecommendationsForCourse = ({ materials, weakTopics, topicLimit = 3, 
   });
 };
 
+const ensureMasteryFromObservedEvents = async ({ studentId, courseId }) => {
+  const topicRows = await LearningEvent.aggregate([
+    { $match: { student: studentId, course: new mongoose.Types.ObjectId(courseId), topicId: { $nin: [null, ""] } } },
+    { $group: { _id: "$topicId" } },
+    { $project: { _id: 0, topicId: "$_id" } },
+  ]);
+
+  if (!topicRows.length) {
+    return { topicsDiscovered: 0, masteryUpdated: 0 };
+  }
+
+  const updated = [];
+  for (const row of topicRows) {
+    const previous = await TopicMastery.findOne({
+      student: studentId,
+      course: courseId,
+      topicId: row.topicId,
+    }).lean();
+
+    if (previous) continue;
+
+    const prediction = await predictTopicMastery({
+      studentId,
+      courseId,
+      topicId: row.topicId,
+    });
+
+    const smoothing = applyTemporalSmoothing({
+      previousMastery: previous?.masteryScore,
+      modelProbability: prediction.masteryScore,
+    });
+
+    const masteryScore = smoothing.smoothedMastery;
+    const weaknessScore = clamp01(1 - masteryScore);
+    const confidence = clamp01(prediction.confidence ?? 0);
+    const reasonCodes = deriveWeaknessReasonCodes({
+      masteryScore,
+      confidence,
+      stats: prediction.stats || {},
+    });
+
+    const record = await TopicMastery.findOneAndUpdate(
+      { student: studentId, course: courseId, topicId: row.topicId },
+      {
+        student: studentId,
+        course: courseId,
+        topicId: row.topicId,
+        masteryScore,
+        weaknessScore,
+        confidence,
+        modelVersion: prediction.modelVersion,
+        sourceModelType: prediction.sourceModelType,
+        lastPredictionAt: new Date(),
+        stats: prediction.stats || {},
+        explanation: {
+          ...(prediction.explanation || {}),
+          reasonCodes,
+          smoothing: {
+            previousMastery: smoothing.previousMastery,
+            rawModelProbability: smoothing.rawModelProbability,
+            alpha: smoothing.alpha,
+          },
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).lean();
+
+    updated.push(record);
+  }
+
+  return { topicsDiscovered: topicRows.length, masteryUpdated: updated.length };
+};
+
 export const logLearningEvent = async (req, res) => {
   try {
     const error = validateEventPayload(req.body);
@@ -471,6 +544,11 @@ export const getMyMaterialRecommendations = async (req, res) => {
     const page = Math.max(1, Number(req.query.page || 1));
     const limit = Math.max(1, Math.min(Number(req.query.limit || topN), 20));
 
+    const syncSummary = await ensureMasteryFromObservedEvents({
+      studentId: req.user._id,
+      courseId,
+    });
+
     const weakTopics = await TopicMastery.find({
       student: req.user._id,
       course: courseId,
@@ -478,14 +556,6 @@ export const getMyMaterialRecommendations = async (req, res) => {
       .sort({ weaknessScore: -1, confidence: -1 })
       .limit(topicLimit)
       .lean();
-
-    if (!weakTopics.length) {
-      return res.json({
-        weakTopics: [],
-        recommendations: [],
-        message: "No mastery records found yet. Trigger prediction after collecting events.",
-      });
-    }
 
     const course = await Course.findById(courseId).select("courseNo").lean();
     if (!course?.courseNo) {
@@ -495,6 +565,19 @@ export const getMyMaterialRecommendations = async (req, res) => {
     const materials = await Material.find({ courseNo: course.courseNo })
       .select("title type fileUrl textContent courseNo courseTitle topicTags")
       .lean();
+
+    if (!weakTopics.length) {
+      return res.json({
+        weakTopics: [],
+        recommendations: [],
+        message: "No mastery records found yet. Complete a quiz or submit an assignment with topic tags to generate recommendations.",
+        signalSummary: {
+          topicsDiscovered: syncSummary.topicsDiscovered,
+          masteryUpdated: syncSummary.masteryUpdated,
+          materialsAvailable: materials.length,
+        },
+      });
+    }
 
     const topRecommendations = buildRecommendationsForCourse({
       materials,
@@ -515,6 +598,13 @@ export const getMyMaterialRecommendations = async (req, res) => {
         topN,
         topicLimit,
         perTopic,
+      },
+      signalSummary: {
+        topicsDiscovered: syncSummary.topicsDiscovered,
+        masteryUpdated: syncSummary.masteryUpdated,
+        materialsAvailable: materials.length,
+        weakTopicsConsidered: weakTopics.length,
+        recommendationsBuilt: pagedRecommendations.data.length,
       },
     });
   } catch (error) {
@@ -623,7 +713,18 @@ export const getMyLearningInsights = async (req, res) => {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    const weakTopics = enrichWeakTopics(allTopics.slice(0, weakLimit));
+    const syncSummary = await ensureMasteryFromObservedEvents({
+      studentId: req.user._id,
+      courseId,
+    });
+
+    const refreshedTopics = syncSummary.masteryUpdated > 0
+      ? await TopicMastery.find({ student: req.user._id, course: courseId })
+          .sort({ weaknessScore: -1, confidence: -1 })
+          .lean()
+      : allTopics;
+
+    const weakTopics = enrichWeakTopics(refreshedTopics.slice(0, weakLimit));
 
     const materials = await Material.find({ courseNo: course.courseNo })
       .select("title type fileUrl textContent courseNo courseTitle topicTags")
@@ -638,11 +739,11 @@ export const getMyLearningInsights = async (req, res) => {
     });
     const pagedRecommendations = paginateItems(allRecommendations, recommendationPage, recommendationLimit);
 
-    const avgMastery = allTopics.length
-      ? allTopics.reduce((acc, row) => acc + Number(row.masteryScore || 0), 0) / allTopics.length
+    const avgMastery = refreshedTopics.length
+      ? refreshedTopics.reduce((acc, row) => acc + Number(row.masteryScore || 0), 0) / refreshedTopics.length
       : 0;
-    const avgConfidence = allTopics.length
-      ? allTopics.reduce((acc, row) => acc + Number(row.confidence || 0), 0) / allTopics.length
+    const avgConfidence = refreshedTopics.length
+      ? refreshedTopics.reduce((acc, row) => acc + Number(row.confidence || 0), 0) / refreshedTopics.length
       : 0;
 
     const payload = {
@@ -653,20 +754,25 @@ export const getMyLearningInsights = async (req, res) => {
       },
       generatedAt: new Date().toISOString(),
       masterySummary: {
-        totalTopics: allTopics.length,
+        totalTopics: refreshedTopics.length,
         overallMastery: Number(avgMastery.toFixed(4)),
         overallWeakness: Number((1 - avgMastery).toFixed(4)),
         averageConfidence: Number(avgConfidence.toFixed(4)),
-        highRiskTopics: allTopics.filter((row) => Number(row.weaknessScore || 0) >= 0.65).length,
+        highRiskTopics: refreshedTopics.filter((row) => Number(row.weaknessScore || 0) >= 0.65).length,
       },
-      confidenceBands: buildConfidenceBands(allTopics),
+      confidenceBands: buildConfidenceBands(refreshedTopics),
+      signalSummary: {
+        topicsDiscovered: syncSummary.topicsDiscovered,
+        masteryUpdated: syncSummary.masteryUpdated,
+        totalSignals: syncSummary.topicsDiscovered,
+      },
       weakTopics: {
         items: weakTopics,
         pagination: {
           page: 1,
           limit: weakLimit,
-          total: allTopics.length,
-          pages: Math.max(1, Math.ceil(allTopics.length / weakLimit)),
+          total: refreshedTopics.length,
+          pages: Math.max(1, Math.ceil(refreshedTopics.length / weakLimit)),
         },
       },
       recommendations: {

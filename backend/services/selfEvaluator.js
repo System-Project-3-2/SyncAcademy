@@ -3,7 +3,7 @@
  *
  * Research component of the Hybrid Adaptive RAG pipeline.
  * Evaluates whether a generated answer is faithfully grounded in
- * retrieved documents using a small local LLM (Mistral 7B / TinyLLaMA).
+ * retrieved documents using a small local LLM (for example Llama 3.1).
  *
  * Design principles for small-model robustness:
  *   - Minimal prompt: no reasoning field, no markdown, JSON-only output
@@ -45,7 +45,7 @@ const SAFE_DEFAULT = Object.freeze({
 const SUPPORTED_VALUES = new Set(['YES', 'PARTIAL', 'NO']);
 
 // ── Judge Prompt ─────────────────────────────────────────────────────────────
-// DESIGN: minimal prompt suited for TinyLLaMA / Mistral 7B Instruct.
+// DESIGN: minimal prompt suited for small local models such as Llama 3.1.
 //
 //  • No reasoning field — small models under format:"json" produce unreliable
 //    free-text reasoning; omitting it keeps output short and reliably parseable.

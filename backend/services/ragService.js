@@ -88,20 +88,41 @@ const TOPIC_STOP_WORDS = new Set([
 ]);
 
 const REL_CONFIG = {
-  simple:   { minRatio: Number(process.env.RAG_TOPIC_MIN_RATIO_SIMPLE || 0.6),  minMatchCount: Number(process.env.RAG_TOPIC_MIN_MATCH_SIMPLE || 2) },
-  moderate: { minRatio: Number(process.env.RAG_TOPIC_MIN_RATIO_MODERATE || 0.4), minMatchCount: Number(process.env.RAG_TOPIC_MIN_MATCH_MODERATE || 2) },
-  complex:  { minRatio: Number(process.env.RAG_TOPIC_MIN_RATIO_COMPLEX || 0.34), minMatchCount: Number(process.env.RAG_TOPIC_MIN_MATCH_COMPLEX || 2) },
+  simple: {
+    minRatio: Number(process.env.RAG_TOPIC_MIN_RATIO_SIMPLE || 0.45),
+    minMatchCount: Number(process.env.RAG_TOPIC_MIN_MATCH_SIMPLE || 1),
+    bestScoreBypass: Number(process.env.RAG_TOPIC_BEST_SCORE_BYPASS_SIMPLE || 0.78),
+  },
+  moderate: {
+    minRatio: Number(process.env.RAG_TOPIC_MIN_RATIO_MODERATE || 0.35),
+    minMatchCount: Number(process.env.RAG_TOPIC_MIN_MATCH_MODERATE || 1),
+    bestScoreBypass: Number(process.env.RAG_TOPIC_BEST_SCORE_BYPASS_MODERATE || 0.74),
+  },
+  complex: {
+    minRatio: Number(process.env.RAG_TOPIC_MIN_RATIO_COMPLEX || 0.30),
+    minMatchCount: Number(process.env.RAG_TOPIC_MIN_MATCH_COMPLEX || 1),
+    bestScoreBypass: Number(process.env.RAG_TOPIC_BEST_SCORE_BYPASS_COMPLEX || 0.70),
+  },
 };
 
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const checkTopicRelevance = (question, chunks, complexity = 'moderate') => {
+const buildVariants = (word) => {
+  const variants = new Set([word]);
+  // Light stemming keeps logic predictable while handling common singular/plural forms.
+  if (word.endsWith('ies') && word.length > 5) variants.add(`${word.slice(0, -3)}y`);
+  if (word.endsWith('es') && word.length > 4) variants.add(word.slice(0, -2));
+  if (word.endsWith('s') && word.length > 4) variants.add(word.slice(0, -1));
+  return Array.from(variants).filter(Boolean);
+};
+
+const checkTopicRelevance = (question, chunks, complexity = 'moderate', bestScore = 0) => {
   const config = REL_CONFIG[complexity] || REL_CONFIG.moderate;
-  const signalWords = question
+  const signalWords = Array.from(new Set(question
     .toLowerCase()
     .replace(/[^a-z\s]/g, ' ')  // remove digits and punctuation
     .split(/\s+/)
-    .filter((w) => w.length >= 5 && !TOPIC_STOP_WORDS.has(w));
+    .filter((w) => w.length >= 4 && !TOPIC_STOP_WORDS.has(w))));
 
   // If no signal words extracted, we cannot determine relevance — allow through
   if (signalWords.length === 0) return true;
@@ -111,19 +132,27 @@ const checkTopicRelevance = (question, chunks, complexity = 'moderate') => {
     .join(' ');
 
   const matchedWords = signalWords.filter((w) => {
-    const pattern = new RegExp(`\\b${escapeRegExp(w)}\\b`, 'i');
-    return pattern.test(combinedText);
+    const variants = buildVariants(w);
+    return variants.some((v) => {
+      const exact = new RegExp(`\\b${escapeRegExp(v)}\\b`, 'i').test(combinedText);
+      // Allow partial containment for longer technical words (e.g., requirement/requirements).
+      const partial = v.length >= 6 && combinedText.includes(v);
+      return exact || partial;
+    });
   });
   const matchCount   = matchedWords.length;
   const ratio        = matchCount / signalWords.length;
+  const weakPass     = ratio >= (config.minRatio - 0.1) && matchCount >= 1;
+  const scoreBypass  = bestScore >= (config.bestScoreBypass ?? 0.75);
 
   console.log(
     `[RAG] Topic relevance → signal=[${signalWords.join(', ')}], ` +
     `matches=${matchCount}/${signalWords.length}, ratio=${ratio.toFixed(2)}, ` +
-    `requiredRatio=${config.minRatio}, requiredCount=${config.minMatchCount}`
+    `requiredRatio=${config.minRatio}, requiredCount=${config.minMatchCount}, ` +
+    `bestScore=${bestScore.toFixed(3)}, scoreBypass=${scoreBypass}`
   );
 
-  return ratio >= config.minRatio && matchCount >= config.minMatchCount;
+  return (ratio >= config.minRatio && matchCount >= config.minMatchCount) || weakPass || scoreBypass;
 };
 
 // ── Source Deduplicator ────────────────────────────────────────────────────────
@@ -209,7 +238,7 @@ export const ragChat = async (question, chatHistory = [], filters = {}) => {
     // off-topic questions when the embedding model finds incidental overlap.
     // Verify that the question's domain-specific vocabulary actually appears
     // in the retrieved chunks before spending an LLM call.
-    if (!checkTopicRelevance(question, topChunks, complexity)) {
+    if (!checkTopicRelevance(question, topChunks, complexity, bestScore)) {
       console.log('[RAG] ❌ Topic relevance gate failed — off-topic question detected');
       return {
         answer:

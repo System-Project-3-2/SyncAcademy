@@ -1,7 +1,7 @@
 
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "mistral";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.1";
 
 /**
  
@@ -113,11 +113,12 @@ export const generateResponse = async (prompt, options = {}) => {
  * @returns {ReadableStream}
  */
 export const generateResponseStream = async (prompt, options = {}) => {
+  const { model } = await resolveModelName(options.model || OLLAMA_MODEL);
   const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: options.model || OLLAMA_MODEL,
+      model,
       prompt,
       stream: true,
       options: {
