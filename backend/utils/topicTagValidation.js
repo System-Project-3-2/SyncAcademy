@@ -4,6 +4,19 @@ import Course from "../models/courseModel.js";
 
 const LOW_CONFIDENCE_THRESHOLD = Number(process.env.TOPIC_TAG_LOW_CONFIDENCE || 0.55);
 
+export const normalizeTopicName = (value = "") =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s_-]/g, " ")
+    .replace(/[\s_]+/g, " ")
+    .trim();
+
+export const toTopicSlug = (value = "") =>
+  normalizeTopicName(value)
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
+
 export const normalizeTopicTags = (topicTags = []) => {
   if (!Array.isArray(topicTags)) return [];
 

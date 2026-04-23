@@ -6,6 +6,7 @@ import TopicAlias from "../models/topicAliasModel.js";
 import {
   normalizeTopicTags,
   buildTopicCoverageReport,
+  toTopicSlug,
 } from "../utils/topicTagValidation.js";
 import {
   inferTopicTagsFromText,
@@ -34,9 +35,13 @@ const sanitizeIncomingTopicTags = (topicTags, userId, source = "manual") =>
 
 export const createTaxonomyEntry = async (req, res) => {
   try {
-    const { courseId, unitId, unitName, topicId, topicName, subtopicId, subtopicName, description } = req.body;
+    const { courseId, unitId, unitName, topicId, topicName, slug, subtopicId, subtopicName, description } = req.body;
 
-    if (!courseId || !unitId || !unitName || !topicId || !topicName) {
+    const normalizedTopicName = String(topicName || "").trim();
+    const normalizedSlug = toTopicSlug(slug || topicId || normalizedTopicName);
+    const normalizedTopicId = String(topicId || normalizedSlug).trim();
+
+    if (!courseId || !unitId || !unitName || !normalizedTopicId || !normalizedTopicName) {
       return res.status(400).json({ message: "courseId, unitId, unitName, topicId, topicName are required" });
     }
 
@@ -44,13 +49,14 @@ export const createTaxonomyEntry = async (req, res) => {
     if (!allowed) return res.status(403).json({ message: "Access denied" });
 
     const entry = await TopicTaxonomy.findOneAndUpdate(
-      { course: courseId, unitId, topicId, subtopicId: subtopicId || "" },
+      { course: courseId, unitId, topicId: normalizedTopicId, subtopicId: subtopicId || "" },
       {
         course: courseId,
         unitId,
         unitName,
-        topicId,
-        topicName,
+        topicId: normalizedTopicId,
+        topicName: normalizedTopicName,
+        slug: normalizedSlug,
         subtopicId: subtopicId || "",
         subtopicName: subtopicName || "",
         description: description || "",

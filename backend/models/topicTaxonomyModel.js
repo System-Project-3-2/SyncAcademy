@@ -29,6 +29,13 @@ const topicTaxonomySchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    slug: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+      index: true,
+    },
     subtopicId: {
       type: String,
       default: "",
@@ -61,6 +68,7 @@ topicTaxonomySchema.index(
   { course: 1, unitId: 1, topicId: 1, subtopicId: 1 },
   { unique: true }
 );
+topicTaxonomySchema.index({ course: 1, slug: 1 }, { unique: true });
 
 const TopicTaxonomy = mongoose.model("TopicTaxonomy", topicTaxonomySchema);
 

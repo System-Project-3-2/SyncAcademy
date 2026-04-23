@@ -48,6 +48,7 @@ const MaterialCard = ({
   const courseTitle = material.courseTitle || '';
   const relevance = material.relevanceScore;
   const [selectedMatch, setSelectedMatch] = useState(null);
+  const topicTags = Array.isArray(material.topicTags) ? material.topicTags : [];
 
   const getMatchText = (match) => {
     if (typeof match === 'string') return match;
@@ -157,6 +158,19 @@ const MaterialCard = ({
                   />
                 )}
               </Box>
+              {topicTags.length > 0 && (
+                <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mb: 1 }}>
+                  {topicTags.slice(0, 4).map((tag, index) => (
+                    <Chip
+                      key={`${tag.topicId || tag}-${index}`}
+                      size="small"
+                      label={tag.topicId || tag.topicName || tag.slug || 'Topic'}
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                  ))}
+                </Box>
+              )}
             </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>

@@ -81,6 +81,12 @@ const AdaptiveTutorRecommendations = () => {
     return 'warning';
   };
 
+  const getTopicLabel = (topic) => {
+    if (!topic) return '';
+    if (typeof topic === 'string') return topic;
+    return topic.topic || topic.topicName || topic.topicId || '';
+  };
+
   useEffect(() => {
     const loadCourses = async () => {
       try {
@@ -373,6 +379,19 @@ const AdaptiveTutorRecommendations = () => {
                           <Typography variant="caption" color="text.secondary">
                             {rec.reason}
                           </Typography>
+                          {Array.isArray(rec.matchedTopics) && rec.matchedTopics.length > 0 && (
+                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                              {rec.matchedTopics.slice(0, 3).map((topic) => (
+                                <Chip
+                                  key={getTopicLabel(topic)}
+                                  size="small"
+                                  variant="outlined"
+                                  label={getTopicLabel(topic)}
+                                  sx={{ height: 22, fontSize: '0.7rem' }}
+                                />
+                              ))}
+                            </Stack>
+                          )}
                         </Box>
                         <Stack direction="row" spacing={0.5}>
                           <Tooltip title="Open material">

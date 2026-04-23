@@ -17,6 +17,9 @@ import {
   Alert,
   LinearProgress,
   Autocomplete,
+  Stack,
+  Chip,
+  Grid,
 } from '@mui/material';
 import {
   CloudUpload as UploadIcon,
@@ -27,7 +30,7 @@ import {
 import { useTheme as useMuiTheme, alpha } from '@mui/material';
 import toast from 'react-hot-toast';
 import { PageHeader } from '../../components';
-import { materialService, courseService } from '../../services';
+import { materialService, courseService, topicTagService } from '../../services';
 import { MATERIAL_TYPES } from '../../constants/materialTypes';
 
 // Accepted file types
@@ -45,16 +48,19 @@ const UploadMaterial = () => {
     courseNo: '',
     type: '',
   });
+  const [selectedCourseId, setSelectedCourseId] = useState('');
   const [file, setFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
+  const [selectedTopics, setSelectedTopics] = useState([]);
+  const [topicOptions, setTopicOptions] = useState([]);
 
   // Course autocomplete data
   const [courseOptions, setCourseOptions] = useState([]);
 
   // Track if form has unsaved changes
-  const isDirty = Boolean(formData.courseTitle || formData.courseNo || formData.type || file);
+  const isDirty = Boolean(formData.courseTitle || formData.courseNo || formData.type || file || selectedTopics.length);
 
   // Warn user before leaving with unsaved changes
   useEffect(() => {
@@ -82,9 +88,38 @@ const UploadMaterial = () => {
     fetchCourses();
   }, []);
 
+  useEffect(() => {
+    const fetchTopics = async () => {
+      if (!selectedCourseId) {
+        setTopicOptions([]);
+        return;
+      }
+
+      try {
+        const data = await topicTagService.getTaxonomyByCourse(selectedCourseId);
+        const topics = Array.isArray(data) ? data : [];
+        setTopicOptions(topics);
+      } catch (err) {
+        console.error('Error fetching topic taxonomy:', err);
+        setTopicOptions([]);
+      }
+    };
+
+    fetchTopics();
+  }, [selectedCourseId]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setError('');
+  };
+
+  const normalizeTopicInput = (value) => String(value || '').trim();
+
+  const handleTopicChange = (_, newValue) => {
+    const values = Array.isArray(newValue) ? newValue : [];
+    const unique = [...new Set(values.map(normalizeTopicInput).filter(Boolean))];
+    setSelectedTopics(unique);
     setError('');
   };
 
@@ -137,7 +172,44 @@ const UploadMaterial = () => {
       setError('Please select a file to upload');
       return false;
     }
+
+    if (selectedCourseId && selectedTopics.length === 0) {
+      // Topic tagging is optional for legacy compatibility, but nudge teachers to tag.
+      return true;
+    }
     return true;
+  };
+
+  const getTopicCatalog = () =>
+    topicOptions.map((topic) => ({
+      label: topic.topicName || topic.topicId,
+      slug: topic.slug || topic.topicId,
+      topicId: topic.topicId,
+    }));
+
+  const buildTopicPayload = () => {
+    const catalog = getTopicCatalog();
+    const catalogByNormalized = new Map(
+      catalog.map((topic) => [normalizeTopicInput(topic.label).toLowerCase(), topic])
+    );
+
+    const selectedTopicIds = [];
+    const newTopics = [];
+
+    selectedTopics.forEach((topic) => {
+      const normalized = normalizeTopicInput(topic).toLowerCase();
+      const matched = catalogByNormalized.get(normalized);
+      if (matched) {
+        selectedTopicIds.push(matched.slug || matched.topicId);
+      } else {
+        newTopics.push(topic);
+      }
+    });
+
+    return {
+      selectedTopicIds: [...new Set(selectedTopicIds)],
+      newTopics: [...new Set(newTopics)],
+    };
   };
 
   const handleSubmit = async (e) => {
@@ -156,6 +228,14 @@ const UploadMaterial = () => {
       uploadData.append('courseNo', formData.courseNo);
       uploadData.append('type', formData.type);
       uploadData.append('file', file);
+
+      const { selectedTopicIds, newTopics } = buildTopicPayload();
+      if (selectedTopicIds.length) {
+        uploadData.append('selectedTopicIds', JSON.stringify(selectedTopicIds));
+      }
+      if (newTopics.length) {
+        uploadData.append('newTopics', JSON.stringify(newTopics));
+      }
 
       // Simulate progress for better UX
       const progressInterval = setInterval(() => {
@@ -237,15 +317,20 @@ const UploadMaterial = () => {
 
         <Autocomplete
           freeSolo
-          options={courseOptions.map((c) => c.courseTitle)}
+          options={courseOptions.map((c) => `${c.courseTitle} (${c.courseNo})`)}
           value={formData.courseTitle}
           onInputChange={(_, newValue) => {
             setFormData((prev) => ({ ...prev, courseTitle: newValue }));
             setError('');
             // Auto-fill courseNo when a matching course is selected
-            const match = courseOptions.find((c) => c.courseTitle === newValue);
+            const match = courseOptions.find((c) => `${c.courseTitle} (${c.courseNo})` === newValue || c.courseTitle === newValue || c.courseNo === newValue);
             if (match) {
-              setFormData((prev) => ({ ...prev, courseTitle: newValue, courseNo: match.courseNo }));
+              setFormData((prev) => ({ ...prev, courseTitle: match.courseTitle, courseNo: match.courseNo }));
+              setSelectedCourseId(match._id);
+            } else {
+              setSelectedCourseId('');
+              setTopicOptions([]);
+              setSelectedTopics([]);
             }
           }}
           renderInput={(params) => (
@@ -272,6 +357,11 @@ const UploadMaterial = () => {
             const match = courseOptions.find((c) => c.courseNo === newValue);
             if (match) {
               setFormData((prev) => ({ ...prev, courseNo: newValue, courseTitle: match.courseTitle }));
+              setSelectedCourseId(match._id);
+            } else {
+              setSelectedCourseId('');
+              setTopicOptions([]);
+              setSelectedTopics([]);
             }
           }}
           renderInput={(params) => (
@@ -287,6 +377,73 @@ const UploadMaterial = () => {
           sx={{ mb: 3 }}
         />
 
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 2,
+            mb: 3,
+            borderRadius: 2,
+            bgcolor: 'background.default',
+          }}
+        >
+          <Stack spacing={1.25}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                Topic Tagging
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Select existing topics for this course or type a new topic name. New topics will be normalized and added automatically.
+              </Typography>
+            </Box>
+
+            <Autocomplete
+              multiple
+              freeSolo
+              options={getTopicCatalog().map((topic) => topic.label)}
+              value={selectedTopics}
+              onChange={handleTopicChange}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    variant="outlined"
+                    label={option}
+                    {...getTagProps({ index })}
+                    key={option}
+                    sx={{ borderRadius: 1.5 }}
+                  />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Topics"
+                  placeholder={selectedCourseId ? 'Select or type topics' : 'Choose a course first'}
+                  helperText={selectedCourseId ? 'Use existing taxonomy topics or type new ones.' : 'Select a course to load topics.'}
+                />
+              )}
+              disabled={!selectedCourseId}
+            />
+
+            {topicOptions.length > 0 && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                  Available topics
+                </Typography>
+                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                  {topicOptions.slice(0, 10).map((topic) => (
+                    <Chip
+                      key={topic._id || topic.slug || topic.topicId}
+                      size="small"
+                      label={topic.topicName || topic.topicId}
+                      variant="outlined"
+                    />
+                  ))}
+                </Stack>
+              </Box>
+            )}
+          </Stack>
+        </Paper>
+
         <TextField
           fullWidth
           label="Material Title"
@@ -299,22 +456,43 @@ const UploadMaterial = () => {
           sx={{ mb: 3 }}
         />
 
-        <FormControl fullWidth sx={{ mb: 3 }}>
-          <InputLabel>Material Type</InputLabel>
-          <Select
-            name="type"
-            value={formData.type}
-            label="Material Type"
-            onChange={handleChange}
-            required
-          >
-            {MATERIAL_TYPES.map((type) => (
-              <MenuItem key={type} value={type}>
-                {type}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} md={6}>
+            <FormControl fullWidth>
+              <InputLabel>Material Type</InputLabel>
+              <Select
+                name="type"
+                value={formData.type}
+                label="Material Type"
+                onChange={handleChange}
+                required
+              >
+                {MATERIAL_TYPES.map((type) => (
+                  <MenuItem key={type} value={type}>
+                    {type}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 1.5,
+                borderRadius: 2,
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                bgcolor: 'background.default',
+              }}
+            >
+              <Typography variant="caption" color="text.secondary">
+                Topic-based recommendations will use these tags to surface weak-topic materials for students.
+              </Typography>
+            </Paper>
+          </Grid>
+        </Grid>
 
         {/* File Upload Area */}
         <Box sx={{ mb: 3 }}>

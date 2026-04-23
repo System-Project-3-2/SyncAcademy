@@ -12,8 +12,9 @@ import { embedText } from "../services/embeddingServices.js";
 
 import cloudinary from "../config/cloudinary.js";
 import Course from "../models/courseModel.js";
+import TopicTaxonomy from "../models/topicTaxonomyModel.js";
 import { notifyEnrolledStudents } from "../utils/notificationHelper.js";
-import { normalizeTopicTags } from "../utils/topicTagValidation.js";
+import { normalizeTopicTags, toTopicSlug } from "../utils/topicTagValidation.js";
 
 import path from "path";
 
@@ -34,6 +35,71 @@ const parseTopicTagsInput = (raw, userId) => {
     ...tag,
     taggedBy: tag.taggedBy || userId,
     taggedAt: tag.taggedAt || new Date(),
+  }));
+};
+
+const parseJsonArray = (raw) => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+const buildTopicTagsFromSelection = async ({ req, courseNo, userId }) => {
+  const selectedTopicIds = parseJsonArray(req.body.selectedTopicIds)
+    .map((value) => toTopicSlug(value))
+    .filter(Boolean);
+
+  const newTopicsInput = parseJsonArray(req.body.newTopics);
+  if (!selectedTopicIds.length && !newTopicsInput.length) return [];
+
+  const course = await Course.findOne({ courseNo }).select("_id").lean();
+  if (!course?._id) return [];
+
+  const newTopicSlugs = [];
+  for (const item of newTopicsInput) {
+    if (!item) continue;
+    const topicName = typeof item === "string" ? item : item.topicName || item.name;
+    const unitName = typeof item === "object" && item.unitName ? String(item.unitName).trim() : "Custom Topics";
+    const unitId = typeof item === "object" && item.unitId ? toTopicSlug(item.unitId) : "custom-topics";
+    const slug = toTopicSlug(topicName);
+    if (!slug) continue;
+
+    await TopicTaxonomy.findOneAndUpdate(
+      { course: course._id, topicId: slug, subtopicId: "" },
+      {
+        course: course._id,
+        unitId,
+        unitName,
+        topicId: slug,
+        topicName: String(topicName || "").trim() || slug,
+        slug,
+        subtopicId: "",
+        subtopicName: "",
+        description: "",
+        status: "active",
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    newTopicSlugs.push(slug);
+  }
+
+  const selected = [...new Set([...selectedTopicIds, ...newTopicSlugs])];
+  return selected.map((topicId) => ({
+    topicId,
+    subtopicId: "",
+    confidence: 0.9,
+    source: "manual",
+    taggedBy: userId,
+    taggedAt: new Date(),
   }));
 };
 
@@ -65,6 +131,13 @@ export const uploadMaterial = async (req, res) => {
       mimeType: file.mimetype,
     });
 
+    const explicitTopicTags = parseTopicTagsInput(req.body.topicTags, req.user._id);
+    const selectedOrCreatedTopicTags = await buildTopicTagsFromSelection({
+      req,
+      courseNo,
+      userId: req.user._id,
+    });
+
     const material = {
       title: title || "",
       courseTitle,
@@ -73,7 +146,7 @@ export const uploadMaterial = async (req, res) => {
       fileUrl,
       originalFileName: file.originalname,
       textContent,
-      topicTags: parseTopicTagsInput(req.body.topicTags, req.user._id),
+      topicTags: normalizeTopicTags([...explicitTopicTags, ...selectedOrCreatedTopicTags]),
       uploadedBy: req.user._id,
     };
 
