@@ -21,15 +21,37 @@ export const normalizeTopicTags = (topicTags = []) => {
   if (!Array.isArray(topicTags)) return [];
 
   const normalized = topicTags
-    .filter((tag) => tag && tag.topicId)
-    .map((tag) => ({
-      topicId: String(tag.topicId).trim(),
-      subtopicId: String(tag.subtopicId || "").trim(),
-      confidence: Math.max(0, Math.min(1, Number(tag.confidence ?? 0.7))),
-      source: ["auto", "manual", "seed", "import"].includes(tag.source) ? tag.source : "manual",
-      taggedBy: tag.taggedBy || null,
-      taggedAt: tag.taggedAt ? new Date(tag.taggedAt) : new Date(),
-    }));
+    .map((tag) => {
+      if (!tag) return null;
+
+      // Compatibility: accept plain string tags from multipart/form-data clients.
+      if (typeof tag === "string") {
+        const slug = toTopicSlug(tag);
+        if (!slug) return null;
+        return {
+          topicId: slug,
+          subtopicId: "",
+          confidence: 0.9,
+          source: "manual",
+          taggedBy: null,
+          taggedAt: new Date(),
+        };
+      }
+
+      const rawTopicId = tag.topicId || tag.slug || tag.topic || tag.name;
+      const topicId = toTopicSlug(rawTopicId);
+      if (!topicId) return null;
+
+      return {
+        topicId,
+        subtopicId: String(tag.subtopicId || "").trim(),
+        confidence: Math.max(0, Math.min(1, Number(tag.confidence ?? 0.7))),
+        source: ["auto", "manual", "seed", "import"].includes(tag.source) ? tag.source : "manual",
+        taggedBy: tag.taggedBy || null,
+        taggedAt: tag.taggedAt ? new Date(tag.taggedAt) : new Date(),
+      };
+    })
+    .filter(Boolean);
 
   const map = new Map();
   for (const tag of normalized) {

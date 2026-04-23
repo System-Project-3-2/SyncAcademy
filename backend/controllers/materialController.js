@@ -26,8 +26,17 @@ const parseTopicTagsInput = (raw, userId) => {
     try {
       parsed = JSON.parse(raw);
     } catch {
-      parsed = [];
+      // Compatibility: allow comma/newline separated topic strings.
+      parsed = raw
+        .split(/[\n,]/)
+        .map((item) => item.trim())
+        .filter(Boolean);
     }
+  }
+
+  // Compatibility: allow single object payload shape.
+  if (!Array.isArray(parsed) && parsed && typeof parsed === "object") {
+    parsed = [parsed];
   }
 
   const normalized = normalizeTopicTags(parsed);
@@ -46,7 +55,12 @@ const parseJsonArray = (raw) => {
       const parsed = JSON.parse(raw);
       return Array.isArray(parsed) ? parsed : [];
     } catch {
-      return [];
+      // Backward-compatible fallback: allow single string payloads.
+      const pieces = raw
+        .split(/[\n,]/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+      return pieces.length ? pieces : [];
     }
   }
   return [];
@@ -54,14 +68,37 @@ const parseJsonArray = (raw) => {
 
 const buildTopicTagsFromSelection = async ({ req, courseNo, userId }) => {
   const selectedTopicIds = parseJsonArray(req.body.selectedTopicIds)
-    .map((value) => toTopicSlug(value))
+    .map((value) => {
+      if (typeof value === "object" && value) {
+        return toTopicSlug(value.topicId || value.slug || value.name || value.topic);
+      }
+      return toTopicSlug(value);
+    })
     .filter(Boolean);
 
   const newTopicsInput = parseJsonArray(req.body.newTopics);
   if (!selectedTopicIds.length && !newTopicsInput.length) return [];
 
-  const course = await Course.findOne({ courseNo }).select("_id").lean();
-  if (!course?._id) return [];
+  const courseIdFromBody = String(req.body.courseId || "").trim();
+  let course = null;
+  if (courseIdFromBody) {
+    course = await Course.findById(courseIdFromBody).select("_id courseNo").lean();
+  }
+
+  if (!course) {
+    const normalizedCourseNo = String(courseNo || "").trim();
+    if (normalizedCourseNo) {
+      // Case-insensitive lookup so topic tagging still works when teachers type courseNo manually.
+      course = await Course.findOne({
+        courseNo: { $regex: `^${normalizedCourseNo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
+      })
+        .select("_id courseNo")
+        .lean();
+    }
+  }
+
+  // Even if course mapping is missing, keep topic tags on material.
+  // Course lookup is only required for taxonomy upsert.
 
   const newTopicSlugs = [];
   for (const item of newTopicsInput) {
@@ -72,22 +109,24 @@ const buildTopicTagsFromSelection = async ({ req, courseNo, userId }) => {
     const slug = toTopicSlug(topicName);
     if (!slug) continue;
 
-    await TopicTaxonomy.findOneAndUpdate(
-      { course: course._id, topicId: slug, subtopicId: "" },
-      {
-        course: course._id,
-        unitId,
-        unitName,
-        topicId: slug,
-        topicName: String(topicName || "").trim() || slug,
-        slug,
-        subtopicId: "",
-        subtopicName: "",
-        description: "",
-        status: "active",
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    if (course?._id) {
+      await TopicTaxonomy.findOneAndUpdate(
+        { course: course._id, topicId: slug, subtopicId: "" },
+        {
+          course: course._id,
+          unitId,
+          unitName,
+          topicId: slug,
+          topicName: String(topicName || "").trim() || slug,
+          slug,
+          subtopicId: "",
+          subtopicName: "",
+          description: "",
+          status: "active",
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
 
     newTopicSlugs.push(slug);
   }

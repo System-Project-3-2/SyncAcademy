@@ -2,7 +2,7 @@
  * Upload Material Page
  * Allows teachers to upload educational materials
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -54,6 +54,7 @@ const UploadMaterial = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
   const [selectedTopics, setSelectedTopics] = useState([]);
+  const [topicInputValue, setTopicInputValue] = useState('');
   const [topicOptions, setTopicOptions] = useState([]);
 
   // Course autocomplete data
@@ -108,6 +109,29 @@ const UploadMaterial = () => {
     fetchTopics();
   }, [selectedCourseId]);
 
+  useEffect(() => {
+    if (!courseOptions.length) return;
+
+    const title = String(formData.courseTitle || '').trim().toLowerCase();
+    const courseNo = String(formData.courseNo || '').trim().toLowerCase();
+    const matched = courseOptions.find((course) => {
+      const titleMatch = String(course.courseTitle || '').trim().toLowerCase() === title;
+      const noMatch = String(course.courseNo || '').trim().toLowerCase() === courseNo;
+      return titleMatch || noMatch;
+    });
+
+    if (matched?._id) {
+      setSelectedCourseId(matched._id);
+      return;
+    }
+
+    if (!title && !courseNo) {
+      setSelectedCourseId('');
+      setTopicOptions([]);
+      setSelectedTopics([]);
+    }
+  }, [formData.courseTitle, formData.courseNo, courseOptions]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -121,6 +145,17 @@ const UploadMaterial = () => {
     const unique = [...new Set(values.map(normalizeTopicInput).filter(Boolean))];
     setSelectedTopics(unique);
     setError('');
+  };
+
+  const commitTypedTopic = () => {
+    const typed = normalizeTopicInput(topicInputValue);
+    if (!typed) return;
+
+    setSelectedTopics((prev) => {
+      const next = [...new Set([...prev, typed])];
+      return next;
+    });
+    setTopicInputValue('');
   };
 
   const handleFileSelect = (e) => {
@@ -228,6 +263,9 @@ const UploadMaterial = () => {
       uploadData.append('courseNo', formData.courseNo);
       uploadData.append('type', formData.type);
       uploadData.append('file', file);
+      if (selectedCourseId) {
+        uploadData.append('courseId', selectedCourseId);
+      }
 
       const { selectedTopicIds, newTopics } = buildTopicPayload();
       if (selectedTopicIds.length) {
@@ -399,9 +437,21 @@ const UploadMaterial = () => {
             <Autocomplete
               multiple
               freeSolo
+              filterSelectedOptions
               options={getTopicCatalog().map((topic) => topic.label)}
               value={selectedTopics}
+              inputValue={topicInputValue}
+              onInputChange={(_, newInputValue) => setTopicInputValue(newInputValue)}
               onChange={handleTopicChange}
+              onKeyDown={(e) => {
+                // Prevent Enter from submitting the full form while adding multiple topics.
+                if (e.key === 'Enter') {
+                  commitTypedTopic();
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+              onBlur={commitTypedTopic}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
                   <Chip
