@@ -19,6 +19,10 @@ import {
   summarizeRecommendationDrivers,
   buildTopActionSummary,
 } from "../utils/ktExplainability.js";
+import {
+  getTopicBasedRecommendations,
+  canRequesterAccessRecommendations,
+} from "../services/recommendationService.js";
 
 
 const ALLOWED_SOURCE_TYPES = ["quiz", "assignment", "material", "hint"];
@@ -609,6 +613,36 @@ export const getMyMaterialRecommendations = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const getRecommendationsByUserAndCourse = async (req, res) => {
+  try {
+    const { userId, courseId } = req.params;
+    const limit = Math.max(1, Math.min(Number(req.query.limit || req.query.topN || 5), 10));
+
+    if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(courseId)) {
+      return res.status(400).json({ message: "Invalid userId or courseId" });
+    }
+
+    if (!canRequesterAccessRecommendations({ requester: req.user, targetUserId: userId })) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const payload = await getTopicBasedRecommendations({
+      userId,
+      courseId,
+      limit,
+    });
+
+    // Strict response contract for compatibility endpoint.
+    res.json({
+      recommendations: payload.recommendations,
+      weakTopics: payload.weakTopics,
+    });
+  } catch (error) {
+    const status = Number(error?.status || 500);
+    res.status(status).json({ message: error.message });
   }
 };
 

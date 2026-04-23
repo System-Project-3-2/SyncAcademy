@@ -42,6 +42,10 @@ const materialSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+materialSchema.index({ courseNo: 1 });
+materialSchema.index({ courseNo: 1, "topicTags.topicId": 1 });
+
 const Material = mongoose.model("Material", materialSchema);
 
 export default Material;

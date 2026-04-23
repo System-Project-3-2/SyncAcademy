@@ -75,6 +75,7 @@ const topicMasterySchema = new mongoose.Schema(
 
 topicMasterySchema.index({ student: 1, course: 1, topicId: 1 }, { unique: true });
 topicMasterySchema.index({ student: 1, course: 1, weaknessScore: -1 });
+topicMasterySchema.index({ student: 1, course: 1, masteryScore: 1, "stats.attempts": -1 });
 
 const TopicMastery = mongoose.model("TopicMastery", topicMasterySchema);
 

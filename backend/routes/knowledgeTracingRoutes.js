@@ -9,6 +9,7 @@ import {
   getMyMasteryByCourse,
   getMyWeakTopics,
   getMyMaterialRecommendations,
+  getRecommendationsByUserAndCourse,
   getMyLearningInsights,
   getMyExplainabilityByCourse,
   runBackfillMasteryForCourse,
@@ -47,6 +48,9 @@ router.get("/recommendations/:courseId", authorize("student"), getMyMaterialReco
 
 // Convenience endpoint for top-3 recommendation view.
 router.get("/recommendations/:courseId/top3", authorize("student"), getMyMaterialRecommendations);
+
+// Compatibility endpoint: explicit userId + courseId while keeping existing endpoints intact.
+router.get("/recommendations/:userId/:courseId", getRecommendationsByUserAndCourse);
 
 // Students can backfill predictions for all observed topics in a course.
 router.post("/backfill/:courseId", authorize("student"), runBackfillMasteryForCourse);

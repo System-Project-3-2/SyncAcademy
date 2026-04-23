@@ -213,6 +213,16 @@ const MessageBubble = ({ message, theme }) => {
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
 
+  const isValidExternalUrl = (value) => {
+    if (typeof value !== 'string' || !value.trim()) return false;
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
     setCopied(true);
@@ -287,15 +297,41 @@ const MessageBubble = ({ message, theme }) => {
         {!isUser && message.sources && message.sources.length > 0 && (
           <Box sx={{ display: 'flex', gap: 0.5, mt: 0.75, flexWrap: 'wrap' }}>
             <SourceIcon sx={{ fontSize: 16, color: 'text.secondary', mt: 0.25 }} />
-            {message.sources.map((src, i) => (
-              <Chip
-                key={i}
-                label={`${src.courseNo} - ${src.courseTitle}`}
-                size="small"
-                variant="outlined"
-                sx={{ fontSize: '0.7rem', height: 22 }}
-              />
-            ))}
+            {message.sources.map((src, i) => {
+              const materialUrl = src?.fileUrl;
+              const isLink = isValidExternalUrl(materialUrl);
+              const sourceLabel = [src?.courseNo, src?.courseTitle].filter(Boolean).join(' - ') || 'Source material';
+              return (
+                <Tooltip
+                  key={i}
+                  title={isLink ? 'Open source material' : 'Source link unavailable'}
+                >
+                  <span>
+                    <Chip
+                      component={isLink ? 'a' : 'div'}
+                      href={isLink ? materialUrl : undefined}
+                      target={isLink ? '_blank' : undefined}
+                      rel={isLink ? 'noopener noreferrer' : undefined}
+                      clickable={isLink}
+                      label={sourceLabel}
+                      size="small"
+                      variant="outlined"
+                      sx={{
+                        fontSize: '0.7rem',
+                        height: 22,
+                        textDecoration: 'none',
+                        '&:hover': isLink
+                          ? {
+                              borderColor: theme.palette.primary.main,
+                              color: 'primary.main',
+                            }
+                          : undefined,
+                      }}
+                    />
+                  </span>
+                </Tooltip>
+              );
+            })}
           </Box>
         )}
 
