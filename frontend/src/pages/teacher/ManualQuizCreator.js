@@ -24,6 +24,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   CircularProgress,
+  Autocomplete,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -37,7 +38,7 @@ import {
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks';
-import { quizService, courseService } from '../../services';
+import { quizService, courseService, materialService, topicTagService } from '../../services';
 import { PageHeader, LoadingSpinner } from '../../components';
 
 const emptyQuestion = () => ({
@@ -46,6 +47,7 @@ const emptyQuestion = () => ({
   correctAnswer: 0,
   explanation: '',
   difficulty: 'medium',
+  topicTags: [],
 });
 
 const ManualQuizCreator = () => {
@@ -56,6 +58,7 @@ const ManualQuizCreator = () => {
 
   const [courses, setCourses] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
+  const [tagPool, setTagPool] = useState([]);
 
   // Form state
   const [courseId, setCourseId] = useState(preselectedCourseId || '');
@@ -85,6 +88,61 @@ const ManualQuizCreator = () => {
     fetchCourses();
   }, [fetchCourses]);
 
+  useEffect(() => {
+    const loadTagPool = async () => {
+      if (!courseId) {
+        setTagPool([]);
+        return;
+      }
+
+      try {
+        const selectedCourse = courses.find((c) => String(c._id) === String(courseId));
+        const courseNo = selectedCourse?.courseNo;
+
+        const [taxonomyRows, materialRowsRaw] = await Promise.all([
+          topicTagService.getTaxonomyByCourse(courseId).catch(() => []),
+          courseNo
+            ? materialService.getAllMaterials({ courseNo, limit: 200 }).catch(() => [])
+            : Promise.resolve([]),
+        ]);
+
+        const materialRows = Array.isArray(materialRowsRaw)
+          ? materialRowsRaw
+          : Array.isArray(materialRowsRaw?.data)
+            ? materialRowsRaw.data
+            : [];
+
+        const fromTaxonomy = (Array.isArray(taxonomyRows) ? taxonomyRows : []).map((row) => ({
+          value: row.topicId,
+          label: row.topicName || row.topicId,
+        }));
+
+        const fromMaterials = materialRows.flatMap((material) =>
+          (Array.isArray(material?.topicTags) ? material.topicTags : []).map((tag) => ({
+            value: String(tag?.topicId || '').trim(),
+            label: String(tag?.topicId || '').trim(),
+          }))
+        );
+
+        const merged = [...fromTaxonomy, ...fromMaterials]
+          .filter((row) => row.value)
+          .reduce((acc, row) => {
+            if (!acc.some((x) => x.value === row.value)) {
+              acc.push(row);
+            }
+            return acc;
+          }, [])
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        setTagPool(merged);
+      } catch {
+        setTagPool([]);
+      }
+    };
+
+    loadTagPool();
+  }, [courseId, courses]);
+
   // ─── Question Editing Helpers ───────────────────────────────────────
 
   const updateQuestion = (index, field, value) => {
@@ -93,6 +151,25 @@ const ManualQuizCreator = () => {
       copy[index] = { ...copy[index], [field]: value };
       return copy;
     });
+  };
+
+  const handleQuestionTagsChange = (qIndex, selectedOptions) => {
+    const normalized = (Array.isArray(selectedOptions) ? selectedOptions : [])
+      .map((item) => {
+        if (typeof item === 'string') {
+          return { topicId: item, subtopicId: '', confidence: 0.9, source: 'manual' };
+        }
+        return {
+          topicId: item?.value || item?.topicId || item?.label || '',
+          subtopicId: '',
+          confidence: 0.9,
+          source: 'manual',
+        };
+      })
+      .filter((tag) => String(tag.topicId || '').trim())
+      .map((tag) => ({ ...tag, topicId: String(tag.topicId).trim() }));
+
+    updateQuestion(qIndex, 'topicTags', normalized);
   };
 
   const updateOption = (qIndex, optIndex, value) => {
@@ -125,6 +202,9 @@ const ManualQuizCreator = () => {
       const q = questions[i];
       if (!q.questionText.trim()) return toast.error(`Question ${i + 1} text is required`);
       if (q.options.some((o) => !o.trim())) return toast.error(`All options in question ${i + 1} must be filled`);
+      if (!Array.isArray(q.topicTags) || q.topicTags.length === 0) {
+        return toast.error(`Please select at least one tag for question ${i + 1}`);
+      }
     }
 
     try {
@@ -133,7 +213,15 @@ const ManualQuizCreator = () => {
         courseId,
         title: title.trim(),
         description: description.trim(),
-        questions,
+        questions: questions.map((q) => ({
+          ...q,
+          topicTags: (q.topicTags || []).map((tag) => ({
+            topicId: String(tag.topicId || '').trim(),
+            subtopicId: String(tag.subtopicId || '').trim(),
+            confidence: Number(tag.confidence ?? 0.9),
+            source: tag.source || 'manual',
+          })),
+        })),
         timeLimit: timeLimit ? Number(timeLimit) : null,
       });
       setQuiz(data);
@@ -391,6 +479,30 @@ const ManualQuizCreator = () => {
               rows={2}
               sx={{ mt: 1 }}
               placeholder="Explain why this is the correct answer..."
+            />
+
+            <Autocomplete
+              multiple
+              disableCloseOnSelect
+              options={tagPool}
+              getOptionLabel={(option) => option?.label || option?.value || ''}
+              value={(q.topicTags || []).map((tag) => ({
+                value: tag.topicId,
+                label: tag.topicId,
+              }))}
+              onChange={(_, newValue) => handleQuestionTagsChange(qIndex, newValue)}
+              isOptionEqualToValue={(option, value) => option.value === value.value}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Question Tags"
+                  placeholder="Select one or more topic tags"
+                  required
+                  sx={{ mt: 2 }}
+                  helperText="These tags are internal for tracking and recommendations. Students will not see them."
+                />
+              )}
+              noOptionsText="No topic tags found. Add tags to course materials first."
             />
           </CardContent>
         </Card>

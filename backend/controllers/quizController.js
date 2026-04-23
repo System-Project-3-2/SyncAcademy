@@ -129,6 +129,16 @@ const sanitizeQuestionTopicTags = (q, userId) => {
   }));
 };
 
+const stripQuestionTopicTags = (quizObj = {}) => {
+  if (!Array.isArray(quizObj.questions)) return quizObj;
+  quizObj.questions = quizObj.questions.map((q) => {
+    if (!q || typeof q !== 'object') return q;
+    const { topicTags, ...rest } = q;
+    return rest;
+  });
+  return quizObj;
+};
+
 // ─── Generate Quiz (AI) ──────────────────────────────────────────────────────
 
 /**
@@ -432,6 +442,7 @@ export const getQuiz = async (req, res) => {
       if (attempt) {
         // Already attempted — show results with answers (ignore schedule window)
         quizObj.myAttempt = attempt;
+        stripQuestionTopicTags(quizObj);
       } else {
         // Not yet attempted — enforce schedule window first
         const now = new Date();
@@ -480,6 +491,9 @@ export const getQuiz = async (req, res) => {
         quizObj.optionOrders = optionOrders;
         quizObj.scheduleStatus = "available";
       }
+
+      // Defense in depth: students should never receive topic tag metadata.
+      stripQuestionTopicTags(quizObj);
     }
 
     res.json(quizObj);

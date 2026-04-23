@@ -38,6 +38,7 @@ import {
   Avatar,
   Skeleton,
   useTheme,
+  Autocomplete,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -457,6 +458,7 @@ const EditMaterialDialog = ({ open, material, onClose, onSave }) => {
     courseTitle: '',
     courseNo: '',
     type: '',
+    topicTags: [],
   });
   const [loading, setLoading] = useState(false);
 
@@ -467,6 +469,9 @@ const EditMaterialDialog = ({ open, material, onClose, onSave }) => {
         courseTitle: material.courseTitle || '',
         courseNo: material.courseNo || '',
         type: material.type || '',
+        topicTags: Array.isArray(material.topicTags)
+          ? [...new Set(material.topicTags.map((tag) => String(tag?.topicId || '').trim()).filter(Boolean))]
+          : [],
       });
     }
   }, [material]);
@@ -485,6 +490,13 @@ const EditMaterialDialog = ({ open, material, onClose, onSave }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTopicTagsChange = (_, value) => {
+    const normalized = [...new Set((Array.isArray(value) ? value : [])
+      .map((item) => String(item || '').trim())
+      .filter(Boolean))];
+    setFormData((prev) => ({ ...prev, topicTags: normalized }));
   };
 
   return (
@@ -547,6 +559,22 @@ const EditMaterialDialog = ({ open, material, onClose, onSave }) => {
               ))}
             </Select>
           </FormControl>
+
+          <Autocomplete
+            multiple
+            freeSolo
+            options={[]}
+            value={formData.topicTags}
+            onChange={handleTopicTagsChange}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Topic Tags"
+                placeholder="Add tags and press Enter"
+                helperText="These tags will be updated for recommendation and retrieval."
+              />
+            )}
+          />
         </Box>
       </DialogContent>
       <DialogActions sx={{ p: 2.5, pt: 1 }}>
@@ -607,11 +635,10 @@ const MaterialTagsDialog = ({ open, material, onClose }) => {
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               {tags.map((tag, index) => {
                 const topicLabel = tag?.topicId || tag?.topic || 'topic';
-                const confidence = Number(tag?.confidence ?? 0);
                 return (
                   <Chip
                     key={`${topicLabel}-${index}`}
-                    label={confidence > 0 ? `${topicLabel} (${Math.round(confidence * 100)}%)` : topicLabel}
+                    label={topicLabel}
                     variant="outlined"
                     size="small"
                     sx={{ borderRadius: 1.5 }}

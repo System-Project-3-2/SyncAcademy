@@ -24,6 +24,7 @@ import {
   FormControlLabel,
   FormControl,
   FormLabel,
+  Autocomplete,
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
@@ -37,7 +38,7 @@ import {
   Schedule as ScheduleIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
-import { quizService } from '../../services';
+import { quizService, materialService, topicTagService } from '../../services';
 import { PageHeader, LoadingSpinner } from '../../components';
 
 const QuizEdit = () => {
@@ -62,6 +63,7 @@ const QuizEdit = () => {
   // Question editing
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [editForm, setEditForm] = useState(null);
+  const [tagPool, setTagPool] = useState([]);
 
   const fetchQuiz = useCallback(async () => {
     try {
@@ -82,6 +84,58 @@ const QuizEdit = () => {
   useEffect(() => {
     fetchQuiz();
   }, [fetchQuiz]);
+
+  useEffect(() => {
+    const loadTagPool = async () => {
+      if (!quiz?.course) return;
+
+      try {
+        const courseId = typeof quiz.course === 'object' ? quiz.course._id : quiz.course;
+        const courseNo = typeof quiz.course === 'object' ? quiz.course.courseNo : null;
+
+        const [taxonomyRows, materialRowsRaw] = await Promise.all([
+          topicTagService.getTaxonomyByCourse(courseId).catch(() => []),
+          courseNo
+            ? materialService.getAllMaterials({ courseNo, limit: 200 }).catch(() => [])
+            : Promise.resolve([]),
+        ]);
+
+        const materialRows = Array.isArray(materialRowsRaw)
+          ? materialRowsRaw
+          : Array.isArray(materialRowsRaw?.data)
+            ? materialRowsRaw.data
+            : [];
+
+        const fromTaxonomy = (Array.isArray(taxonomyRows) ? taxonomyRows : []).map((row) => ({
+          value: row.topicId,
+          label: row.topicName || row.topicId,
+        }));
+
+        const fromMaterials = materialRows.flatMap((material) =>
+          (Array.isArray(material?.topicTags) ? material.topicTags : []).map((tag) => ({
+            value: String(tag?.topicId || '').trim(),
+            label: String(tag?.topicId || '').trim(),
+          }))
+        );
+
+        const merged = [...fromTaxonomy, ...fromMaterials]
+          .filter((row) => row.value)
+          .reduce((acc, row) => {
+            if (!acc.some((x) => x.value === row.value)) {
+              acc.push(row);
+            }
+            return acc;
+          }, [])
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        setTagPool(merged);
+      } catch {
+        setTagPool([]);
+      }
+    };
+
+    loadTagPool();
+  }, [quiz]);
 
   const handleSaveDetails = async () => {
     if (!title.trim()) return toast.error('Title is required');
@@ -109,12 +163,23 @@ const QuizEdit = () => {
       options: [...q.options],
       correctAnswer: q.correctAnswer,
       explanation: q.explanation || '',
+      topicTags: Array.isArray(q.topicTags)
+        ? q.topicTags.map((tag) => ({
+            topicId: String(tag?.topicId || '').trim(),
+            subtopicId: String(tag?.subtopicId || '').trim(),
+            confidence: Number(tag?.confidence ?? 0.9),
+            source: tag?.source || 'manual',
+          })).filter((tag) => tag.topicId)
+        : [],
     });
   };
 
   const saveEditedQuestion = async () => {
     if (!editForm.questionText.trim()) return toast.error('Question text is required');
     if (editForm.options.some((o) => !o.trim())) return toast.error('All options must be filled');
+    if (!Array.isArray(editForm.topicTags) || editForm.topicTags.length === 0) {
+      return toast.error('Please select at least one tag for this question');
+    }
 
     const updatedQuestions = [...quiz.questions];
     updatedQuestions[editingQuestion] = {
@@ -146,6 +211,25 @@ const QuizEdit = () => {
     } catch (err) {
       toast.error('Failed to remove question');
     }
+  };
+
+  const handleEditQuestionTags = (selectedOptions) => {
+    const normalized = (Array.isArray(selectedOptions) ? selectedOptions : [])
+      .map((item) => {
+        if (typeof item === 'string') {
+          return { topicId: item, subtopicId: '', confidence: 0.9, source: 'manual' };
+        }
+        return {
+          topicId: item?.value || item?.topicId || item?.label || '',
+          subtopicId: '',
+          confidence: 0.9,
+          source: 'manual',
+        };
+      })
+      .filter((tag) => String(tag.topicId || '').trim())
+      .map((tag) => ({ ...tag, topicId: String(tag.topicId).trim() }));
+
+    setEditForm((prev) => ({ ...prev, topicTags: normalized }));
   };
 
   const handlePublish = async () => {
@@ -323,6 +407,26 @@ const QuizEdit = () => {
                 </RadioGroup>
               </FormControl>
               <TextField label="Explanation" multiline rows={2} value={editForm.explanation} onChange={(e) => setEditForm({ ...editForm, explanation: e.target.value })} fullWidth />
+
+              <Autocomplete
+                multiple
+                disableCloseOnSelect
+                options={tagPool}
+                getOptionLabel={(option) => option?.label || option?.value || ''}
+                value={(editForm.topicTags || []).map((tag) => ({ value: tag.topicId, label: tag.topicId }))}
+                onChange={(_, newValue) => handleEditQuestionTags(newValue)}
+                isOptionEqualToValue={(option, value) => option.value === value.value}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Question Tags"
+                    placeholder="Select one or more tags"
+                    required
+                    helperText="Internal tags for mastery tracking and recommendations."
+                  />
+                )}
+                noOptionsText="No topic tags found. Add tags to course materials first."
+              />
             </Box>
           )}
         </DialogContent>
