@@ -8,7 +8,7 @@ backend/ml/model_registry/*
 backend/ml/reports/*
 
 .venv
-*.md
+
 .venv-linux
 .venv-mac
 .venv-windows
