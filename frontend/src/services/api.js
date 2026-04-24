@@ -4,25 +4,39 @@
  */
 import axios from 'axios';
 
+const normalizeUrl = (url) => url?.replace(/\/+$/, '');
+
+const isLocalHostname = (hostname) => {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+};
+
 const resolveApiBaseUrl = () => {
-  const envBaseUrl = process.env.REACT_APP_API_BASE_URL || process.env.VITE_API_BASE_URL;
-  if (envBaseUrl) {
-    return envBaseUrl.replace(/\/+$/, '');
-  }
+  const localApiBaseUrl =
+    process.env.REACT_APP_LOCAL_API_BASE_URL ||
+    process.env.VITE_LOCAL_API_BASE_URL ||
+    'http://localhost:5000/api';
+
+  const remoteApiBaseUrl =
+    process.env.REACT_APP_REMOTE_API_BASE_URL ||
+    process.env.VITE_REMOTE_API_BASE_URL ||
+    process.env.REACT_APP_API_BASE_URL ||
+    process.env.VITE_API_BASE_URL ||
+    'https://student-aid-1mvg.onrender.com/api';
 
   if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    if (hostname === 'student-aid-semantic-search.onrender.com') {
-      return 'https://student-aid-1mvg.onrender.com/api';
+    if (isLocalHostname(window.location.hostname)) {
+      return normalizeUrl(localApiBaseUrl);
     }
+
+    return normalizeUrl(remoteApiBaseUrl);
   }
 
-  return 'http://localhost:5000/api';
+  return normalizeUrl(remoteApiBaseUrl);
 };
 
 // Create axios instance with base URL from environment variable
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL || resolveApiBaseUrl(),
+  baseURL: resolveApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
