@@ -1194,6 +1194,7 @@ const AITutor = () => {
             px: 2,
             display: 'flex',
             alignItems: 'center',
+            flexWrap: 'wrap',
             gap: 1,
             borderBottom: `1px solid ${theme.palette.divider}`,
             borderRadius: 0,
@@ -1213,12 +1214,12 @@ const AITutor = () => {
             size="small"
             color="success"
             variant="outlined"
-            sx={{ ml: 'auto', fontSize: '0.7rem', height: 24 }}
+            sx={{ ml: 'auto', fontSize: '0.7rem', height: 24, display: { xs: 'none', sm: 'inline-flex' } }}
           />
         </Paper>
 
         {/* Messages Area */}
-        <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+        <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 1, sm: 2 } }}>
           <AdaptiveTutorPanel
             theme={theme}
             courses={courses}
@@ -1265,12 +1266,21 @@ const AITutor = () => {
         <Paper
           elevation={0}
           sx={{
-            p: 2,
+            p: { xs: 1.25, sm: 2 },
             borderTop: `1px solid ${theme.palette.divider}`,
             borderRadius: 0,
           }}
         >
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end', maxWidth: 900, mx: 'auto' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 1,
+              alignItems: { xs: 'stretch', sm: 'flex-end' },
+              flexDirection: { xs: 'column', sm: 'row' },
+              maxWidth: 900,
+              mx: 'auto',
+            }}
+          >
             <TextField
               inputRef={inputRef}
               fullWidth
@@ -1299,6 +1309,7 @@ const AITutor = () => {
                 color: 'white',
                 width: 42,
                 height: 42,
+                alignSelf: { xs: 'flex-end', sm: 'auto' },
                 '&:hover': { bgcolor: 'primary.dark' },
                 '&.Mui-disabled': { bgcolor: 'action.disabledBackground' },
               }}

@@ -168,7 +168,7 @@ const MaterialCardItem = ({ material, userRole, currentUserId, onDelete, onEdit,
         >
           {getFileIcon(material.fileUrl, material.type)}
         </Box>
-        <Box sx={{ flex: 1, minWidth: 0, pr: 6 }}>
+        <Box sx={{ flex: 1, minWidth: 0, pr: { xs: 0, sm: 6 } }}>
           <Typography
             variant="subtitle1"
             fontWeight={600}

@@ -261,7 +261,8 @@ const Sidebar = ({ open, onClose }) => {
           display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
-            width: drawerWidth,
+            width: { xs: '82vw', sm: drawerWidth },
+            maxWidth: drawerWidth,
           },
         }}
       >

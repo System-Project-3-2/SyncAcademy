@@ -367,7 +367,9 @@ const UserManagement = () => {
           onChange={(e, newValue) => setTabValue(newValue)}
           indicatorColor="primary"
           textColor="primary"
-          variant="fullWidth"
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
         >
           <Tab icon={<PersonIcon />} label="All Users" iconPosition="start" />
           <Tab icon={<StudentIcon />} label="Students" iconPosition="start" />
@@ -399,7 +401,7 @@ const UserManagement = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             size="small"
-            sx={{ minWidth: 300, flexGrow: 1 }}
+            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 300 }, flexGrow: 1 }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -409,7 +411,7 @@ const UserManagement = () => {
             }}
           />
 
-          <FormControl size="small" sx={{ minWidth: 150 }}>
+          <FormControl size="small" sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 150 } }}>
             <InputLabel>Status</InputLabel>
             <Select
               value={statusFilter}
@@ -431,9 +433,10 @@ const UserManagement = () => {
           borderRadius: 2,
           border: '1px solid',
           borderColor: 'divider',
+          overflowX: 'auto',
         }}
       >
-        <Table>
+        <Table sx={{ minWidth: 920 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: 'background.default' }}>
               <TableCell>User</TableCell>

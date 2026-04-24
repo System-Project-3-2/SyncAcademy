@@ -123,7 +123,7 @@ const MyGrades = () => {
           InputProps={{
             startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
           }}
-          sx={{ minWidth: 300 }}
+          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 300 } }}
         />
       </Box>
 
@@ -135,8 +135,8 @@ const MyGrades = () => {
           </Typography>
         </Paper>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
+        <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+          <Table sx={{ minWidth: 860 }}>
             <TableHead>
               <TableRow>
                 <TableCell>
@@ -222,7 +222,7 @@ const MyGrades = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ maxWidth: 200, whiteSpace: 'pre-wrap' }} noWrap>
+                      <Typography variant="body2" sx={{ maxWidth: 240, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
                         {published ? (sub.feedback || '—') : '—'}
                       </Typography>
                     </TableCell>

@@ -7,7 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Chip, CircularProgress, Alert, Stack,
   Divider, Table, TableHead, TableRow, TableCell, TableBody,
-  TextField, Button, Card, CardContent, Tabs, Tab, Grid,
+  TextField, Button, Card, CardContent, Tabs, Tab, Grid, TableContainer,
 } from '@mui/material';
 import { Download as DownloadIcon, Save as SaveIcon, PictureAsPdf as PdfIcon } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -149,12 +149,13 @@ export default function EventDetail() {
           <Alert severity="info">No registered students yet.</Alert>
         ) : (
           <>
-            <Table size="small">
+            <TableContainer sx={{ overflowX: 'auto' }}>
+              <Table size="small" sx={{ minWidth: 620 }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Student Name</TableCell>
                   <TableCell>Email</TableCell>
-                  <TableCell sx={{ width: 120 }}>Mark (0–100)</TableCell>
+                  <TableCell sx={{ width: { xs: 108, sm: 120 } }}>Mark (0–100)</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -169,13 +170,14 @@ export default function EventDetail() {
                         inputProps={{ min: 0, max: 100, step: 0.5 }}
                         value={marks[`${reg.student._id}:${cid}`] ?? ''}
                         onChange={(e) => handleMarkChange(reg.student._id, cid, e.target.value)}
-                        sx={{ width: 90 }}
+                        sx={{ width: { xs: 78, sm: 90 } }}
                       />
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </TableContainer>
             <Button
               variant="contained"
               startIcon={<SaveIcon />}
@@ -192,9 +194,9 @@ export default function EventDetail() {
   };
 
   return (
-    <Box maxWidth={900} mx="auto" p={3}>
+    <Box maxWidth={900} mx="auto" p={{ xs: 1.5, sm: 3 }}>
       {/* Header */}
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'flex-start' }} spacing={{ xs: 1.5, sm: 0 }} mb={2}>
         <Box>
           <Typography variant="h5" fontWeight={700}>{event.title}</Typography>
           <Stack direction="row" spacing={1} mt={1}>
@@ -203,7 +205,7 @@ export default function EventDetail() {
           </Stack>
         </Box>
         {isCreator && (
-          <Stack direction="row" spacing={1}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
             <Button
               variant="outlined"
               startIcon={<DownloadIcon />}

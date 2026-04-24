@@ -15,7 +15,7 @@ const PageHeader = ({
 }) => {
 
   return (
-    <Box sx={{ mb: 4 }}>
+    <Box sx={{ mb: { xs: 2.5, sm: 4 } }}>
       {/* Breadcrumbs */}
       {breadcrumbs.length > 0 && (
         <Breadcrumbs
@@ -69,8 +69,10 @@ const PageHeader = ({
             fontWeight={800} 
             color="text.primary"
             sx={{ 
+              fontSize: { xs: '1.5rem', sm: '2rem' },
               letterSpacing: '-0.02em',
               lineHeight: 1.3,
+              overflowWrap: 'anywhere',
             }}
           >
             {title}
@@ -79,13 +81,17 @@ const PageHeader = ({
             <Typography 
               variant="body1" 
               color="text.secondary" 
-              sx={{ mt: 0.5, lineHeight: 1.5 }}
+              sx={{ mt: 0.5, lineHeight: 1.5, overflowWrap: 'anywhere' }}
             >
               {subtitle}
             </Typography>
           )}
         </Box>
-        {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
+        {actions && (
+          <Box sx={{ flexShrink: 0, width: { xs: '100%', sm: 'auto' } }}>
+            {actions}
+          </Box>
+        )}
       </Box>
     </Box>
   );

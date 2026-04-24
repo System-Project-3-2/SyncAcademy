@@ -31,7 +31,12 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #0f172a;
+  overflow-x: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+#root {
+  overflow-x: clip;
 }
 
 /* Dark mode body styles */

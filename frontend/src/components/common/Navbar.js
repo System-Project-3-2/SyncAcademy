@@ -292,7 +292,15 @@ const Navbar = ({ onMenuClick }) => {
                 onClose={handleCloseNotif}
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                 transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                PaperProps={{ sx: { width: 360, maxHeight: 420, borderRadius: 2, mt: 0.5 } }}
+                PaperProps={{
+                  sx: {
+                    width: { xs: 'calc(100vw - 24px)', sm: 360 },
+                    maxWidth: 360,
+                    maxHeight: { xs: '70vh', sm: 420 },
+                    borderRadius: 2,
+                    mt: 0.5,
+                  },
+                }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5 }}>
                   <Typography fontWeight={700} variant="body1">Notifications</Typography>
@@ -404,7 +412,8 @@ const Navbar = ({ onMenuClick }) => {
                 PaperProps={{
                   sx: {
                     borderRadius: 2,
-                    minWidth: 200,
+                    minWidth: { xs: 180, sm: 200 },
+                    maxWidth: 'calc(100vw - 24px)',
                     border: '1px solid',
                     borderColor: 'divider',
                     mt: 0.5,

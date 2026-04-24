@@ -21,6 +21,7 @@ const DashboardLayout = () => {
         display: 'flex', 
         minHeight: '100vh', 
         bgcolor: 'background.default',
+        overflowX: 'clip',
         transition: 'background-color 0.3s ease',
       }}
     >
@@ -36,7 +37,7 @@ const DashboardLayout = () => {
         sx={{
           flexGrow: 1,
           minWidth: 0,
-          p: { xs: 1.5, sm: 2.5, md: 3 },
+          p: { xs: 1, sm: 2, md: 3 },
           transition: 'background-color 0.3s ease',
           minHeight: '100vh',
         }}
