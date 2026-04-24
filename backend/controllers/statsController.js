@@ -15,6 +15,33 @@ import QuizAttempt from "../models/quizAttemptModel.js";
 const clampPercentage = (value) => Math.max(0, Math.min(100, Number(value) || 0));
 
 /**
+ * Get public landing page statistics
+ * @route GET /api/stats/public
+ * @access Public
+ */
+export const getPublicLandingStats = async (req, res) => {
+  try {
+    const [materials, students, teachers, courses, activeEnrollments] = await Promise.all([
+      Material.countDocuments(),
+      User.countDocuments({ role: "student" }),
+      User.countDocuments({ role: "teacher" }),
+      Course.countDocuments(),
+      Enrollment.countDocuments({ status: "active" }),
+    ]);
+
+    res.status(200).json({
+      materials,
+      students,
+      teachers,
+      courses,
+      activeEnrollments,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
  * Get admin dashboard statistics
  * @route GET /api/stats/admin
  * @access Admin only
