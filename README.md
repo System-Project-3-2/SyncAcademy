@@ -1,4 +1,4 @@
-# Student-Aid-Semantic-Search
+# SyncAcademy
 
 ## Local AI setup
 
