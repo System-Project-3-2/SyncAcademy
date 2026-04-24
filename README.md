@@ -139,21 +139,21 @@ Many academic systems fragment core capabilities across disconnected tools (cont
 
 ```mermaid
 flowchart LR
-  U[Users: Student / Teacher / Admin] --> FE[SyncAcademy Frontend (React)]
-  FE --> API[SyncAcademy Backend API (Express)]
-  API --> DB[(MongoDB)]
-  API --> AI[Ollama / AI Services]
-  API --> FS[Cloudinary / File Services]
-  API --> EM[Email Service (Nodemailer)]
+  U["Users: Student / Teacher / Admin"] --> FE["SyncAcademy Frontend (React)"]
+  FE --> API["SyncAcademy Backend API (Express)"]
+  API --> DB[("MongoDB")]
+  API --> AI["Ollama / AI Services"]
+  API --> FS["Cloudinary / File Services"]
+  API --> EM["Email Service (Nodemailer)"]
 
   subgraph API_Modules
-    AUTH[Auth & RBAC]
-    CRS[Courses & Enrollments]
-    MAT[Materials & Semantic Search]
-    QZ[Quizzes & Attempts]
-    ANL[Dashboard Analytics]
-    CHAT[RAG Chat]
-    NOTIF[Notifications / Announcements]
+    AUTH["Auth and RBAC"]
+    CRS["Courses and Enrollments"]
+    MAT["Materials and Semantic Search"]
+    QZ["Quizzes and Attempts"]
+    ANL["Dashboard Analytics"]
+    CHAT["RAG Chat"]
+    NOTIF["Notifications and Announcements"]
   end
 
   API --> AUTH
