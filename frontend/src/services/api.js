@@ -4,9 +4,25 @@
  */
 import axios from 'axios';
 
+const resolveApiBaseUrl = () => {
+  const envBaseUrl = process.env.REACT_APP_API_BASE_URL || process.env.VITE_API_BASE_URL;
+  if (envBaseUrl) {
+    return envBaseUrl.replace(/\/+$/, '');
+  }
+
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'student-aid-semantic-search.onrender.com') {
+      return 'https://student-aid-1mvg.onrender.com/api';
+    }
+  }
+
+  return 'http://localhost:5000/api';
+};
+
 // Create axios instance with base URL from environment variable
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api',
+  baseURL: process.env.REACT_APP_API_BASE_URL || resolveApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
