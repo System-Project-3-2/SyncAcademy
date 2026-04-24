@@ -243,7 +243,7 @@ const Navbar = ({ onMenuClick }) => {
               noWrap
               sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}
             >
-              Student Aid
+              SyncAcademy
             </Typography>
           </Box>
 
@@ -265,7 +265,7 @@ const Navbar = ({ onMenuClick }) => {
           >
             <SchoolIcon sx={{ fontSize: 22 }} />
             <Typography variant="h6" noWrap sx={{ fontWeight: 800 }}>
-              Student Aid
+              SyncAcademy
             </Typography>
           </Box>
 

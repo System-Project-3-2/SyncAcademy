@@ -13,7 +13,7 @@ export const THEME_MODES = {
 };
 
 // Local storage key for theme persistence
-const THEME_STORAGE_KEY = 'student-aid-theme';
+const THEME_STORAGE_KEY = 'syncacademy-theme';
 
 // Create the context
 export const ThemeContext = createContext({

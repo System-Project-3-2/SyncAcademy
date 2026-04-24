@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>SyncAcademy</title>
+    <script>
+      (function () {
+        var path = window.location.pathname + window.location.search + window.location.hash;
+        sessionStorage.setItem('spa-redirect-path', path);
+        window.location.replace('/');
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>

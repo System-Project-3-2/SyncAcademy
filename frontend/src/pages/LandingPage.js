@@ -126,7 +126,7 @@ const Header = () => {
                 WebkitTextFillColor: 'transparent',
               }}
             >
-              Student Aid
+              SyncAcademy
             </Typography>
           </Box>
 
@@ -949,7 +949,7 @@ const BenefitsSection = () => {
                 lineHeight: 1.8,
               }}
             >
-              Student Aid transforms how you access academic resources and communicate with educators. 
+              SyncAcademy transforms how you access academic resources and communicate with educators. 
               Experience a streamlined, modern approach to academic support.
             </Typography>
             <Button
@@ -1070,7 +1070,7 @@ const CTASection = () => {
               mx: 'auto',
             }}
           >
-            Join thousands of students and educators already using Student Aid.
+            Join thousands of students and educators already using SyncAcademy.
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
             <Button
@@ -1138,7 +1138,7 @@ const Footer = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <SchoolIcon />
               <Typography variant="h6" fontWeight={700}>
-                Student Aid
+                SyncAcademy
               </Typography>
             </Box>
             <Typography variant="body2" sx={{ opacity: 0.7 }}>
@@ -1173,7 +1173,7 @@ const Footer = () => {
                 textAlign: { xs: 'left', md: 'right' },
               }}
             >
-              © {new Date().getFullYear()} Student Aid. All rights reserved.
+              © {new Date().getFullYear()} SyncAcademy. All rights reserved.
             </Typography>
           </Grid>
         </Grid>

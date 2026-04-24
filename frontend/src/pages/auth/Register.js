@@ -186,7 +186,7 @@ const Register = () => {
               <SchoolIcon fontSize="large" />
             </Box>
             <Typography variant="h4" fontWeight={700} color="primary">
-              Student Aid
+              SyncAcademy
             </Typography>
           </Box>
 

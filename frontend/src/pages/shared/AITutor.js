@@ -403,7 +403,7 @@ const TypingIndicator = ({ theme }) => (
 const WelcomeScreen = ({ theme, onSuggestion }) => {
   const suggestions = [
     "What topics are covered in the uploaded materials?",
-    "How does the Student-Aid platform work?",
+    "How does the SyncAcademy platform work?",
     "Explain the key concepts from the latest notes",
     "Help me understand semantic search",
   ];
@@ -432,7 +432,7 @@ const WelcomeScreen = ({ theme, onSuggestion }) => {
         <TutorIcon sx={{ fontSize: 40 }} />
       </Avatar>
       <Typography variant="h5" fontWeight={700} gutterBottom>
-        Student Aid Tutor
+        SyncAcademy Tutor
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 500 }}>
         I'm your AI-powered learning assistant. Ask me anything about your course
