@@ -4,7 +4,7 @@ import nodemailer from "nodemailer";
  * Build a branded HTML email with an optional "See Details" button.
  */
 const buildHtml = (name, message, link) => {
-  const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const baseUrl = process.env.FRONTEND_URL || "https://syncacademy.onrender.com";
   const fullLink = link ? (link.startsWith("http") ? link : `${baseUrl}${link}`) : null;
 
   return `

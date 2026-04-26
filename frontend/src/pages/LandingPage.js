@@ -3,7 +3,7 @@
  * Professional, modern, student-friendly landing page
  * Fully responsive with dark/light theme support
  */
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
   Box,
@@ -28,10 +28,9 @@ import {
   Menu as MenuIcon,
   Close as CloseIcon,
   Search as SearchIcon,
-  Feedback as FeedbackIcon,
-  People as PeopleIcon,
+  Analytics as AnalyticsIcon,
+  SmartToy as SmartToyIcon,
   Security as SecurityIcon,
-  Speed as SpeedIcon,
   ArrowForward as ArrowForwardIcon,
   CheckCircle as CheckIcon,
   PersonAdd as PersonAddIcon,
@@ -40,13 +39,14 @@ import {
   Work,
   AdminPanelSettings,
   AutoAwesome,
-  Bolt,
   SupportAgent,
   Forum,
   LibraryBooks,
+  AppRegistration as EnrollmentIcon,
 } from '@mui/icons-material';
 import { useTheme as useAppTheme } from '../hooks/useTheme';
 import { ThemeToggleButton } from '../components/common/ThemeToggle';
+import { statsService } from '../services';
 
 // ══════════════════════════════════════════════════════════════════════
 // HEADER / NAVIGATION
@@ -259,9 +259,18 @@ const Header = () => {
 // ══════════════════════════════════════════════════════════════════════
 // HERO SECTION
 // ══════════════════════════════════════════════════════════════════════
-const HeroSection = () => {
+const HeroSection = ({ heroStats }) => {
   const { isDark } = useAppTheme();
   const theme = useTheme();
+
+  const statItems = useMemo(
+    () => [
+      { value: heroStats.materials.toLocaleString(), label: 'Study Materials' },
+      { value: heroStats.students.toLocaleString(), label: 'Students' },
+      { value: heroStats.teachers.toLocaleString(), label: 'Teachers' },
+    ],
+    [heroStats]
+  );
 
   return (
     <Box
@@ -361,8 +370,8 @@ const HeroSection = () => {
                   maxWidth: 500,
                 }}
               >
-                A comprehensive platform connecting students, teachers, and administrators. 
-                Access study materials, submit feedback, and collaborate seamlessly.
+                A comprehensive platform connecting students, teachers, and administrators.
+                Use RAG-powered tutoring, AI quiz generation, enrollment workflows, and actionable analytics.
               </Typography>
 
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
@@ -409,11 +418,7 @@ const HeroSection = () => {
 
               {/* Stats */}
               <Box sx={{ display: 'flex', gap: 4, mt: 5, flexWrap: 'wrap' }}>
-                {[
-                  { value: '1000+', label: 'Study Materials' },
-                  { value: '500+', label: 'Students' },
-                  { value: '50+', label: 'Teachers' },
-                ].map((stat) => (
+                {statItems.map((stat) => (
                   <Box key={stat.label}>
                     <Typography variant="h4" fontWeight={800}>
                       {stat.value}
@@ -584,39 +589,39 @@ const FeaturesSection = () => {
 
   const features = [
     {
-      icon: <SearchIcon sx={{ fontSize: 32 }} />,
-      title: 'Smart Search',
-      description: 'AI-powered semantic search to find exactly what you need across all study materials.',
+      icon: <SmartToyIcon sx={{ fontSize: 32 }} />,
+      title: 'RAG Tutor Chatbot',
+      description: 'Ask questions and get contextual answers grounded in your uploaded course materials.',
       color: '#3b82f6',
     },
     {
-      icon: <LibraryBooks sx={{ fontSize: 32 }} />,
-      title: 'Material Library',
-      description: 'Organized repository of PDFs, documents, and presentations for every course.',
+      icon: <AnalyticsIcon sx={{ fontSize: 32 }} />,
+      title: 'Spider Chart Analytics',
+      description: 'Track quiz and assignment performance using visual spider-chart analytics in dashboards.',
       color: '#8b5cf6',
     },
     {
-      icon: <FeedbackIcon sx={{ fontSize: 32 }} />,
-      title: 'Feedback System',
-      description: 'Submit queries and receive responses from teachers with full tracking.',
+      icon: <AutoAwesome sx={{ fontSize: 32 }} />,
+      title: 'AI Quiz Generator',
+      description: 'Generate high-quality quiz questions from your course content to accelerate assessment creation.',
       color: '#10b981',
     },
     {
-      icon: <PeopleIcon sx={{ fontSize: 32 }} />,
-      title: 'User Management',
-      description: 'Role-based access for students, teachers, and administrators.',
+      icon: <EnrollmentIcon sx={{ fontSize: 32 }} />,
+      title: 'Course Enrollment',
+      description: 'Students can join courses with enrollment flows while teachers manage rosters efficiently.',
       color: '#f59e0b',
+    },
+    {
+      icon: <SearchIcon sx={{ fontSize: 32 }} />,
+      title: 'Semantic Search',
+      description: 'Find precise study resources with AI-powered semantic retrieval across all materials.',
+      color: '#ef4444',
     },
     {
       icon: <SecurityIcon sx={{ fontSize: 32 }} />,
       title: 'Secure Access',
       description: 'Protected authentication with role-based permissions and data security.',
-      color: '#ef4444',
-    },
-    {
-      icon: <SpeedIcon sx={{ fontSize: 32 }} />,
-      title: 'Fast & Responsive',
-      description: 'Optimized performance across all devices with instant loading.',
       color: '#06b6d4',
     },
   ];
@@ -729,9 +734,9 @@ const HowItWorksSection = () => {
       color: '#3b82f6',
       steps: [
         'Register with your academic email',
-        'Browse and search study materials',
-        'Submit feedback and queries',
-        'Track your feedback status',
+        'Enroll in your courses',
+        'Learn with RAG tutor and semantic material search',
+        'Track progress with dashboard analytics',
       ],
     },
     {
@@ -741,8 +746,8 @@ const HowItWorksSection = () => {
       steps: [
         'Create your teacher account',
         'Upload course materials (PDF, DOCX, PPTX)',
-        'Respond to student feedback',
-        'Manage your content library',
+        'Generate assessments with AI quiz generator',
+        'Monitor class analytics and learning trends',
       ],
     },
     {
@@ -751,9 +756,9 @@ const HowItWorksSection = () => {
       color: '#ef4444',
       steps: [
         'Manage all users and roles',
-        'Oversee platform content',
-        'Review and resolve feedback',
-        'Monitor system analytics',
+        'Oversee courses and enrollments',
+        'Maintain platform-wide materials and communication',
+        'Review system-wide analytics and activity',
       ],
     },
   ];
@@ -889,24 +894,24 @@ const BenefitsSection = () => {
 
   const benefits = [
     {
-      icon: <AutoAwesome />,
-      title: 'Organized Learning',
-      description: 'All your course materials in one searchable place.',
-    },
-    {
-      icon: <Bolt />,
-      title: 'Save Time',
-      description: 'Find what you need instantly with AI-powered search.',
-    },
-    {
       icon: <SupportAgent />,
-      title: 'Direct Support',
-      description: 'Get answers from teachers through the feedback system.',
+      title: 'Contextual AI Help',
+      description: 'RAG chatbot responses stay aligned with actual course materials.',
     },
     {
-      icon: <Forum />,
-      title: 'Better Communication',
-      description: 'Streamlined interaction between students and educators.',
+      icon: <AnalyticsIcon />,
+      title: 'Clear Performance Insights',
+      description: 'Spider-chart dashboards make strengths and gaps immediately visible.',
+    },
+    {
+      icon: <AutoAwesome />,
+      title: 'Faster Assessment Creation',
+      description: 'AI quiz generation reduces manual preparation workload for teachers.',
+    },
+    {
+      icon: <EnrollmentIcon />,
+      title: 'Smooth Course Participation',
+      description: 'Enrollment and course access flows keep learning organized from day one.',
     },
   ];
 
@@ -1186,10 +1191,33 @@ const Footer = () => {
 // MAIN LANDING PAGE COMPONENT
 // ══════════════════════════════════════════════════════════════════════
 const LandingPage = () => {
+  const [heroStats, setHeroStats] = useState({
+    materials: 0,
+    students: 0,
+    teachers: 0,
+  });
+
+  useEffect(() => {
+    const fetchLandingStats = async () => {
+      try {
+        const data = await statsService.getPublicLandingStats();
+        setHeroStats({
+          materials: Number(data.materials) || 0,
+          students: Number(data.students) || 0,
+          teachers: Number(data.teachers) || 0,
+        });
+      } catch (error) {
+        console.warn('Failed to load public landing stats:', error?.message || error);
+      }
+    };
+
+    fetchLandingStats();
+  }, []);
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Header />
-      <HeroSection />
+      <HeroSection heroStats={heroStats} />
       <FeaturesSection />
       <HowItWorksSection />
       <BenefitsSection />

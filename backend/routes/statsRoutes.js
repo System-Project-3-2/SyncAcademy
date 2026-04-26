@@ -4,6 +4,7 @@
  */
 import express from "express";
 import {
+  getPublicLandingStats,
   getAdminStats,
   getTeacherStats,
   getStudentStats,
@@ -12,6 +13,9 @@ import { protect } from "../middleware/authMiddleware.js";
 import { authorize } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
+
+// Public statistics for landing page
+router.get("/public", getPublicLandingStats);
 
 // All routes require authentication
 router.use(protect);
